@@ -1,0 +1,23 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#2563EB"/>
+  
+  <!-- Gear/Tool icon -->
+  <g transform="translate(16, 16)">
+    <!-- Main gear body -->
+    <circle cx="16" cy="16" r="8" fill="white"/>
+    <circle cx="16" cy="16" r="4" fill="#2563EB"/>
+    
+    <!-- Gear teeth -->
+    <rect x="14" y="4" width="4" height="6" fill="white" rx="1"/>
+    <rect x="14" y="22" width="4" height="6" fill="white" rx="1"/>
+    <rect x="4" y="14" width="6" height="4" fill="white" rx="1"/>
+    <rect x="22" y="14" width="6" height="4" fill="white" rx="1"/>
+    
+    <!-- Diagonal teeth -->
+    <rect x="8.5" y="6.5" width="4" height="4" fill="white" rx="1" transform="rotate(45 10.5 8.5)"/>
+    <rect x="19.5" y="6.5" width="4" height="4" fill="white" rx="1" transform="rotate(45 21.5 8.5)"/>
+    <rect x="8.5" y="21.5" width="4" height="4" fill="white" rx="1" transform="rotate(45 10.5 23.5)"/>
+    <rect x="19.5" y="21.5" width="4" height="4" fill="white" rx="1" transform="rotate(45 21.5 23.5)"/>
+  </g>
+</svg>

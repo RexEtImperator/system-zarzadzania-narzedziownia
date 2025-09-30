@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Repository Viewer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #24292e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .nav {
+            background: #f6f8fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .nav button {
+            background: #0366d6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin-right: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .nav button:hover {
+            background: #0256cc;
+        }
+        .nav button.active {
+            background: #28a745;
+        }
+        .content {
+            padding: 20px;
+            min-height: 400px;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .file-item {
+            padding: 10px;
+            border-bottom: 1px solid #e1e4e8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .file-item:hover {
+            background-color: #f6f8fa;
+        }
+        .file-icon {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+        }
+        .commit-list {
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+        }
+        .commit-item {
+            padding: 15px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .commit-item:last-child {
+            border-bottom: none;
+        }
+        .commit-hash {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .commit-message {
+            font-weight: 600;
+            margin: 5px 0;
+        }
+        .commit-meta {
+            font-size: 12px;
+            color: #586069;
+        }
+        .status-item {
+            padding: 8px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 14px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .status-modified { color: #f66a0a; }
+        .status-added { color: #28a745; }
+        .status-deleted { color: #d73a49; }
+        .status-untracked { color: #6f42c1; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #586069;
+        }
+        .error {
+            background: #ffeaea;
+            color: #d73a49;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗂️ Git Repository Viewer</h1>
+            <p>Przeglądaj zawartość repozytorium Git w przeglądarce</p>
+        </div>
+        
+        <div class="nav">
+            <button id="filesBtn" class="active" onclick="showSection('files')">📁 Pliki</button>
+            <button id="statusBtn" onclick="showSection('status')">📊 Status</button>
+            <button id="commitsBtn" onclick="showSection('commits')">📝 Commity</button>
+            <button id="branchesBtn" onclick="showSection('branches')">🌿 Gałęzie</button>
+        </div>
+        
+        <div class="content">
+            <div id="files-section">
+                <h3>Pliki w repozytorium</h3>
+                <div class="loading">Ładowanie plików...</div>
+                <ul id="file-list" class="file-list" style="display: none;"></ul>
+            </div>
+            
+            <div id="status-section" style="display: none;">
+                <h3>Status repozytorium</h3>
+                <div class="loading">Ładowanie statusu...</div>
+                <div id="status-list" style="display: none;"></div>
+            </div>
+            
+            <div id="commits-section" style="display: none;">
+                <h3>Historia commitów</h3>
+                <div class="loading">Ładowanie commitów...</div>
+                <div id="commit-list" class="commit-list" style="display: none;"></div>
+            </div>
+            
+            <div id="branches-section" style="display: none;">
+                <h3>Gałęzie</h3>
+                <div class="loading">Ładowanie gałęzi...</div>
+                <div id="branch-list" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Symulowane dane - w rzeczywistej aplikacji byłyby pobierane z API
+        const gitData = {
+            files: [
+                '.gitignore', 'app.js', 'backend/package.json', 'check_admin.js',
+                'check_all_tools_status.js', 'check_database.js', 'check_database_schema.js',
+                'check_employees.js', 'check_employees_correct.js', 'check_tables.js',
+                'check_user_roles.js', 'check_users.js', 'check_wiertarka.js',
+                'debug_all_issues.js', 'debug_lutownica.js', 'debug_return.js',
+                'debug_specific_tools.js', 'debug_token.js', 'fix_tool_statuses.js',
+                'issue_test_tools.js', 'migrate_departments_positions.js',
+                'migrate_lutownica.js', 'package-lock.json', 'package.json',
+                'public/favicon.ico', 'public/index.html', 'public/logo.png',
+                'public/logo.svg', 'public/logo192.png', 'public/logo512.png',
+                'server.js', 'src/App.jsx', 'src/api.js', 'src/index.css',
+                'src/index.js', 'tailwind.config.js', 'test_all_returns.js',
+                'test_api.js', 'test_api_endpoints.js', 'test_chainsaw.js',
+                'test_return_api.js', 'test_ui_return.js', 'test_with_auth.js'
+            ],
+            status: [
+                { file: 'server.js', status: 'M', type: 'modified' },
+                { file: 'src/App.jsx', status: 'M', type: 'modified' },
+                { file: 'src/api.js', status: 'M', type: 'modified' },
+                { file: 'README.md', status: '??', type: 'untracked' },
+                { file: 'check_departments_positions.js', status: '??', type: 'untracked' },
+                { file: 'debug_frontend.js', status: '??', type: 'untracked' },
+                { file: 'src/components/', status: '??', type: 'untracked' },
+                { file: 'src/constants.js', status: '??', type: 'untracked' },
+                { file: 'test_api_connection.js', status: '??', type: 'untracked' }
+            ]
+        };
+
+        function showSection(section) {
+            // Ukryj wszystkie sekcje
+            document.querySelectorAll('[id$="-section"]').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Usuń aktywną klasę z wszystkich przycisków
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Pokaż wybraną sekcję
+            document.getElementById(section + '-section').style.display = 'block';
+            document.getElementById(section + 'Btn').classList.add('active');
+            
+            // Załaduj dane dla sekcji
+            loadSectionData(section);
+        }
+
+        function loadSectionData(section) {
+            setTimeout(() => {
+                switch(section) {
+                    case 'files':
+                        loadFiles();
+                        break;
+                    case 'status':
+                        loadStatus();
+                        break;
+                    case 'commits':
+                        loadCommits();
+                        break;
+                    case 'branches':
+                        loadBranches();
+                        break;
+                }
+            }, 500);
+        }
+
+        function loadFiles() {
+            const fileList = document.getElementById('file-list');
+            const loading = document.querySelector('#files-section .loading');
+            
+            fileList.innerHTML = '';
+            gitData.files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                
+                const icon = file.includes('/') ? '📁' : '📄';
+                li.innerHTML = `
+                    <span class="file-icon">${icon}</span>
+                    <span>${file}</span>
+                `;
+                
+                fileList.appendChild(li);
+            });
+            
+            loading.style.display = 'none';
+            fileList.style.display = 'block';
+        }
+
+        function loadStatus() {
+            const statusList = document.getElementById('status-list');
+            const loading = document.querySelector('#status-section .loading');
+            
+            statusList.innerHTML = '';
+            
+            if (gitData.status.length === 0) {
+                statusList.innerHTML = '<div class="status-item">Brak zmian w repozytorium</div>';
+            } else {
+                gitData.status.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = `status-item status-${item.type}`;
+                    
+                    const statusText = {
+                        'M': 'Zmodyfikowany',
+                        '??': 'Nieśledzony',
+                        'A': 'Dodany',
+                        'D': 'Usunięty'
+                    };
+                    
+                    div.innerHTML = `<strong>${item.status}</strong> ${item.file} <em>(${statusText[item.status]})</em>`;
+                    statusList.appendChild(div);
+                });
+            }
+            
+            loading.style.display = 'none';
+            statusList.style.display = 'block';
+        }
+
+        function loadCommits() {
+            const commitList = document.getElementById('commit-list');
+            const loading = document.querySelector('#commits-section .loading');
+            
+            // Symulowane dane commitów
+            const commits = [
+                {
+                    hash: 'a1b2c3d',
+                    message: 'Naprawiono problem z logowaniem',
+                    author: 'Developer',
+                    date: '2024-01-15 14:30'
+                },
+                {
+                    hash: 'e4f5g6h',
+                    message: 'Dodano nowe komponenty sidebar',
+                    author: 'Developer',
+                    date: '2024-01-15 12:15'
+                },
+                {
+                    hash: 'i7j8k9l',
+                    message: 'Aktualizacja uprawnień użytkowników',
+                    author: 'Developer',
+                    date: '2024-01-15 10:45'
+                }
+            ];
+            
+            commitList.innerHTML = '';
+            commits.forEach(commit => {
+                const div = document.createElement('div');
+                div.className = 'commit-item';
+                div.innerHTML = `
+                    <div class="commit-hash">${commit.hash}</div>
+                    <div class="commit-message">${commit.message}</div>
+                    <div class="commit-meta">przez ${commit.author} • ${commit.date}</div>
+                `;
+                commitList.appendChild(div);
+            });
+            
+            loading.style.display = 'none';
+            commitList.style.display = 'block';
+        }
+
+        function loadBranches() {
+            const branchList = document.getElementById('branch-list');
+            const loading = document.querySelector('#branches-section .loading');
+            
+            // Symulowane dane gałęzi
+            const branches = ['main', 'develop', 'feature/login-fix'];
+            
+            branchList.innerHTML = '';
+            branches.forEach(branch => {
+                const div = document.createElement('div');
+                div.className = 'status-item';
+                div.innerHTML = `🌿 <strong>${branch}</strong> ${branch === 'main' ? '(aktywna)' : ''}`;
+                branchList.appendChild(div);
+            });
+            
+            loading.style.display = 'none';
+            branchList.style.display = 'block';
+        }
+
+        // Załaduj pliki przy starcie
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSectionData('files');
+        });
+    </script>
+</body>
+</html>

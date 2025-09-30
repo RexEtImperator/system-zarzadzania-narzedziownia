@@ -3,15 +3,15 @@ const API_BASE_URL = 'http://localhost:3000';
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL;
-    this.token = localStorage.getItem('authToken');
+    this.token = localStorage.getItem('token'); // Zmieniono z 'authToken' na 'token'
   }
 
   setToken(token) {
     this.token = token;
     if (token) {
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('token', token); // Zmieniono z 'authToken' na 'token'
     } else {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('token'); // Zmieniono z 'authToken' na 'token'
     }
   }
 

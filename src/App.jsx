@@ -3,6 +3,10 @@ import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from './api';
+import { 
+  DepartmentManagementScreen, 
+  PositionManagementScreen 
+} from './components';
 
 // Stałe uprawnień
 const PERMISSIONS = {
@@ -13,7 +17,10 @@ const PERMISSIONS = {
   VIEW_ANALYTICS: 'view_analytics',
   VIEW_ADMIN: 'view_admin',
   MANAGE_USERS: 'manage_users',
-  SYSTEM_SETTINGS: 'system_settings'
+  SYSTEM_SETTINGS: 'system_settings',
+  VIEW_USERS: 'view_users',
+  VIEW_AUDIT_LOG: 'view_audit_log',
+  ACCESS_TOOLS: 'access_tools'
 };
 
 // Stałe akcji audytu
@@ -29,7 +36,8 @@ const AUDIT_ACTIONS = {
   UPDATE_EMPLOYEE: 'update_employee',
   DELETE_EMPLOYEE: 'delete_employee',
   VIEW_ANALYTICS: 'view_analytics',
-  ACCESS_ADMIN: 'access_admin'
+  ACCESS_ADMIN: 'access_admin',
+  VIEW_USERS: 'view_users'
 };
 
 // Domyślne działy
@@ -75,6 +83,12 @@ const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
       PERMISSIONS.VIEW_ANALYTICS
+    ],
+    user: [
+      PERMISSIONS.ACCESS_TOOLS,
+      PERMISSIONS.VIEW_USERS,
+      PERMISSIONS.VIEW_ANALYTICS,
+      PERMISSIONS.VIEW_AUDIT_LOG
     ]
   };
   
@@ -165,10 +179,12 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
 // Komponenty interfejsu
 function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊', permission: null },
+    { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
-    { id: 'analytics', label: 'Analityka', icon: '📈', permission: PERMISSIONS.VIEW_ANALYTICS },
+    { id: 'departments', label: 'Działy', icon: '🏢', permission: PERMISSIONS.MANAGE_EMPLOYEES },
+    { id: 'positions', label: 'Stanowiska', icon: '💼', permission: PERMISSIONS.MANAGE_EMPLOYEES },
+    { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'labels', label: 'Etykiety', icon: '🏷️', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'admin', label: 'Admin', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
   ];
@@ -228,11 +244,13 @@ function TopBar({ user, onLogout }) {
           user.role === 'administrator' ? 'bg-red-100 text-red-800' :
           user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
           user.role === 'employee' ? 'bg-green-100 text-green-800' :
+          user.role === 'user' ? 'bg-purple-100 text-purple-800' :
           'bg-gray-100 text-gray-800'
         }`}>
           {user.role === 'administrator' ? '👑 Administrator' :
            user.role === 'manager' ? '👔 Menedżer' :
            user.role === 'employee' ? '👷 Pracownik' :
+           user.role === 'user' ? '👤 Użytkownik' :
            '👁️ Obserwator'}
         </span>
       </div>
@@ -304,9 +322,12 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">🔧</span>
+          </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Zarządzanie Narzędziami</h1>
           <p className="text-slate-600">Zaloguj się do systemu</p>
         </div>
@@ -320,7 +341,8 @@ function LoginScreen({ onLogin }) {
               type="text"
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="Wprowadź nazwę użytkownika"
               required
             />
           </div>
@@ -333,7 +355,8 @@ function LoginScreen({ onLogin }) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="Wprowadź hasło"
               required
             />
           </div>
@@ -341,7 +364,7 @@ function LoginScreen({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             {loading ? 'Logowanie...' : 'Zaloguj się'}
           </button>
@@ -351,966 +374,15 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function DashboardScreen({ tools, employees, user }) {
-  const [searchTerm, setSearchTerm] = useState('');
+// Import komponentów z osobnych plików
+import DashboardScreen from './components/DashboardScreen';
+import ToolsScreen from './components/ToolsScreen';
+import EmployeesScreen from './components/EmployeesScreen';
+import AnalyticsScreen from './components/AnalyticsScreen';
+import LabelsManager from './components/LabelsManager';
+import AuditLogScreen from './components/AuditLogScreen';
 
-  // Statystyki
-  const totalTools = tools?.length || 0;
-  const availableTools = tools?.filter(tool => tool.status === 'dostępne').length || 0;
-  const issuedTools = tools?.filter(tool => tool.status === 'wydane').length || 0;
-  const totalEmployees = employees?.length || 0;
-
-  // Filtrowanie narzędzi
-  const filteredTools = tools?.filter(tool =>
-    tool.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tool.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tool.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
-
-  // Ostatnie aktywności (przykładowe dane)
-  const recentActivities = [
-    { id: 1, action: 'Wydano narzędzie', tool: 'Wiertarka XYZ', employee: 'Jan Kowalski', time: '2 godziny temu' },
-    { id: 2, action: 'Zwrócono narzędzie', tool: 'Młotek ABC', employee: 'Anna Nowak', time: '4 godziny temu' },
-    { id: 3, action: 'Dodano narzędzie', tool: 'Klucz DEF', employee: 'Admin', time: '1 dzień temu' }
-  ];
-
-  return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
-        <p className="text-slate-600">Przegląd systemu zarządzania narzędziami</p>
-      </div>
-
-      {/* Statystyki */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Wszystkie narzędzia</p>
-              <p className="text-2xl font-bold text-slate-900">{totalTools}</p>
-            </div>
-            <div className="text-3xl">🔧</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Dostępne</p>
-              <p className="text-2xl font-bold text-green-600">{availableTools}</p>
-            </div>
-            <div className="text-3xl">✅</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Wydane</p>
-              <p className="text-2xl font-bold text-yellow-600">{issuedTools}</p>
-            </div>
-            <div className="text-3xl">📤</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Pracownicy</p>
-              <p className="text-2xl font-bold text-blue-600">{totalEmployees}</p>
-            </div>
-            <div className="text-3xl">👥</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Wyszukiwanie narzędzi */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-900">Szybkie wyszukiwanie</h2>
-          </div>
-          <div className="p-6">
-            <input
-              type="text"
-              placeholder="Szukaj narzędzi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-            />
-            
-            {searchTerm && (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {filteredTools.slice(0, 5).map(tool => (
-                  <div key={tool.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-slate-900">{tool.name}</p>
-                      <p className="text-sm text-slate-600">{tool.sku} • {tool.category}</p>
-                    </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      tool.status === 'dostępne' ? 'bg-green-100 text-green-800' :
-                      tool.status === 'wydane' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {tool.status}
-                    </span>
-                  </div>
-                ))}
-                {filteredTools.length > 5 && (
-                  <p className="text-sm text-slate-500 text-center py-2">
-                    i {filteredTools.length - 5} więcej...
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Ostatnie aktywności */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-900">Ostatnie aktywności</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {recentActivities.map(activity => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{activity.action}</p>
-                    <p className="text-sm text-slate-600">{activity.tool} • {activity.employee}</p>
-                    <p className="text-xs text-slate-500">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Komponent konfiguracji parametrów aplikacji
-function AppConfigScreen({ user }) {
-  const [departments, setDepartments] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [newDepartment, setNewDepartment] = useState('');
-  const [newPosition, setNewPosition] = useState('');
-  const [editingDepartment, setEditingDepartment] = useState(null);
-  const [editingPosition, setEditingPosition] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Stany dla modalów potwierdzenia
-  const [showDeleteDeptConfirm, setShowDeleteDeptConfirm] = useState(false);
-  const [showDeletePosConfirm, setShowDeletePosConfirm] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-
-  // Pobierz działy i pozycje z bazy danych przy załadowaniu komponentu
-  useEffect(() => {
-    fetchDepartments();
-    fetchPositions();
-  }, []);
-
-  const fetchDepartments = async () => {
-    try {
-      const data = await api.get('/departments');
-      setDepartments(data);
-    } catch (error) {
-      console.error('Błąd podczas pobierania działów:', error);
-      toast.error('Błąd podczas pobierania działów');
-    }
-  };
-
-  const fetchPositions = async () => {
-    try {
-      const data = await api.get('/positions');
-      setPositions(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Błąd podczas pobierania pozycji:', error);
-      toast.error('Błąd podczas pobierania pozycji');
-      setLoading(false);
-    }
-  };
-
-  // Zarządzanie działami
-  const addDepartment = async () => {
-    if (!newDepartment.trim()) return;
-    
-    try {
-      const response = await api.post('/departments', { name: newDepartment.trim() });
-      setDepartments([...departments, response]);
-      setNewDepartment('');
-      toast.success('Dział został dodany pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas dodawania działu:', error);
-      toast.error(error.message || 'Błąd podczas dodawania działu');
-    }
-  };
-
-  const deleteDepartment = async (dept) => {
-    try {
-      await api.del(`/departments/${dept.id}`);
-      setDepartments(departments.filter(d => d.id !== dept.id));
-      toast.success('Dział został usunięty pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas usuwania działu:', error);
-      toast.error('Błąd podczas usuwania działu');
-    }
-  };
-
-  const updateDepartment = async (dept, newName) => {
-    if (!newName.trim() || newName === dept.name) {
-      setEditingDepartment(null);
-      return;
-    }
-    
-    try {
-      await api.put(`/departments/${dept.id}`, { name: newName.trim() });
-      setDepartments(departments.map(d => 
-        d.id === dept.id ? { ...d, name: newName.trim() } : d
-      ));
-      setEditingDepartment(null);
-      toast.success('Dział został zaktualizowany pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas aktualizacji działu:', error);
-      toast.error(error.message || 'Błąd podczas aktualizacji działu');
-    }
-  };
-
-  // Zarządzanie pozycjami
-  const addPosition = async () => {
-    if (!newPosition.trim()) return;
-    
-    try {
-      const response = await api.post('/positions', { name: newPosition.trim() });
-      setPositions([...positions, response]);
-      setNewPosition('');
-      toast.success('Pozycja została dodana pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas dodawania pozycji:', error);
-      toast.error(error.message || 'Błąd podczas dodawania pozycji');
-    }
-  };
-
-  const deletePosition = async (pos) => {
-    try {
-      await api.del(`/positions/${pos.id}`);
-      setPositions(positions.filter(p => p.id !== pos.id));
-      toast.success('Pozycja została usunięta pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas usuwania pozycji:', error);
-      toast.error('Błąd podczas usuwania pozycji');
-    }
-  };
-
-  const updatePosition = async (pos, newName) => {
-    if (!newName.trim() || newName === pos.name) {
-      setEditingPosition(null);
-      return;
-    }
-    
-    try {
-      await api.put(`/positions/${pos.id}`, { name: newName.trim() });
-      setPositions(positions.map(p => 
-        p.id === pos.id ? { ...p, name: newName.trim() } : p
-      ));
-      setEditingPosition(null);
-      toast.success('Pozycja została zaktualizowana pomyślnie');
-    } catch (error) {
-      console.error('Błąd podczas aktualizacji pozycji:', error);
-      toast.error(error.message || 'Błąd podczas aktualizacji pozycji');
-    }
-  };
-
-  const resetToDefaults = async () => {
-    try {
-      // Usuń wszystkie istniejące działy i pozycje
-      await Promise.all([
-        ...departments.map(dept => api.del(`/departments/${dept.id}`)),
-        ...positions.map(pos => api.del(`/positions/${pos.id}`))
-      ]);
-      
-      // Dodaj domyślne działy
-      const defaultDepts = await Promise.all(
-        DEFAULT_DEPARTMENTS.map(name => api.post('/departments', { name }))
-      );
-      
-      // Dodaj domyślne pozycje
-      const defaultPos = await Promise.all(
-        DEFAULT_POSITIONS.map(name => api.post('/positions', { name }))
-      );
-      
-      setDepartments(defaultDepts);
-      setPositions(defaultPos);
-      toast.success('Przywrócono domyślne ustawienia');
-      setShowResetConfirm(false);
-    } catch (error) {
-      console.error('Błąd podczas przywracania domyślnych ustawień:', error);
-      toast.error('Błąd podczas przywracania domyślnych ustawień');
-    }
-  };
-
-  if (!hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS)) {
-    return (
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen text-center">
-        <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Brak dostępu</h2>
-        <p className="text-slate-600">Nie masz uprawnień do konfiguracji systemu.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">Ładowanie konfiguracji...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Konfiguracja parametrów aplikacji</h1>
-        <button
-          onClick={() => setShowResetConfirm(true)}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <span>🔄</span>
-          Przywróć domyślne
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Zarządzanie działami */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <span>🏢</span>
-              Działy
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">Zarządzaj działami w organizacji</p>
-          </div>
-          
-          <div className="p-6">
-            {/* Dodawanie nowego działu */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={newDepartment}
-                onChange={(e) => setNewDepartment(e.target.value)}
-                placeholder="Nazwa nowego działu"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && addDepartment()}
-              />
-              <button
-                onClick={addDepartment}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Dodaj
-              </button>
-            </div>
-
-            {/* Lista działów */}
-            <div className="space-y-2">
-              {departments.map((dept) => (
-                <div key={dept.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  {editingDepartment === dept.id ? (
-                    <div className="flex gap-2 flex-1">
-                      <input
-                        type="text"
-                        defaultValue={dept.name}
-                        className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            updateDepartment(dept, e.target.value);
-                          }
-                        }}
-                        onBlur={(e) => updateDepartment(dept, e.target.value)}
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-slate-900">{dept.name}</span>
-                  )}
-                  
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setEditingDepartment(editingDepartment === dept.id ? null : dept.id)}
-                      className="text-blue-600 hover:text-blue-800 p-1"
-                      title="Edytuj"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => {
-                        setItemToDelete(dept);
-                        setShowDeleteDeptConfirm(true);
-                      }}
-                      className="text-red-600 hover:text-red-800 p-1"
-                      title="Usuń"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Zarządzanie pozycjami */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <span>👔</span>
-              Pozycje
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">Zarządzaj pozycjami w organizacji</p>
-          </div>
-          
-          <div className="p-6">
-            {/* Dodawanie nowej pozycji */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={newPosition}
-                onChange={(e) => setNewPosition(e.target.value)}
-                placeholder="Nazwa nowej pozycji"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && addPosition()}
-              />
-              <button
-                onClick={addPosition}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Dodaj
-              </button>
-            </div>
-
-            {/* Lista pozycji */}
-            <div className="space-y-2">
-              {positions.map((pos) => (
-                <div key={pos.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  {editingPosition === pos.id ? (
-                    <div className="flex gap-2 flex-1">
-                      <input
-                        type="text"
-                        defaultValue={pos.name}
-                        className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            updatePosition(pos, e.target.value);
-                          }
-                        }}
-                        onBlur={(e) => updatePosition(pos, e.target.value)}
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-slate-900">{pos.name}</span>
-                  )}
-                  
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setEditingPosition(editingPosition === pos.id ? null : pos.id)}
-                      className="text-blue-600 hover:text-blue-800 p-1"
-                      title="Edytuj"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => {
-                        setItemToDelete(pos);
-                        setShowDeletePosConfirm(true);
-                      }}
-                      className="text-red-600 hover:text-red-800 p-1"
-                      title="Usuń"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Informacje o konfiguracji */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">ℹ️ Informacje</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Zmiany są zapisywane automatycznie w bazie danych</li>
-          <li>• Nowe działy i pozycje będą dostępne w formularzach pracowników</li>
-          <li>• Usunięcie działu/pozycji nie wpłynie na istniejących pracowników</li>
-          <li>• Przycisk "Przywróć domyślne" resetuje wszystkie ustawienia</li>
-        </ul>
-      </div>
-
-      {/* Modały potwierdzenia */}
-      <ConfirmationModal
-        isOpen={showDeleteDeptConfirm}
-        onClose={() => {
-          setShowDeleteDeptConfirm(false);
-          setItemToDelete(null);
-        }}
-        onConfirm={() => deleteDepartment(itemToDelete)}
-        title="Usuń dział"
-        message={`Czy na pewno chcesz usunąć dział "${itemToDelete?.name}"?`}
-        confirmText="Usuń"
-        cancelText="Anuluj"
-        type="danger"
-      />
-
-      <ConfirmationModal
-        isOpen={showDeletePosConfirm}
-        onClose={() => {
-          setShowDeletePosConfirm(false);
-          setItemToDelete(null);
-        }}
-        onConfirm={() => deletePosition(itemToDelete)}
-        title="Usuń pozycję"
-        message={`Czy na pewno chcesz usunąć pozycję "${itemToDelete?.name}"?`}
-        confirmText="Usuń"
-        cancelText="Anuluj"
-        type="danger"
-      />
-
-      <ConfirmationModal
-        isOpen={showResetConfirm}
-        onClose={() => setShowResetConfirm(false)}
-        onConfirm={resetToDefaults}
-        title="Przywróć domyślne ustawienia"
-        message="Czy na pewno chcesz przywrócić domyślne ustawienia? Wszystkie niestandardowe działy i pozycje zostaną usunięte i zastąpione domyślnymi."
-        confirmText="Przywróć"
-        cancelText="Anuluj"
-        type="danger"
-      />
-    </div>
-  );
-}
-
-// Komponent zarządzania pracownikami
-function EmployeesScreen({ employees, setEmployees, user }) {
-  const [showModal, setShowModal] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    phone: '',
-    position: '',
-    department: '',
-    brand_number: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterPosition, setFilterPosition] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState('');
-  
-  // Stany dla działów i pozycji
-  const [departments, setDepartments] = useState([]);
-  const [positions, setPositions] = useState([]);
-
-  // Pobierz działy i pozycje przy załadowaniu komponentu
-  useEffect(() => {
-    const fetchDepartmentsAndPositions = async () => {
-      try {
-        const [deptData, posData] = await Promise.all([
-          getConfiguredDepartments(),
-          getConfiguredPositions()
-        ]);
-        setDepartments(deptData);
-        setPositions(posData);
-      } catch (error) {
-        console.error('Error fetching departments and positions:', error);
-        // Fallback do wartości domyślnych
-        setDepartments(DEFAULT_DEPARTMENTS);
-        setPositions(DEFAULT_POSITIONS);
-      }
-    };
-
-    fetchDepartmentsAndPositions();
-  }, []);
-
-  const handleAddEmployee = () => {
-    setEditingEmployee(null);
-    setFormData({
-      first_name: '',
-      last_name: '',
-      phone: '',
-      position: '',
-      department: '',
-      brand_number: ''
-    });
-    setShowModal(true);
-  };
-
-  const handleEditEmployee = (employee) => {
-    setEditingEmployee(employee);
-    setFormData({
-      first_name: employee.first_name,
-      last_name: employee.last_name,
-      phone: employee.phone || '',
-      position: employee.position,
-      department: employee.department,
-      brand_number: employee.brand_number || ''
-    });
-    setShowModal(true);
-  };
-
-  const handleDeleteEmployee = async (id, name) => {
-    if (window.confirm(`Czy na pewno chcesz usunąć pracownika ${name}?`)) {
-      try {
-        await api.delete(`/employees/${id}`);
-        setEmployees(employees.filter(emp => emp.id !== id));
-        toast.success('Pracownik został usunięty pomyślnie!');
-        addAuditLog(user, AUDIT_ACTIONS.DELETE_EMPLOYEE, `Usunięto pracownika: ${name}`);
-      } catch (error) {
-        console.error('Error deleting employee:', error);
-        toast.error('Błąd podczas usuwania pracownika');
-      }
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (editingEmployee) {
-        await api.put(`/employees/${editingEmployee.id}`, formData);
-        setEmployees(employees.map(emp => 
-          emp.id === editingEmployee.id ? { ...emp, ...formData } : emp
-        ));
-        toast.success('Pracownik został zaktualizowany pomyślnie!');
-        addAuditLog(user, AUDIT_ACTIONS.UPDATE_EMPLOYEE, `Zaktualizowano pracownika: ${formData.first_name} ${formData.last_name}`);
-      } else {
-        const response = await api.post('/employees', formData);
-        const newEmployee = { ...formData, id: response.id };
-        setEmployees([...employees, newEmployee]);
-        toast.success('Pracownik został dodany pomyślnie!');
-        addAuditLog(user, AUDIT_ACTIONS.ADD_EMPLOYEE, `Dodano pracownika: ${formData.first_name} ${formData.last_name}`);
-      }
-
-      setShowModal(false);
-      setFormData({
-        first_name: '',
-        last_name: '',
-        phone: '',
-        position: '',
-        department: '',
-        brand_number: ''
-      });
-    } catch (error) {
-      console.error('Error saving employee:', error);
-      toast.error('Błąd podczas zapisywania pracownika');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filtrowanie pracowników
-  const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = searchTerm === '' || 
-      employee.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.brand_number?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesPosition = filterPosition === '' || employee.position === filterPosition;
-    const matchesDepartment = filterDepartment === '' || employee.department === filterDepartment;
-    
-    return matchesSearch && matchesPosition && matchesDepartment;
-  });
-
-  if (!hasPermission(user, PERMISSIONS.VIEW_EMPLOYEES)) {
-    return (
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen text-center">
-        <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Brak dostępu</h2>
-        <p className="text-slate-600">Nie masz uprawnień do tej sekcji.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-4 lg:mb-0">Pracownicy</h1>
-        
-        {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
-          <button
-            onClick={handleAddEmployee}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <span className="text-lg">👤</span>
-            Dodaj pracownika
-          </button>
-        )}
-      </div>
-
-      {/* Filtry i wyszukiwanie */}
-      <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-slate-200 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Szukaj pracownika</label>
-            <input
-              type="text"
-              placeholder="Imię, nazwisko, telefon..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Filtruj po stanowisku</label>
-            <select
-              value={filterPosition}
-              onChange={(e) => setFilterPosition(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Wszystkie stanowiska</option>
-              {positions.map(position => (
-                <option key={position} value={position}>{position}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Filtruj po dziale</label>
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Wszystkie działy</option>
-              {departments.map(department => (
-                <option key={department} value={department}>{department}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista pracowników */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {filteredEmployees.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-6xl mb-4">👥</div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Brak pracowników</h3>
-            <p className="text-slate-600 mb-4">
-              {searchTerm || filterPosition || filterDepartment 
-                ? 'Nie znaleziono pracowników spełniających kryteria wyszukiwania.'
-                : 'Nie ma jeszcze żadnych pracowników w systemie.'
-              }
-            </p>
-            {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && !searchTerm && !filterPosition && !filterDepartment && (
-              <button
-                onClick={handleAddEmployee}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Dodaj pierwszego pracownika
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-slate-900">Pracownik</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Kontakt</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Stanowisko</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Dział</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Nr identyfikacyjny</th>
-                  {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
-                    <th className="text-right p-4 font-semibold text-slate-900">Akcje</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-slate-50">
-                    <td className="p-4">
-                      <div className="font-medium text-slate-900">
-                        {employee.first_name} {employee.last_name}
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {employee.phone || 'Brak telefonu'}
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {employee.position}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {employee.department}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {employee.brand_number || 'Brak numeru'}
-                    </td>
-                    {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
-                      <td className="p-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEditEmployee(employee)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edytuj pracownika"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEmployee(employee.id, `${employee.first_name} ${employee.last_name}`)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Usuń pracownika"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Modal dodawania/edycji pracownika */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">
-                {editingEmployee ? 'Edytuj pracownika' : 'Dodaj nowego pracownika'}
-              </h2>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Imię *
-                </label>
-                <input
-                  type="text"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nazwisko *
-                </label>
-                <input
-                  type="text"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Telefon
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="+48 123 456 789"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Stanowisko *
-                </label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => setFormData({...formData, position: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Wybierz stanowisko</option>
-                  {positions.map(position => (
-                    <option key={position} value={position}>{position}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Dział *
-                </label>
-                <select
-                  value={formData.department}
-                  onChange={(e) => setFormData({...formData, department: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Wybierz dział</option>
-                  {departments.map(department => (
-                    <option key={department} value={department}>{department}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Numer identyfikacyjny
-                </label>
-                <input
-                  type="text"
-                  value={formData.brand_number}
-                  onChange={(e) => setFormData({...formData, brand_number: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="np. EMP001"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                >
-                  Anuluj
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {loading ? 'Zapisywanie...' : (editingEmployee ? 'Zaktualizuj' : 'Dodaj')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
+// Komponent zarządzania użytkownikami
 function UserManagementScreen({ user }) {
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -1318,14 +390,13 @@ function UserManagementScreen({ user }) {
   const [formData, setFormData] = useState({
     username: '',
     full_name: '',
-    role: 'employee',
+    role: 'user',
     password: '',
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -1349,7 +420,7 @@ function UserManagementScreen({ user }) {
     setFormData({
       username: '',
       full_name: '',
-      role: 'employee',
+      role: 'user',
       password: '',
       confirmPassword: ''
     });
@@ -1387,25 +458,18 @@ function UserManagementScreen({ user }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (!formData.username || !formData.full_name) {
-      toast.error('Nazwa użytkownika i pełne imię są wymagane');
+      toast.error('Wypełnij wszystkie wymagane pola');
       return;
     }
 
-    if (!editingUser && !formData.password) {
-      toast.error('Hasło jest wymagane dla nowego użytkownika');
-      return;
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
+    if (!editingUser && (!formData.password || formData.password !== formData.confirmPassword)) {
       toast.error('Hasła nie są identyczne');
       return;
     }
 
     try {
       setLoading(true);
-      
       const userData = {
         username: formData.username,
         full_name: formData.full_name,
@@ -1417,16 +481,14 @@ function UserManagementScreen({ user }) {
       }
 
       if (editingUser) {
-        // Update existing user
-        const updatedUser = await api.put(`/users/${editingUser.id}`, userData);
-        setUsers(users.map(u => u.id === editingUser.id ? updatedUser : u));
-        addAuditLog(user, AUDIT_ACTIONS.EDIT_USER, `Edytowano użytkownika: ${formData.username}`);
+        await api.put(`/users/${editingUser.id}`, userData);
+        setUsers(users.map(u => u.id === editingUser.id ? {...u, ...userData} : u));
+        addAuditLog(user, AUDIT_ACTIONS.UPDATE_USER, `Zaktualizowano użytkownika: ${userData.username}`);
         toast.success('Użytkownik został zaktualizowany');
       } else {
-        // Add new user
         const newUser = await api.post('/users', userData);
         setUsers([...users, newUser]);
-        addAuditLog(user, AUDIT_ACTIONS.ADD_USER, `Dodano użytkownika: ${formData.username}`);
+        addAuditLog(user, AUDIT_ACTIONS.ADD_USER, `Dodano użytkownika: ${userData.username}`);
         toast.success('Użytkownik został dodany');
       }
 
@@ -1434,7 +496,7 @@ function UserManagementScreen({ user }) {
       setFormData({
         username: '',
         full_name: '',
-        role: 'employee',
+        role: 'user',
         password: '',
         confirmPassword: ''
       });
@@ -1446,169 +508,106 @@ function UserManagementScreen({ user }) {
     }
   };
 
-  // Filter users based on search term
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase())
+    u.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleLabel = (role) => {
-    switch (role) {
-      case 'administrator': return '👑 Administrator';
-      case 'manager': return '👔 Menedżer';
-      case 'employee': return '👷 Pracownik';
-      case 'viewer': return '👁️ Obserwator';
-      default: return role;
-    }
-  };
-
-  const getRoleBadgeClass = (role) => {
-    switch (role) {
-      case 'administrator': return 'bg-red-100 text-red-800';
-      case 'manager': return 'bg-blue-100 text-blue-800';
-      case 'employee': return 'bg-green-100 text-green-800';
-      case 'viewer': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_USERS)) {
-    return (
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen text-center">
-        <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Brak dostępu</h2>
-        <p className="text-slate-600">Nie masz uprawnień do zarządzania użytkownikami.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-2">Zarządzanie użytkownikami</h1>
-          <p className="text-slate-600">Dodawaj, edytuj i zarządzaj kontami użytkowników systemu</p>
-        </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Zarządzanie użytkownikami</h1>
         <button
           onClick={handleAddUser}
-          className="mt-4 lg:mt-0 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <span className="text-lg">👤</span>
           Dodaj użytkownika
         </button>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Szukaj użytkowników..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Szukaj użytkowników..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
       </div>
 
-      {/* Users List */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="text-4xl mb-4">⏳</div>
-            <p className="text-slate-600">Ładowanie użytkowników...</p>
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-4xl mb-4">👥</div>
-            <p className="text-slate-600">
-              {searchTerm ? 'Nie znaleziono użytkowników pasujących do wyszukiwania' : 'Brak użytkowników w systemie'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-slate-900">Użytkownik</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Nazwa użytkownika</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Rola</th>
-                  <th className="text-left p-4 font-semibold text-slate-900">Utworzono</th>
-                  <th className="text-right p-4 font-semibold text-slate-900">Akcje</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((userItem) => (
-                  <tr key={userItem.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center text-white font-semibold">
-                          {userItem.full_name ? userItem.full_name.charAt(0).toUpperCase() : userItem.username ? userItem.username.charAt(0).toUpperCase() : '?'}
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900">{userItem.full_name}</p>
-                          <p className="text-sm text-slate-600">ID: {userItem.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">
-                        {userItem.username}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(userItem.role)}`}>
-                        {getRoleLabel(userItem.role)}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString('pl-PL') : 'Nieznana'}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEditUser(userItem)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edytuj użytkownika"
-                        >
-                          ✏️
-                        </button>
-                        {userItem.id !== user.id && (
-                          <button
-                            onClick={() => handleDeleteUser(userItem.id, userItem.username)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Usuń użytkownika"
-                          >
-                            🗑️
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <table className="w-full">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Użytkownik
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Rola
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Akcje
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-200">
+            {filteredUsers.map((u) => (
+              <tr key={u.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">{u.full_name}</div>
+                    <div className="text-sm text-slate-500">@{u.username}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    u.role === 'administrator' ? 'bg-red-100 text-red-800' :
+                    u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                    u.role === 'employee' ? 'bg-green-100 text-green-800' :
+                    u.role === 'user' ? 'bg-purple-100 text-purple-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {u.role === 'administrator' ? 'Administrator' :
+                     u.role === 'manager' ? 'Menedżer' :
+                     u.role === 'employee' ? 'Pracownik' :
+                     u.role === 'user' ? 'Użytkownik' :
+                     'Obserwator'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleEditUser(u)}
+                    className="text-blue-600 hover:text-blue-900 mr-3"
+                  >
+                    Edytuj
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(u.id, u.username)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Usuń
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Add/Edit User Modal */}
+      {/* Modal dodawania/edycji użytkownika */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingUser ? 'Edytuj użytkownika' : 'Dodaj nowego użytkownika'}
+                {editingUser ? 'Edytuj użytkownika' : 'Dodaj użytkownika'}
               </h2>
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nazwa użytkownika *
+                  Nazwa użytkownika
                 </label>
                 <input
                   type="text"
@@ -1616,13 +615,12 @@ function UserManagementScreen({ user }) {
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
-                  disabled={editingUser} // Username cannot be changed
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Pełne imię i nazwisko *
+                  Imię i nazwisko
                 </label>
                 <input
                   type="text"
@@ -1642,16 +640,16 @@ function UserManagementScreen({ user }) {
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="administrator">👑 Administrator</option>
-                  <option value="manager">👔 Menedżer</option>
-                  <option value="employee">👷 Pracownik</option>
-                  <option value="viewer">👁️ Obserwator</option>
+                  <option value="user">Użytkownik</option>
+                  <option value="employee">Pracownik</option>
+                  <option value="manager">Menedżer</option>
+                  <option value="administrator">Administrator</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  {editingUser ? 'Nowe hasło (pozostaw puste aby nie zmieniać)' : 'Hasło *'}
+                  {editingUser ? 'Nowe hasło (opcjonalne)' : 'Hasło'}
                 </label>
                 <input
                   type="password"
@@ -1662,32 +660,33 @@ function UserManagementScreen({ user }) {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Potwierdź hasło {!editingUser && '*'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required={!editingUser || formData.password}
-                />
-              </div>
+              {!editingUser && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Potwierdź hasło
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                  disabled={loading}
+                  className="flex-1 px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   Anuluj
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                   disabled={loading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {loading ? 'Zapisywanie...' : (editingUser ? 'Zaktualizuj' : 'Dodaj')}
                 </button>
@@ -1700,38 +699,209 @@ function UserManagementScreen({ user }) {
   );
 }
 
+// Komponent konfiguracji aplikacji
+function AppConfigScreen({ user }) {
+  const [departments, setDepartments] = useState([]);
+  const [positions, setPositions] = useState([]);
+  const [newDepartment, setNewDepartment] = useState('');
+  const [newPosition, setNewPosition] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchPositions();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const data = await api.get('/departments');
+      setDepartments(data);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      setDepartments(DEFAULT_DEPARTMENTS.map((name, index) => ({ id: index + 1, name })));
+    }
+  };
+
+  const fetchPositions = async () => {
+    try {
+      const data = await api.get('/positions');
+      setPositions(data);
+    } catch (error) {
+      console.error('Error fetching positions:', error);
+      setPositions(DEFAULT_POSITIONS.map((name, index) => ({ id: index + 1, name })));
+    }
+  };
+
+  const handleAddDepartment = async (e) => {
+    e.preventDefault();
+    if (!newDepartment.trim()) return;
+
+    try {
+      setLoading(true);
+      const department = await api.post('/departments', { name: newDepartment.trim() });
+      setDepartments([...departments, department]);
+      setNewDepartment('');
+      toast.success('Dział został dodany');
+    } catch (error) {
+      console.error('Error adding department:', error);
+      toast.error('Błąd podczas dodawania działu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPosition = async (e) => {
+    e.preventDefault();
+    if (!newPosition.trim()) return;
+
+    try {
+      setLoading(true);
+      const position = await api.post('/positions', { name: newPosition.trim() });
+      setPositions([...positions, position]);
+      setNewPosition('');
+      toast.success('Pozycja została dodana');
+    } catch (error) {
+      console.error('Error adding position:', error);
+      toast.error('Błąd podczas dodawania pozycji');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDepartment = async (id, name) => {
+    if (!confirm(`Czy na pewno chcesz usunąć dział "${name}"?`)) return;
+
+    try {
+      await api.del(`/departments/${id}`);
+      setDepartments(departments.filter(d => d.id !== id));
+      toast.success('Dział został usunięty');
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      toast.error('Błąd podczas usuwania działu');
+    }
+  };
+
+  const handleDeletePosition = async (id, name) => {
+    if (!confirm(`Czy na pewno chcesz usunąć pozycję "${name}"?`)) return;
+
+    try {
+      await api.del(`/positions/${id}`);
+      setPositions(positions.filter(p => p.id !== id));
+      toast.success('Pozycja została usunięta');
+    } catch (error) {
+      console.error('Error deleting position:', error);
+      toast.error('Błąd podczas usuwania pozycji');
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold text-slate-900 mb-6">Konfiguracja aplikacji</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Działy */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Działy</h2>
+          
+          <form onSubmit={handleAddDepartment} className="mb-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newDepartment}
+                onChange={(e) => setNewDepartment(e.target.value)}
+                placeholder="Nazwa działu"
+                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={loading || !newDepartment.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                Dodaj
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-2">
+            {departments.map((dept) => (
+              <div key={dept.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <span className="text-slate-900">{dept.name}</span>
+                <button
+                  onClick={() => handleDeleteDepartment(dept.id, dept.name)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Usuń
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pozycje */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Pozycje</h2>
+          
+          <form onSubmit={handleAddPosition} className="mb-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newPosition}
+                onChange={(e) => setNewPosition(e.target.value)}
+                placeholder="Nazwa pozycji"
+                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={loading || !newPosition.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                Dodaj
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-2">
+            {positions.map((pos) => (
+              <div key={pos.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <span className="text-slate-900">{pos.name}</span>
+                <button
+                  onClick={() => handleDeletePosition(pos.id, pos.name)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Usuń
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Panel administracyjny
 function AdminPanel({ user, onNavigate }) {
   const [showDeleteHistoryConfirm, setShowDeleteHistoryConfirm] = useState(false);
 
   const handleDeleteHistory = async () => {
     try {
-      // Tutaj będzie logika usuwania historii wydań z bazy danych
-      // Na razie symulujemy operację
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success('Historia wszystkich wydań została usunięta pomyślnie!');
-      addAuditLog(user, AUDIT_ACTIONS.DELETE_TOOL, 'Usunięto historię wszystkich wydań');
+      await api.del('/tools/history');
+      toast.success('Historia wydań została usunięta');
       setShowDeleteHistoryConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię wydań narzędzi');
     } catch (error) {
       console.error('Error deleting history:', error);
-      toast.error('Błąd podczas usuwania historii wydań');
+      toast.error('Błąd podczas usuwania historii');
     }
   };
 
-  if (!hasPermission(user, PERMISSIONS.VIEW_ADMIN)) {
-    return (
-      <div className="p-4 lg:p-8 bg-slate-50 min-h-screen text-center">
-        <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Brak dostępu</h2>
-        <p className="text-slate-600">Nie masz uprawnień do tej sekcji.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
-      <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-6">Panel Administracyjny</h1>
-      
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Panel Administracyjny</h1>
+        <p className="text-slate-600">Zarządzaj systemem i konfiguracją</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* User Management */}
         {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
@@ -1741,8 +911,8 @@ function AdminPanel({ user, onNavigate }) {
                 <span className="text-2xl">👥</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Zarządzanie użytkownikami</h3>
-                <p className="text-sm text-slate-600">Dodawaj i edytuj konta użytkowników</p>
+                <h3 className="text-lg font-semibold text-slate-900">Użytkownicy</h3>
+                <p className="text-sm text-slate-600">Zarządzaj kontami użytkowników</p>
               </div>
             </div>
             <button 
@@ -1754,7 +924,7 @@ function AdminPanel({ user, onNavigate }) {
           </div>
         )}
 
-        {/* System Settings */}
+        {/* System Configuration */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
           <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
             <div className="flex items-center gap-3 mb-4">
@@ -1762,36 +932,36 @@ function AdminPanel({ user, onNavigate }) {
                 <span className="text-2xl">⚙️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Ustawienia systemu</h3>
-                <p className="text-sm text-slate-600">Konfiguruj parametry aplikacji</p>
+                <h3 className="text-lg font-semibold text-slate-900">Konfiguracja</h3>
+                <p className="text-sm text-slate-600">Ustawienia systemu</p>
               </div>
             </div>
             <button 
               onClick={() => onNavigate('config')}
               className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
             >
-              Otwórz ustawienia
+              Otwórz konfigurację
             </button>
           </div>
         )}
 
-        {/* Delete History */}
-        {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
+        {/* Data Management */}
+        {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
           <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">🗑️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Usuń historie wszystkich wydań</h3>
-                <p className="text-sm text-slate-600">Wyczyść całą historię wydawania narzędzi</p>
+                <h3 className="text-lg font-semibold text-slate-900">Dane systemu</h3>
+                <p className="text-sm text-slate-600">Zarządzanie danymi</p>
               </div>
             </div>
             <button 
               onClick={() => setShowDeleteHistoryConfirm(true)}
               className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
             >
-              Usuń historie
+              Usuń historię wydań
             </button>
           </div>
         )}
@@ -1841,6 +1011,10 @@ function AdminPanel({ user, onNavigate }) {
                 <span className="text-slate-600">Podstawowe operacje</span>
               </div>
               <div className="flex justify-between">
+                <span>👤 Użytkownik</span>
+                <span className="text-slate-600">Ograniczony dostęp</span>
+              </div>
+              <div className="flex justify-between">
                 <span>👁️ Obserwator</span>
                 <span className="text-slate-600">Tylko odczyt</span>
               </div>
@@ -1877,7 +1051,16 @@ function App() {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        // Ustaw token w API client
+        api.setToken(token);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
   }, []);
 
@@ -1894,11 +1077,7 @@ function App() {
       setTools(data);
     } catch (error) {
       console.error('Error fetching tools:', error);
-      // Mock data for demo
-      setTools([
-        { id: 1, name: 'Wiertarka Bosch', category: 'Elektronarzędzia', status: 'dostępne', location: 'Magazyn A', sku: 'SKU12345678', quantity: 1 },
-        { id: 2, name: 'Młotek Stanley', category: 'Narzędzia ręczne', status: 'wydane', location: 'Warsztat', sku: 'SKU87654321', quantity: 1 }
-      ]);
+      setTools([]);
     }
   };
 
@@ -1937,6 +1116,30 @@ function App() {
     setIsMobileMenuOpen(false);
   };
 
+  const handleLogin = async (credentials) => {
+    try {
+      const response = await api.post('/login', credentials);
+      
+      // Zapisz token i dane użytkownika
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response));
+      
+      // Ustaw token w API client
+      api.setToken(response.token);
+      
+      // Ustaw użytkownika w stanie
+      setUser(response);
+      
+      // Dodaj wpis audytu
+      addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Zalogowano do systemu');
+      
+      toast.success('Zalogowano pomyślnie');
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
   const handleLogout = () => {
     // Dodaj wpis audytu o wylogowaniu
     addAuditLog(user, AUDIT_ACTIONS.LOGOUT, 'Wylogowano z systemu');
@@ -1945,24 +1148,16 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     
+    // Wyczyść token z API client
+    api.setToken(null);
+    
     // Wyczyść stan użytkownika
     setUser(null);
     setCurrentScreen('dashboard');
   };
 
   if (!user) {
-    return <LoginScreen onLogin={(userData) => {
-      setUser(userData);
-      // Zapisz token i dane użytkownika w localStorage
-      if (userData.token) {
-        localStorage.setItem('token', userData.token);
-        localStorage.setItem('user', JSON.stringify(userData));
-      } else {
-        // Jeśli nie ma tokena w userData, zapisz dane użytkownika bez tokena
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
-      addAuditLog(userData, AUDIT_ACTIONS.LOGIN, 'Zalogowano do systemu');
-    }} />;
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
   return (
@@ -1993,8 +1188,10 @@ function App() {
           {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}
           {currentScreen === 'audit' && <AuditLogScreen user={user} />}
           {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
-        {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
+          {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
           {currentScreen === 'config' && <AppConfigScreen user={user} />}
+          {currentScreen === 'departments' && <DepartmentManagementScreen user={user} />}
+          {currentScreen === 'positions' && <PositionManagementScreen user={user} />}
         </div>
       </div>
       

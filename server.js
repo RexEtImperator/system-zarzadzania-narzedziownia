@@ -308,6 +308,53 @@ function initializeDatabase() {
       });
     }
   });
+
+  // Tabela logów audytu
+  db.run(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli audit_logs:', err.message);
+    } else {
+      console.log('Tabela audit_logs została utworzona lub już istnieje');
+    }
+  });
+
+  // Tabela działów
+  db.run(`CREATE TABLE IF NOT EXISTS departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli departments:', err.message);
+    } else {
+      console.log('Tabela departments została utworzona lub już istnieje');
+    }
+  });
+
+  // Tabela pozycji
+  db.run(`CREATE TABLE IF NOT EXISTS positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli positions:', err.message);
+    } else {
+      console.log('Tabela positions została utworzona lub już istnieje');
+    }
+  });
 }
 
 // Middleware do weryfikacji tokenu JWT
@@ -901,6 +948,200 @@ app.delete('/api/positions/:id', authenticateToken, (req, res) => {
     } else {
       res.json({ message: 'Pozycja została usunięta pomyślnie' });
     }
+  });
+});
+
+// ===== ENDPOINTY SYSTEMU AUDYTU =====
+
+// Endpoint pobierania logów audytu
+app.get('/api/audit', authenticateToken, (req, res) => {
+  const { page = 1, limit = 50, action, username, startDate, endDate } = req.query;
+  const offset = (page - 1) * limit;
+
+  let query = `
+    SELECT 
+      al.*,
+      u.full_name as user_full_name
+    FROM audit_logs al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE 1=1
+  `;
+  
+  const params = [];
+
+  // Filtrowanie po akcji
+  if (action && action !== 'all') {
+    query += ` AND al.action = ?`;
+    params.push(action);
+  }
+
+  // Filtrowanie po nazwie użytkownika
+  if (username) {
+    query += ` AND (al.username LIKE ? OR u.full_name LIKE ?)`;
+    params.push(`%${username}%`, `%${username}%`);
+  }
+
+  // Filtrowanie po dacie rozpoczęcia
+  if (startDate) {
+    query += ` AND DATE(al.timestamp) >= DATE(?)`;
+    params.push(startDate);
+  }
+
+  // Filtrowanie po dacie zakończenia
+  if (endDate) {
+    query += ` AND DATE(al.timestamp) <= DATE(?)`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY al.timestamp DESC LIMIT ? OFFSET ?`;
+  params.push(parseInt(limit), parseInt(offset));
+
+  db.all(query, params, (err, logs) => {
+    if (err) {
+      console.error('Błąd podczas pobierania logów audytu:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    // Pobierz całkowitą liczbę rekordów dla paginacji
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE 1=1
+    `;
+    
+    const countParams = [];
+    
+    if (action && action !== 'all') {
+      countQuery += ` AND al.action = ?`;
+      countParams.push(action);
+    }
+
+    if (username) {
+      countQuery += ` AND (al.username LIKE ? OR u.full_name LIKE ?)`;
+      countParams.push(`%${username}%`, `%${username}%`);
+    }
+
+    if (startDate) {
+      countQuery += ` AND DATE(al.timestamp) >= DATE(?)`;
+      countParams.push(startDate);
+    }
+
+    if (endDate) {
+      countQuery += ` AND DATE(al.timestamp) <= DATE(?)`;
+      countParams.push(endDate);
+    }
+
+    db.get(countQuery, countParams, (err, countResult) => {
+      if (err) {
+        console.error('Błąd podczas liczenia logów audytu:', err.message);
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+
+      res.json({
+        logs,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: countResult.total,
+          totalPages: Math.ceil(countResult.total / limit)
+        }
+      });
+    });
+  });
+});
+
+// Endpoint dodawania wpisu do audytu
+app.post('/api/audit', authenticateToken, (req, res) => {
+  const { action, details } = req.body;
+  const user_id = req.user.id;
+  const username = req.user.username;
+  const ip_address = req.ip || req.connection.remoteAddress;
+  const user_agent = req.get('User-Agent');
+
+  if (!action) {
+    return res.status(400).json({ message: 'Akcja jest wymagana' });
+  }
+
+  const query = `
+    INSERT INTO audit_logs (user_id, username, action, details, ip_address, user_agent)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.run(query, [user_id, username, action, details || null, ip_address, user_agent], function(err) {
+    if (err) {
+      console.error('Błąd podczas dodawania wpisu audytu:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    res.status(201).json({ 
+      message: 'Wpis audytu został dodany',
+      id: this.lastID 
+    });
+  });
+});
+
+// Endpoint pobierania statystyk audytu
+app.get('/api/audit/stats', authenticateToken, (req, res) => {
+  const { days = 30 } = req.query;
+
+  const queries = {
+    // Statystyki ogólne
+    totalLogs: `SELECT COUNT(*) as count FROM audit_logs WHERE DATE(timestamp) >= DATE('now', '-${days} days')`,
+    
+    // Statystyki po akcjach
+    actionStats: `
+      SELECT action, COUNT(*) as count 
+      FROM audit_logs 
+      WHERE DATE(timestamp) >= DATE('now', '-${days} days')
+      GROUP BY action 
+      ORDER BY count DESC
+    `,
+    
+    // Statystyki po użytkownikach
+    userStats: `
+      SELECT 
+        al.username,
+        u.full_name,
+        COUNT(*) as count 
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE DATE(al.timestamp) >= DATE('now', '-${days} days')
+      GROUP BY al.user_id, al.username, u.full_name
+      ORDER BY count DESC
+      LIMIT 10
+    `,
+    
+    // Aktywność dzienna
+    dailyActivity: `
+      SELECT 
+        DATE(timestamp) as date,
+        COUNT(*) as count
+      FROM audit_logs 
+      WHERE DATE(timestamp) >= DATE('now', '-${days} days')
+      GROUP BY DATE(timestamp)
+      ORDER BY date DESC
+    `
+  };
+
+  const results = {};
+  let completed = 0;
+  const totalQueries = Object.keys(queries).length;
+
+  Object.entries(queries).forEach(([key, query]) => {
+    db.all(query, (err, rows) => {
+      if (err) {
+        console.error(`Błąd podczas pobierania statystyk ${key}:`, err.message);
+        results[key] = [];
+      } else {
+        results[key] = key === 'totalLogs' ? rows[0] : rows;
+      }
+
+      completed++;
+      if (completed === totalQueries) {
+        res.json(results);
+      }
+    });
   });
 });
 

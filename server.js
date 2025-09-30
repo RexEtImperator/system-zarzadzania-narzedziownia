@@ -11,7 +11,12 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Połączenie z bazą danych
@@ -280,21 +285,15 @@ function initializeDatabase() {
 
       // Dodanie prawdziwych pracowników
       const realEmployees = [
-        ['Anna', 'Kowalska', '+48 123 456 789', 'Specjalista ds. narzędzi', 'Narzędziownia'],
-        ['Piotr', 'Nowak', '+48 234 567 890', 'Kierownik magazynu', 'Magazyn'],
-        ['Maria', 'Wiśniewska', '+48 345 678 901', 'Technik konserwacji', 'Konserwacja'],
-        ['Tomasz', 'Wójcik', '+48 456 789 012', 'Operator maszyn', 'Produkcja'],
-        ['Katarzyna', 'Kaczmarek', '+48 567 890 123', 'Specjalista HR', 'Administracja'],
-        ['Michał', 'Zieliński', '+48 678 901 234', 'Administrator IT', 'IT'],
-        ['Agnieszka', 'Szymańska', '+48 789 012 345', 'Kontroler jakości', 'Produkcja'],
-        ['Paweł', 'Dąbrowski', '+48 890 123 456', 'Magazynier', 'Magazyn']
+        ['Dawid', 'Brzeziński', '+48 516 991 404', 'Narzędziowiec', 'Narzędziownia', '43'],
+        ['Piotr', 'Mędela', '+48 661 916 914', 'Narzędziowiec', 'Narzędziownia', '-'],
       ];
 
       db.get('SELECT COUNT(*) as count FROM employees', (err, result) => {
         if (err) {
           console.error('Błąd podczas sprawdzania pracowników:', err.message);
         } else if (result.count === 0) {
-          const stmt = db.prepare('INSERT INTO employees (first_name, last_name, phone, position, department) VALUES (?, ?, ?, ?, ?)');
+          const stmt = db.prepare('INSERT INTO employees (first_name, last_name, phone, position, department, brand_number) VALUES (?, ?, ?, ?, ?, ?)');
           realEmployees.forEach(employee => {
             stmt.run(employee, (err) => {
               if (err) {
@@ -377,22 +376,34 @@ function authenticateToken(req, res, next) {
 
 // Endpoint logowania
 app.post('/api/login', (req, res) => {
+  console.log('=== LOGIN REQUEST ===');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  console.log('Body type:', typeof req.body);
+  
   const { username, password } = req.body;
+  
+  console.log('Extracted username:', username);
+  console.log('Extracted password:', password ? '[HIDDEN]' : 'undefined');
 
   if (!username || !password) {
+    console.log('Missing username or password');
     return res.status(400).json({ message: 'Wymagane są nazwa użytkownika i hasło' });
   }
 
   db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
     if (err) {
+      console.log('Database error:', err);
       return res.status(500).json({ message: 'Błąd serwera' });
     }
 
     if (!user) {
+      console.log('User not found:', username);
       return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło' });
     }
 
     const passwordIsValid = bcrypt.compareSync(password, user.password);
+    console.log('Password valid:', passwordIsValid);
 
     if (!passwordIsValid) {
       return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło' });
@@ -402,6 +413,7 @@ app.post('/api/login', (req, res) => {
       expiresIn: 86400 // 24 godziny
     });
 
+    console.log('Login successful for user:', username);
     res.status(200).json({
       id: user.id,
       username: user.username,

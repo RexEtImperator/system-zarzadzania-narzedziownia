@@ -27,30 +27,38 @@ class ApiClient {
     return headers;
   }
 
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: this.getHeaders(),
-      ...options,
+  async request(url, config = {}) {
+    const fullUrl = `${this.baseURL}${url}`;
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...config.headers
+    };
+
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    // Sprawdź czy body jest obiektem i nie jest null ani string
+    if (config.body && typeof config.body === 'object' && config.body !== null && typeof config.body !== 'string') {
+      config.body = JSON.stringify(config.body);
+    }
+
+    const requestConfig = {
+      ...config,
+      headers
     };
 
     try {
-      const response = await fetch(url, config);
+      const response = await fetch(fullUrl, requestConfig);
       
       if (!response.ok) {
-        if (response.status === 401) {
-          this.setToken(null);
-          throw new Error('Unauthorized');
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      }
-      
-      return await response.text();
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
@@ -66,14 +74,14 @@ class ApiClient {
   async post(endpoint, data) {
     return this.request(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data,
     });
   }
 
   async put(endpoint, data) {
     return this.request(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data,
     });
   }
 

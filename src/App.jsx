@@ -98,7 +98,7 @@ const hasPermission = (user, permission) => {
 // Funkcja dodawania wpisu do dziennika audytu
 const addAuditLog = async (user, action, details) => {
   try {
-    await api.post('/audit', {
+    await api.post('/api/audit', {
       user_id: user.id,
       username: user.username,
       action,
@@ -113,7 +113,7 @@ const addAuditLog = async (user, action, details) => {
 // Funkcje pobierania skonfigurowanych działów i pozycji
 const getConfiguredDepartments = async () => {
   try {
-    const data = await api.get('/departments');
+    const data = await api.get('/api/departments');
     return data.map(dept => dept.name);
   } catch (error) {
     console.error('Error fetching departments:', error);
@@ -123,7 +123,7 @@ const getConfiguredDepartments = async () => {
 
 const getConfiguredPositions = async () => {
   try {
-    const data = await api.get('/positions');
+    const data = await api.get('/api/positions');
     return data.map(pos => pos.name);
   } catch (error) {
     console.error('Error fetching positions:', error);
@@ -182,8 +182,6 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
-    { id: 'departments', label: 'Działy', icon: '🏢', permission: PERMISSIONS.MANAGE_EMPLOYEES },
-    { id: 'positions', label: 'Stanowiska', icon: '💼', permission: PERMISSIONS.MANAGE_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'labels', label: 'Etykiety', icon: '🏷️', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'admin', label: 'Admin', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
@@ -299,82 +297,8 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
   );
 }
 
-function LoginScreen({ onLogin }) {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await api.post('/login', formData);
-      onLogin(response);
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Błędne dane logowania');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🔧</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Zarządzanie Narzędziami</h1>
-          <p className="text-slate-600">Zaloguj się do systemu</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Nazwa użytkownika
-            </label>
-            <input
-              type="text"
-              value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Wprowadź nazwę użytkownika"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Hasło
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Wprowadź hasło"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-          >
-            {loading ? 'Logowanie...' : 'Zaloguj się'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // Import komponentów z osobnych plików
+import LoginScreen from './components/LoginScreen';
 import DashboardScreen from './components/DashboardScreen';
 import ToolsScreen from './components/ToolsScreen';
 import EmployeesScreen from './components/EmployeesScreen';
@@ -404,7 +328,7 @@ function UserManagementScreen({ user }) {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/users');
+      const data = await api.get('/api/users');
       setUsers(data);
       addAuditLog(user, AUDIT_ACTIONS.VIEW_USERS, 'Przeglądano listę użytkowników');
     } catch (error) {
@@ -481,12 +405,12 @@ function UserManagementScreen({ user }) {
       }
 
       if (editingUser) {
-        await api.put(`/users/${editingUser.id}`, userData);
+        await api.put(`/api/users/${editingUser.id}`, userData);
         setUsers(users.map(u => u.id === editingUser.id ? {...u, ...userData} : u));
         addAuditLog(user, AUDIT_ACTIONS.UPDATE_USER, `Zaktualizowano użytkownika: ${userData.username}`);
         toast.success('Użytkownik został zaktualizowany');
       } else {
-        const newUser = await api.post('/users', userData);
+        const newUser = await api.post('/api/users', userData);
         setUsers([...users, newUser]);
         addAuditLog(user, AUDIT_ACTIONS.ADD_USER, `Dodano użytkownika: ${userData.username}`);
         toast.success('Użytkownik został dodany');
@@ -714,7 +638,7 @@ function AppConfigScreen({ user }) {
 
   const fetchDepartments = async () => {
     try {
-      const data = await api.get('/departments');
+      const data = await api.get('/api/departments');
       setDepartments(data);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -724,7 +648,7 @@ function AppConfigScreen({ user }) {
 
   const fetchPositions = async () => {
     try {
-      const data = await api.get('/positions');
+      const data = await api.get('/api/positions');
       setPositions(data);
     } catch (error) {
       console.error('Error fetching positions:', error);
@@ -738,7 +662,7 @@ function AppConfigScreen({ user }) {
 
     try {
       setLoading(true);
-      const department = await api.post('/departments', { name: newDepartment.trim() });
+      const department = await api.post('/api/departments', { name: newDepartment.trim() });
       setDepartments([...departments, department]);
       setNewDepartment('');
       toast.success('Dział został dodany');
@@ -756,7 +680,7 @@ function AppConfigScreen({ user }) {
 
     try {
       setLoading(true);
-      const position = await api.post('/positions', { name: newPosition.trim() });
+      const position = await api.post('/api/positions', { name: newPosition.trim() });
       setPositions([...positions, position]);
       setNewPosition('');
       toast.success('Pozycja została dodana');
@@ -1073,7 +997,7 @@ function App() {
 
   const fetchTools = async () => {
     try {
-      const data = await api.get('/tools');
+      const data = await api.get('/api/tools');
       setTools(data);
     } catch (error) {
       console.error('Error fetching tools:', error);
@@ -1083,7 +1007,7 @@ function App() {
 
   const fetchEmployees = async () => {
     try {
-      const data = await api.get('/employees');
+      const data = await api.get('/api/employees');
       setEmployees(data);
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -1118,24 +1042,26 @@ function App() {
 
   const handleLogin = async (credentials) => {
     try {
-      const response = await api.post('/login', credentials);
+      const response = await api.post('/api/login', credentials);
       
-      // Zapisz token i dane użytkownika
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response));
-      
-      // Ustaw token w API client
-      api.setToken(response.token);
-      
-      // Ustaw użytkownika w stanie
-      setUser(response);
-      
-      // Dodaj wpis audytu
-      addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Zalogowano do systemu');
-      
-      toast.success('Zalogowano pomyślnie');
+      if (response && response.token) {
+        setUser(response);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response));
+        
+        // Ustaw token w API client PRZED wywołaniem addAuditLog
+        api.setToken(response.token);
+        
+        // Dodaj wpis do dziennika audytu
+        await addAuditLog(AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
+        
+        toast.success(`Witaj, ${response.full_name}!`);
+      } else {
+        throw new Error('Nieprawidłowa odpowiedź serwera');
+      }
     } catch (error) {
       console.error('Login error:', error);
+      toast.error(error.message || 'Błąd logowania');
       throw error;
     }
   };
@@ -1190,8 +1116,6 @@ function App() {
           {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
           {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
           {currentScreen === 'config' && <AppConfigScreen user={user} />}
-          {currentScreen === 'departments' && <DepartmentManagementScreen user={user} />}
-          {currentScreen === 'positions' && <PositionManagementScreen user={user} />}
         </div>
       </div>
       

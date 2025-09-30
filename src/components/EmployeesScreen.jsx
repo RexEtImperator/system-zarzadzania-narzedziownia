@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../api';
+import EmployeeModal from './EmployeeModal';
 
 const AUDIT_ACTIONS = {
   EMPLOYEE_ADD: 'EMPLOYEE_ADD',
@@ -10,7 +11,7 @@ const AUDIT_ACTIONS = {
 
 const addAuditLog = async (user, action, details) => {
   try {
-    await api.post('/audit-logs', {
+    await api.post('/api/audit', {
       user_id: user.id,
       username: user.username,
       action,
@@ -41,7 +42,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
 
   const fetchDepartments = async () => {
     try {
-      const data = await api.get('/departments');
+      const data = await api.get('/api/departments');
       setDepartments(data);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -56,7 +57,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
 
   const fetchPositions = async () => {
     try {
-      const data = await api.get('/positions');
+      const data = await api.get('/api/positions');
       setPositions(data);
     } catch (error) {
       console.error('Error fetching positions:', error);
@@ -72,13 +73,23 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   const handleAddEmployee = async (employeeData) => {
     try {
       setLoading(true);
-      const newEmployee = await api.post('/employees', employeeData);
+      // Mapowanie danych z formularza na format API
+      const apiData = {
+        first_name: employeeData.firstName,
+        last_name: employeeData.lastName,
+        phone: employeeData.phone,
+        department: departments.find(d => d.id.toString() === employeeData.departmentId)?.name || '',
+        position: positions.find(p => p.id.toString() === employeeData.positionId)?.name || '',
+        brand_number: employeeData.brandNumber || ''
+      };
+      
+      const newEmployee = await api.post('/api/employees', apiData);
       setEmployees(prev => [...prev, newEmployee]);
       setShowAddModal(false);
       toast.success('Pracownik został dodany pomyślnie');
       
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_ADD, 
-        `Dodano pracownika: ${employeeData.first_name} ${employeeData.last_name}`);
+        `Dodano pracownika: ${employeeData.firstName} ${employeeData.lastName}`);
     } catch (error) {
       console.error('Error adding employee:', error);
       toast.error('Błąd podczas dodawania pracownika');
@@ -91,7 +102,17 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   const handleEditEmployee = async (employeeData) => {
     try {
       setLoading(true);
-      const updatedEmployee = await api.put(`/employees/${editingEmployee.id}`, employeeData);
+      // Mapowanie danych z formularza na format API
+      const apiData = {
+        first_name: employeeData.firstName,
+        last_name: employeeData.lastName,
+        phone: employeeData.phone,
+        department: departments.find(d => d.id.toString() === employeeData.departmentId)?.name || '',
+        position: positions.find(p => p.id.toString() === employeeData.positionId)?.name || '',
+        brand_number: employeeData.brandNumber || editingEmployee.brand_number
+      };
+      
+      const updatedEmployee = await api.put(`/api/employees/${editingEmployee.id}`, apiData);
       setEmployees(prev => prev.map(emp => 
         emp.id === editingEmployee.id ? updatedEmployee : emp
       ));
@@ -100,7 +121,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       toast.success('Dane pracownika zostały zaktualizowane');
       
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_EDIT, 
-        `Edytowano pracownika: ${employeeData.first_name} ${employeeData.last_name}`);
+        `Edytowano pracownika: ${employeeData.firstName} ${employeeData.lastName}`);
     } catch (error) {
       console.error('Error updating employee:', error);
       toast.error('Błąd podczas aktualizacji danych pracownika');
@@ -117,7 +138,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
 
     try {
       setLoading(true);
-      await api.delete(`/employees/${employee.id}`);
+      await api.delete(`/api/employees/${employee.id}`);
       setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
       toast.success('Pracownik został usunięty');
       
@@ -136,23 +157,26 @@ function EmployeesScreen({ employees, setEmployees, user }) {
     const matchesSearch = 
       employee.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.employee_id?.toLowerCase().includes(searchTerm.toLowerCase());
+      employee.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.brand_number?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = filterDepartment === 'all' || employee.department_id?.toString() === filterDepartment;
-    const matchesPosition = filterPosition === 'all' || employee.position_id?.toString() === filterPosition;
+    const matchesDepartment = filterDepartment === 'all' || employee.department?.toLowerCase() === departments.find(d => d.id.toString() === filterDepartment)?.name?.toLowerCase();
+    const matchesPosition = filterPosition === 'all' || employee.position?.toLowerCase() === positions.find(p => p.id.toString() === filterPosition)?.name?.toLowerCase();
     
     return matchesSearch && matchesDepartment && matchesPosition;
+  }).sort((a, b) => {
+    // Sortowanie według numeru służbowego od 1 do najwyższego
+    const brandA = parseInt(a.brand_number) || 999999;
+    const brandB = parseInt(b.brand_number) || 999999;
+    return brandA - brandB;
   });
 
-  const getDepartmentName = (departmentId) => {
-    const dept = departments.find(d => d.id === departmentId);
-    return dept ? dept.name : 'Nieznany';
+  const getDepartmentName = (department) => {
+    return department || 'Nieznany';
   };
 
-  const getPositionName = (positionId) => {
-    const pos = positions.find(p => p.id === positionId);
-    return pos ? pos.name : 'Nieznana';
+  const getPositionName = (position) => {
+    return position || 'Nieznana';
   };
 
   return (
@@ -181,7 +205,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-900">Filtry i wyszukiwanie</h3>
-          {user?.role === 'admin' && (
+          {user?.role === 'administrator' && (
             <button
               onClick={() => setShowAddModal(true)}
               className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
@@ -199,7 +223,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Imię, nazwisko, email..."
+              placeholder="Imię, nazwisko, numer służbowy..."
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -269,13 +293,12 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-slate-900">ID</th>
                     <th className="text-left p-4 font-semibold text-slate-900">Imię i nazwisko</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Email</th>
+                    <th className="text-left p-4 font-semibold text-slate-900">Numer służbowy</th>
+                    <th className="text-left p-4 font-semibold text-slate-900">Telefon</th>
                     <th className="text-left p-4 font-semibold text-slate-900">Dział</th>
                     <th className="text-left p-4 font-semibold text-slate-900">Stanowisko</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Telefon</th>
-                    {user?.role === 'admin' && (
+                    {user?.role === 'administrator' && (
                       <th className="text-left p-4 font-semibold text-slate-900">Akcje</th>
                     )}
                   </tr>
@@ -283,27 +306,24 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                 <tbody className="divide-y divide-slate-200">
                   {filteredEmployees.map((employee) => (
                     <tr key={employee.id} className="hover:bg-slate-50">
-                      <td className="p-4 font-mono text-sm text-slate-600">
-                        {employee.employee_id || employee.id}
-                      </td>
                       <td className="p-4">
                         <div className="font-medium text-slate-900">
                           {employee.first_name} {employee.last_name}
                         </div>
                       </td>
-                      <td className="p-4 text-slate-600">
-                        {employee.email || '-'}
-                      </td>
-                      <td className="p-4 text-slate-600">
-                        {getDepartmentName(employee.department_id)}
-                      </td>
-                      <td className="p-4 text-slate-600">
-                        {getPositionName(employee.position_id)}
+                      <td className="p-4 font-mono text-sm text-slate-600">
+                        {employee.brand_number || '-'}
                       </td>
                       <td className="p-4 text-slate-600">
                         {employee.phone || '-'}
                       </td>
-                      {user?.role === 'admin' && (
+                      <td className="p-4 text-slate-600">
+                        {getDepartmentName(employee.department)}
+                      </td>
+                      <td className="p-4 text-slate-600">
+                        {getPositionName(employee.position)}
+                      </td>
+                      {user?.role === 'administrator' && (
                         <td className="p-4">
                           <div className="flex gap-2">
                             <button
@@ -336,14 +356,14 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                 <div key={employee.id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-semibold text-slate-900">
-                        {employee.first_name} {employee.last_name}
-                      </h3>
-                      <p className="text-sm text-slate-500 font-mono">
-                        ID: {employee.employee_id || employee.id}
-                      </p>
-                    </div>
-                    {user?.role === 'admin' && (
+                    <h3 className="font-semibold text-slate-900">
+                      {employee.first_name} {employee.last_name}
+                    </h3>
+                    <p className="text-sm text-slate-500 font-mono">
+                      Numer służbowy: {employee.brand_number || '-'}
+                    </p>
+                  </div>
+                    {user?.role === 'administrator' && (
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
@@ -366,20 +386,16 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Email:</span>
-                      <span className="text-slate-900">{employee.email || '-'}</span>
+                      <span className="text-slate-500">Telefon:</span>
+                      <span className="text-slate-900">{employee.phone || '-'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Dział:</span>
-                      <span className="text-slate-900">{getDepartmentName(employee.department_id)}</span>
+                      <span className="text-slate-900">{getDepartmentName(employee.department)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Stanowisko:</span>
-                      <span className="text-slate-900">{getPositionName(employee.position_id)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Telefon:</span>
-                      <span className="text-slate-900">{employee.phone || '-'}</span>
+                      <span className="text-slate-900">{getPositionName(employee.position)}</span>
                     </div>
                   </div>
                 </div>
@@ -389,8 +405,35 @@ function EmployeesScreen({ employees, setEmployees, user }) {
         )}
       </div>
 
-      {/* Modals would go here - AddEmployeeModal and EditEmployeeModal */}
-      {/* For brevity, I'm not including the full modal implementations */}
+      {/* Modals */}
+      <EmployeeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddEmployee}
+        employee={null}
+        departments={departments}
+        positions={positions}
+      />
+      
+      <EmployeeModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingEmployee(null);
+        }}
+        onSave={handleEditEmployee}
+        employee={editingEmployee ? {
+          firstName: editingEmployee.first_name,
+          lastName: editingEmployee.last_name,
+          phone: editingEmployee.phone,
+          departmentId: departments.find(d => d.name === editingEmployee.department)?.id?.toString() || '',
+          positionId: positions.find(p => p.name === editingEmployee.position)?.id?.toString() || '',
+          brandNumber: editingEmployee.brand_number,
+          status: editingEmployee.status || 'active'
+        } : null}
+        departments={departments}
+        positions={positions}
+      />
     </div>
   );
 }

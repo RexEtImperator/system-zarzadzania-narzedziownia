@@ -11,12 +11,10 @@ const EmployeeModal = ({
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
     phone: '',
     departmentId: '',
     positionId: '',
-    salary: '',
-    hireDate: '',
+    brandNumber: '',
     status: 'active'
   });
   const [errors, setErrors] = useState({});
@@ -27,24 +25,20 @@ const EmployeeModal = ({
       setFormData({
         firstName: employee.firstName || '',
         lastName: employee.lastName || '',
-        email: employee.email || '',
         phone: employee.phone || '',
         departmentId: employee.departmentId || '',
         positionId: employee.positionId || '',
-        salary: employee.salary || '',
-        hireDate: employee.hireDate ? employee.hireDate.split('T')[0] : '',
+        brandNumber: employee.brandNumber || '',
         status: employee.status || 'active'
       });
     } else {
       setFormData({
         firstName: '',
         lastName: '',
-        email: '',
         phone: '',
         departmentId: '',
         positionId: '',
-        salary: '',
-        hireDate: '',
+        brandNumber: '',
         status: 'active'
       });
     }
@@ -77,22 +71,12 @@ const EmployeeModal = ({
       newErrors.lastName = 'Nazwisko jest wymagane';
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email jest wymagany';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email ma nieprawidłowy format';
-    }
-
     if (!formData.departmentId) {
       newErrors.departmentId = 'Departament jest wymagany';
     }
 
     if (!formData.positionId) {
       newErrors.positionId = 'Stanowisko jest wymagane';
-    }
-
-    if (formData.salary && isNaN(formData.salary)) {
-      newErrors.salary = 'Wynagrodzenie musi być liczbą';
     }
 
     setErrors(newErrors);
@@ -175,25 +159,6 @@ const EmployeeModal = ({
                       )}
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        id="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.email ? 'border-red-300' : ''
-                        }`}
-                      />
-                      {errors.email && (
-                        <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                      )}
-                    </div>
-
                     <div>
                       <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                         Telefon
@@ -209,14 +174,14 @@ const EmployeeModal = ({
                     </div>
 
                     <div>
-                      <label htmlFor="hireDate" className="block text-sm font-medium text-gray-700">
-                        Data zatrudnienia
+                      <label htmlFor="brandNumber" className="block text-sm font-medium text-gray-700">
+                        Numer służbowy
                       </label>
                       <input
-                        type="date"
-                        name="hireDate"
-                        id="hireDate"
-                        value={formData.hireDate}
+                        type="text"
+                        name="brandNumber"
+                        id="brandNumber"
+                        value={formData.brandNumber}
                         onChange={handleChange}
                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
@@ -269,25 +234,6 @@ const EmployeeModal = ({
                       </select>
                       {errors.positionId && (
                         <p className="mt-1 text-sm text-red-600">{errors.positionId}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="salary" className="block text-sm font-medium text-gray-700">
-                        Wynagrodzenie
-                      </label>
-                      <input
-                        type="number"
-                        name="salary"
-                        id="salary"
-                        value={formData.salary}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.salary ? 'border-red-300' : ''
-                        }`}
-                      />
-                      {errors.salary && (
-                        <p className="mt-1 text-sm text-red-600">{errors.salary}</p>
                       )}
                     </div>
 

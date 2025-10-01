@@ -517,11 +517,18 @@ app.post('/api/register', authenticateToken, (req, res) => {
 
 // Endpoint wyszukiwania narzędzia po kodzie kreskowym/QR
 app.get('/api/tools/search', authenticateToken, (req, res) => {
+  console.log('=== TOOLS SEARCH REQUEST ===');
+  console.log('Query params:', req.query);
+  console.log('Headers:', req.headers);
+  
   const { code } = req.query;
   
   if (!code) {
+    console.log('No code provided');
     return res.status(400).json({ message: 'Kod jest wymagany' });
   }
+
+  console.log('Searching for tool with code:', code);
 
   // Wyszukaj narzędzie po SKU, kodzie kreskowym lub kodzie QR
   db.get(
@@ -533,10 +540,14 @@ app.get('/api/tools/search', authenticateToken, (req, res) => {
         return res.status(500).json({ message: 'Błąd serwera' });
       }
       
+      console.log('Search result:', tool);
+      
       if (!tool) {
+        console.log('No tool found for code:', code);
         return res.status(404).json({ message: 'Nie znaleziono narzędzia o podanym kodzie' });
       }
       
+      console.log('Returning tool:', tool);
       res.status(200).json(tool);
     }
   );

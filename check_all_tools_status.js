@@ -1,69 +1,106 @@
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const db = new sqlite3.Database('./database.db');
-
-console.log('=== Sprawdzanie wszystkich narzędzi i ich statusu wydania ===\n');
-
-// Sprawdź wszystkie narzędzia
-db.all('SELECT * FROM tools ORDER BY id', (err, tools) => {
+const db = new sqlite3.Database(path.join(__dirname, 'database.db'), (err) => {
   if (err) {
-    console.error('Błąd:', err.message);
+    console.error('Błąd połączenia z bazą danych:', err.message);
+    return;
+  }
+  console.log('Połączono z bazą danych SQLite.');
+});
+
+console.log('=== SPRAWDZANIE WSZYSTKICH NARZĘDZI O STATUSIE "CZĘŚCIOWO WYDANE" ===\n');
+
+// Sprawdź wszystkie narzędzia ze statusem "częściowo wydane"
+db.all("SELECT id, name, status, quantity FROM tools WHERE status = 'częściowo wydane'", (err, tools) => {
+  if (err) {
+    console.error('Błąd przy pobieraniu narzędzi:', err.message);
     db.close();
     return;
   }
-
-  console.log(`Znaleziono ${tools.length} narzędzi:\n`);
-
-  let toolsToMigrate = [];
+  
+  if (tools.length === 0) {
+    console.log('✅ Nie znaleziono narzędzi ze statusem "częściowo wydane"');
+    db.close();
+    return;
+  }
+  
+  console.log(`📋 ZNALEZIONO ${tools.length} NARZĘDZI ZE STATUSEM "CZĘŚCIOWO WYDANE":\n`);
+  
   let processedCount = 0;
-
+  
   tools.forEach((tool, index) => {
-    console.log(`--- NARZĘDZIE ${tool.id}: ${tool.name} ---`);
-    console.log(`Status: ${tool.status}`);
-    console.log(`Ilość: ${tool.quantity}`);
+    console.log(`${index + 1}. ${tool.name} (ID: ${tool.id})`);
+    console.log(`   Status: ${tool.status} | Ilość całkowita: ${tool.quantity}`);
     
-    // Sprawdź czy ma stare pola wydania
-    if (tool.issued_to || tool.issued_at) {
-      console.log(`⚠️  STARY SYSTEM - Wydane do: ${tool.issued_to}, Data: ${tool.issued_at}`);
-      toolsToMigrate.push(tool);
-    }
-
-    // Sprawdź wydania w nowej tabeli
-    db.all('SELECT ti.*, e.first_name, e.last_name FROM tool_issues ti LEFT JOIN employees e ON ti.employee_id = e.id WHERE ti.tool_id = ? AND ti.status = "wydane"', 
-      [tool.id], (err, issues) => {
-        if (err) {
-          console.error('Błąd sprawdzania wydań:', err.message);
+    // Sprawdź szczegółową historię wydań i zwrotów
+    db.all(`
+      SELECT 
+        ti.id,
+        ti.status,
+        ti.quantity,
+        ti.issued_at,
+        ti.returned_at,
+        e.first_name || ' ' || e.last_name as employee_name
+      FROM tool_issues ti
+      LEFT JOIN employees e ON ti.employee_id = e.id
+      WHERE ti.tool_id = ?
+      ORDER BY ti.issued_at DESC
+    `, [tool.id], (err, issues) => {
+      if (err) {
+        console.error(`   Błąd przy pobieraniu historii dla ${tool.name}:`, err.message);
+      } else {
+        console.log(`   📊 Historia wydań (${issues.length} rekordów):`);
+        
+        let issuedTotal = 0;
+        let returnedTotal = 0;
+        
+        issues.forEach((issue, idx) => {
+          console.log(`     ${idx + 1}. ID: ${issue.id} | Status: ${issue.status} | Ilość: ${issue.quantity}`);
+          console.log(`        Pracownik: ${issue.employee_name || 'Nieznany'}`);
+          console.log(`        Wydano: ${issue.issued_at}`);
+          console.log(`        Zwrócono: ${issue.returned_at || 'Nie zwrócono'}`);
+          
+          if (issue.status === 'wydane') {
+            issuedTotal += issue.quantity;
+          } else if (issue.status === 'zwrócone') {
+            returnedTotal += issue.quantity;
+          }
+        });
+        
+        console.log(`   🔢 Podsumowanie:`);
+        console.log(`     Aktualnie wydane: ${issuedTotal}`);
+        console.log(`     Zwrócone: ${returnedTotal}`);
+        console.log(`     Dostępne: ${tool.quantity - issuedTotal}`);
+        
+        // Określ jaki powinien być status
+        let expectedStatus;
+        if (issuedTotal === 0) {
+          expectedStatus = 'dostępne';
+        } else if (issuedTotal < tool.quantity) {
+          expectedStatus = 'częściowo wydane';
         } else {
-          if (issues.length > 0) {
-            console.log(`✅ NOWY SYSTEM - Aktywne wydania (${issues.length}):`);
-            issues.forEach(issue => {
-              console.log(`   - ID wydania: ${issue.id}, Pracownik: ${issue.first_name} ${issue.last_name}, Ilość: ${issue.quantity}`);
-            });
-          } else {
-            console.log('📋 Brak aktywnych wydań w nowym systemie');
-          }
+          expectedStatus = 'wydane';
         }
         
-        // Sprawdź czy status narzędzia jest zgodny z wydaniami
-        if (tool.status === 'wydane' && issues.length === 0 && !tool.issued_to) {
-          console.log('❌ PROBLEM: Narzędzie ma status "wydane" ale brak wydań w obu systemach!');
-        }
+        console.log(`   🎯 Analiza statusu:`);
+        console.log(`     Aktualny status: ${tool.status}`);
+        console.log(`     Oczekiwany status: ${expectedStatus}`);
         
-        console.log(''); // Pusta linia dla czytelności
-        
-        processedCount++;
-        if (processedCount === tools.length) {
-          // Wszystkie narzędzia zostały przetworzone
-          console.log('\n=== PODSUMOWANIE ===');
-          console.log(`Narzędzia do migracji ze starego systemu: ${toolsToMigrate.length}`);
-          if (toolsToMigrate.length > 0) {
-            console.log('Lista narzędzi do migracji:');
-            toolsToMigrate.forEach(tool => {
-              console.log(`- ID: ${tool.id}, Nazwa: ${tool.name}`);
-            });
-          }
-          db.close();
+        if (tool.status !== expectedStatus) {
+          console.log(`     ❌ STATUS NIEPOPRAWNY!`);
+        } else {
+          console.log(`     ✅ Status poprawny`);
         }
-      });
+      }
+      
+      console.log('\n' + '='.repeat(60) + '\n');
+      processedCount++;
+      
+      // Zamknij połączenie gdy wszystkie narzędzia zostały przetworzone
+      if (processedCount === tools.length) {
+        db.close();
+      }
+    });
   });
 });

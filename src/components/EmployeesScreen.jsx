@@ -182,18 +182,18 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Zarządzanie Pracownikami</h1>
-        <p className="text-slate-600">Zarządzaj danymi pracowników w systemie</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Zarządzanie Pracownikami</h1>
+        <p className="text-slate-600 dark:text-slate-400">Zarządzaj danymi pracowników w systemie</p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <div className="flex items-center">
-            <div className="text-red-600 mr-2">⚠️</div>
-            <p className="text-red-800">{error}</p>
+            <div className="text-red-600 dark:text-red-400 mr-2">⚠️</div>
+            <p className="text-red-800 dark:text-red-200">{error}</p>
             <button
               onClick={() => setError('')}
-              className="ml-auto text-red-600 hover:text-red-800"
+              className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
             >
               ✕
             </button>
@@ -202,9 +202,9 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       )}
 
       {/* Filtry i wyszukiwanie */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-4 md:p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Filtry i wyszukiwanie</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Filtry i wyszukiwanie</h3>
           {user?.role === 'administrator' && (
             <button
               onClick={() => setShowAddModal(true)}
@@ -218,21 +218,21 @@ function EmployeesScreen({ employees, setEmployees, user }) {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Wyszukaj</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Wyszukaj</label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Imię, nazwisko, numer służbowy..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Dział</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dział</label>
             <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
               <option value="all">Wszystkie działy</option>
               {departments.map(dept => (
@@ -241,11 +241,11 @@ function EmployeesScreen({ employees, setEmployees, user }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Stanowisko</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Stanowisko</label>
             <select
               value={filterPosition}
               onChange={(e) => setFilterPosition(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
               <option value="all">Wszystkie stanowiska</option>
               {positions.map(pos => (
@@ -260,7 +260,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                 setFilterDepartment('all');
                 setFilterPosition('all');
               }}
-              className="w-full px-4 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              className="w-full px-4 py-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
               Wyczyść filtry
             </button>
@@ -269,17 +269,12 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       </div>
 
       {/* Lista pracowników */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">Ładowanie pracowników...</p>
-          </div>
-        ) : filteredEmployees.length === 0 ? (
-          <div className="p-8 text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {filteredEmployees.length === 0 ? (
+          <div className="text-center py-12">
             <div className="text-6xl mb-4">👥</div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Brak pracowników</h3>
-            <p className="text-slate-600">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak pracowników</h3>
+            <p className="text-slate-600 dark:text-slate-400">
               {employees.length === 0 
                 ? 'Nie dodano jeszcze żadnych pracowników.' 
                 : 'Nie znaleziono pracowników spełniających kryteria wyszukiwania.'
@@ -291,36 +286,36 @@ function EmployeesScreen({ employees, setEmployees, user }) {
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-slate-900">Imię i nazwisko</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Numer służbowy</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Telefon</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Dział</th>
-                    <th className="text-left p-4 font-semibold text-slate-900">Stanowisko</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Imię i nazwisko</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Numer służbowy</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Telefon</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Dział</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Stanowisko</th>
                     {user?.role === 'administrator' && (
-                      <th className="text-left p-4 font-semibold text-slate-900">Akcje</th>
+                      <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Akcje</th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
                   {filteredEmployees.map((employee) => (
-                    <tr key={employee.id} className="hover:bg-slate-50">
+                    <tr key={employee.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                       <td className="p-4">
-                        <div className="font-medium text-slate-900">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
                           {employee.first_name} {employee.last_name}
                         </div>
                       </td>
-                      <td className="p-4 font-mono text-sm text-slate-600">
+                      <td className="p-4 font-mono text-sm text-slate-600 dark:text-slate-400">
                         {employee.brand_number || '-'}
                       </td>
-                      <td className="p-4 text-slate-600">
+                      <td className="p-4 text-slate-600 dark:text-slate-400">
                         {employee.phone || '-'}
                       </td>
-                      <td className="p-4 text-slate-600">
+                      <td className="p-4 text-slate-600 dark:text-slate-400">
                         {getDepartmentName(employee.department)}
                       </td>
-                      <td className="p-4 text-slate-600">
+                      <td className="p-4 text-slate-600 dark:text-slate-400">
                         {getPositionName(employee.position)}
                       </td>
                       {user?.role === 'administrator' && (
@@ -351,15 +346,15 @@ function EmployeesScreen({ employees, setEmployees, user }) {
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden divide-y divide-slate-200">
+            <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
               {filteredEmployees.map((employee) => (
                 <div key={employee.id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                    <h3 className="font-semibold text-slate-900">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {employee.first_name} {employee.last_name}
                     </h3>
-                    <p className="text-sm text-slate-500 font-mono">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
                       Numer służbowy: {employee.brand_number || '-'}
                     </p>
                   </div>
@@ -370,13 +365,13 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                             setEditingEmployee(employee);
                             setShowEditModal(true);
                           }}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                         >
                           Edytuj
                         </button>
                         <button
                           onClick={() => handleDeleteEmployee(employee)}
-                          className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                         >
                           Usuń
                         </button>
@@ -386,16 +381,16 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Telefon:</span>
-                      <span className="text-slate-900">{employee.phone || '-'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Telefon:</span>
+                      <span className="text-slate-900 dark:text-slate-100">{employee.phone || '-'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Dział:</span>
-                      <span className="text-slate-900">{getDepartmentName(employee.department)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Dział:</span>
+                      <span className="text-slate-900 dark:text-slate-100">{getDepartmentName(employee.department)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Stanowisko:</span>
-                      <span className="text-slate-900">{getPositionName(employee.position)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Stanowisko:</span>
+                      <span className="text-slate-900 dark:text-slate-100">{getPositionName(employee.position)}</span>
                     </div>
                   </div>
                 </div>

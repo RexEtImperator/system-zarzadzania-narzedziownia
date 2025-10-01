@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { formatTimeAgo } from '../utils/dateUtils';
+import BarcodeScanner from './BarcodeScanner';
+import { toast } from 'react-toastify';
 
 const DashboardScreen = ({ user }) => {
   const [stats, setStats] = useState({
@@ -14,10 +17,64 @@ const DashboardScreen = ({ user }) => {
   const [searchCode, setSearchCode] = useState('');
   const [foundTool, setFoundTool] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [showQuickReturnModal, setShowQuickReturnModal] = useState(false);
+  const [issuedTools, setIssuedTools] = useState([]);
+  const [issuedToolsLoading, setIssuedToolsLoading] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    if (showQuickReturnModal) {
+      fetchIssuedTools();
+    }
+  }, [showQuickReturnModal]);
+
+  const fetchEmployees = async () => {
+    try {
+      setEmployeesLoading(true);
+      const data = await api.get('/api/employees');
+      setEmployees(data);
+    } catch (error) {
+      console.error('Błąd podczas pobierania pracowników:', error);
+      setEmployees([]);
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  const fetchIssuedTools = async () => {
+    try {
+      setIssuedToolsLoading(true);
+      const response = await api.get('/api/tool-issues?status=wydane&limit=50');
+      const issuedToolsData = response.data.filter(item => item.status === 'wydane').map(item => ({
+        id: item.id,
+        toolId: item.tool_id,
+        toolName: item.tool_name,
+        employeeName: `${item.employee_first_name} ${item.employee_last_name}`,
+        employeeId: item.employee_id,
+        quantity: item.quantity,
+        issuedAt: item.issued_at
+      }));
+      setIssuedTools(issuedToolsData);
+    } catch (error) {
+      console.error('Błąd podczas pobierania wydanych narzędzi:', error);
+      setIssuedTools([]);
+    } finally {
+      setIssuedToolsLoading(false);
+    }
+  };
+
+  // Funkcja obsługi błędów skanowania
+  const handleScanError = (errorMessage) => {
+    toast.error(errorMessage);
+  };
 
   const searchToolByCode = async (code) => {
     if (!code.trim()) {
@@ -25,16 +82,23 @@ const DashboardScreen = ({ user }) => {
       return;
     }
 
+    console.log('=== FRONTEND SEARCH DEBUG ===');
+    console.log('Search code:', code);
+    console.log('Token from localStorage:', localStorage.getItem('token'));
+    console.log('User from props:', user);
+
     setSearchLoading(true);
     try {
       const response = await api.get(`/api/tools/search?code=${encodeURIComponent(code.trim())}`);
-      if (response.data) {
-        setFoundTool(response.data);
+      console.log('Search response:', response);
+      if (response) {
+        setFoundTool(response);
       } else {
         setFoundTool(null);
       }
     } catch (error) {
       console.error('Błąd podczas wyszukiwania narzędzia:', error);
+      console.error('Error details:', error.message);
       setFoundTool(null);
     } finally {
       setSearchLoading(false);
@@ -64,29 +128,59 @@ const DashboardScreen = ({ user }) => {
       return;
     }
 
-    // Pobierz ID pracownika - dla uproszczenia używamy prompt, ale można to zastąpić modalem wyboru
-    const employeeId = prompt('Podaj ID pracownika, któremu wydajesz narzędzie:');
-    if (!employeeId) {
+    if (!selectedEmployee) {
+      alert('Wybierz pracownika, któremu chcesz wydać narzędzie');
       return;
     }
 
     try {
       const response = await api.post(`/api/tools/${foundTool.id}/issue`, {
-        employee_id: parseInt(employeeId),
+        employee_id: parseInt(selectedEmployee),
         quantity: 1
       });
 
-      if (response.data) {
-        alert(`Pomyślnie wydano narzędzie: ${foundTool.name}`);
+      if (response) {
+        // Znajdź dane wybranego pracownika do wyświetlenia w komunikacie
+        const employee = employees.find(emp => emp.id.toString() === selectedEmployee);
+        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'pracownikowi';
+        
+        alert(`Pomyślnie wydano narzędzie "${foundTool.name}" pracownikowi: ${employeeName}`);
         setShowQuickIssueModal(false);
         setSearchCode('');
         setFoundTool(null);
+        setSelectedEmployee('');
         // Odśwież dane dashboard
         fetchDashboardData();
       }
     } catch (error) {
       console.error('Błąd podczas wydawania narzędzia:', error);
       const errorMessage = error.response?.data?.message || 'Błąd podczas wydawania narzędzia';
+      alert(errorMessage);
+    }
+  };
+
+  const handleQuickReturn = async (tool) => {
+    if (!tool) {
+      alert('Błąd: Brak danych narzędzia');
+      return;
+    }
+
+    try {
+      const response = await api.post(`/api/tools/${tool.toolId}/return`, {
+        issue_id: tool.id,
+        quantity: tool.quantity
+      });
+
+      if (response) {
+        alert(`Pomyślnie zwrócono narzędzie "${tool.toolName}" od pracownika: ${tool.employeeName}`);
+        // Odśwież listę wydanych narzędzi
+        fetchIssuedTools();
+        // Odśwież dane dashboard
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Błąd podczas zwracania narzędzia:', error);
+      const errorMessage = error.response?.data?.message || 'Błąd podczas zwracania narzędzia';
       alert(errorMessage);
     }
   };
@@ -101,12 +195,22 @@ const DashboardScreen = ({ user }) => {
       // Pobierz historię wydań/zwrotów narzędzi
       const toolHistoryRes = await api.get('/api/tool-issues?limit=6');
       
+      // Przekształć dane z API na format wymagany przez UI
+      const toolHistoryData = toolHistoryRes.data?.map(issue => ({
+        id: issue.id,
+        action: issue.status === 'wydane' ? 'wydanie' : 'zwrot',
+        toolName: issue.tool_name,
+        employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
+        time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at),
+        quantity: issue.quantity
+      })) || [];
+      
       const dashboardStats = {
         totalEmployees: statsRes.totalEmployees || 0,
         activeDepartments: statsRes.activeDepartments || 0,
         totalPositions: statsRes.totalPositions || 0,
         totalTools: statsRes.totalTools || 0,
-        toolHistory: toolHistoryRes.data?.slice(0, 6) || [
+        toolHistory: toolHistoryData.length > 0 ? toolHistoryData : [
           { 
             id: 1, 
             action: 'wydanie', 
@@ -478,17 +582,19 @@ const DashboardScreen = ({ user }) => {
               </span>
             </button>
             
-            <button className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
+            <button 
+              onClick={() => setShowQuickReturnModal(true)}
+              className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
               <div className="w-12 h-12 mx-auto bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
                 <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
               </div>
               <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">
-                Zobacz raporty
+                Szybki zwrot
               </span>
               <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Analityka i statystyki
+                Zwróć wydane narzędzia
               </span>
             </button>
           </div>
@@ -518,14 +624,25 @@ const DashboardScreen = ({ user }) => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Kod kreskowy / QR narzędzia
                 </label>
-                <input
-                  type="text"
-                  value={searchCode}
-                  onChange={handleSearchChange}
-                  placeholder="Zeskanuj lub wpisz kod narzędzia..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                  autoFocus
-                />
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchCode}
+                    onChange={handleSearchChange}
+                    placeholder="Zeskanuj lub wpisz kod narzędzia..."
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200 flex items-center"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                  </button>
+                </div>
                 
                 {/* Search Results */}
                 {searchLoading && (
@@ -552,6 +669,34 @@ const DashboardScreen = ({ user }) => {
                     </div>
                   </div>
                 )}
+
+                {/* Employee Selection - pokazuje się tylko gdy narzędzie zostało znalezione i jest dostępne */}
+                {foundTool && foundTool.status === 'dostępne' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Wybierz pracownika
+                    </label>
+                    {employeesLoading ? (
+                      <div className="flex items-center justify-center py-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                        <span className="text-sm text-gray-500">Ładowanie pracowników...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedEmployee}
+                        onChange={(e) => setSelectedEmployee(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="">-- Wybierz pracownika --</option>
+                        {employees.map((employee) => (
+                          <option key={employee.id} value={employee.id}>
+                            {employee.first_name} {employee.last_name} ({employee.brand_number || employee.id}) - {employee.position}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
                 
                 {searchCode.length >= 3 && !searchLoading && !foundTool && (
                   <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700">
@@ -568,6 +713,7 @@ const DashboardScreen = ({ user }) => {
                     setShowQuickIssueModal(false);
                     setSearchCode('');
                     setFoundTool(null);
+                    setSelectedEmployee('');
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
                 >
@@ -575,9 +721,9 @@ const DashboardScreen = ({ user }) => {
                 </button>
                 <button
                   onClick={handleQuickIssue}
-                  disabled={!foundTool || foundTool.status !== 'dostępne'}
+                  disabled={!foundTool || foundTool.status !== 'dostępne' || !selectedEmployee}
                   className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                    foundTool && foundTool.status === 'dostępne'
+                    foundTool && foundTool.status === 'dostępne' && selectedEmployee
                       ? 'bg-indigo-600 hover:bg-indigo-700'
                       : 'bg-gray-400 cursor-not-allowed'
                   }`}
@@ -588,6 +734,101 @@ const DashboardScreen = ({ user }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quick Return Modal */}
+      {showQuickReturnModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Szybki zwrot narzędzi
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowQuickReturnModal(false);
+                    setIssuedTools([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Lista narzędzi wydanych pracownikom:
+                </p>
+                
+                {issuedToolsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">Ładowanie wydanych narzędzi...</span>
+                  </div>
+                ) : issuedTools.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400">Brak wydanych narzędzi</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    <div className="space-y-3">
+                      {issuedTools.map((tool) => (
+                        <div key={tool.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">
+                              {tool.toolName}
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Pracownik: {tool.employeeName}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-500">
+                              Ilość: {tool.quantity} | Wydano: {formatTimeAgo(tool.issuedAt)}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleQuickReturn(tool)}
+                            className="ml-4 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors duration-200"
+                          >
+                            Zwróć
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowQuickReturnModal(false);
+                    setIssuedTools([]);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
+                >
+                  Zamknij
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barcode Scanner Modal */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          isOpen={showBarcodeScanner}
+          onClose={() => setShowBarcodeScanner(false)}
+          onScan={(code) => {
+            setSearchCode(code);
+            searchToolByCode(code);
+            setShowBarcodeScanner(false);
+          }}
+          onError={handleScanError}
+        />
       )}
     </div>
   );

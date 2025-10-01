@@ -1,17 +1,26 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = '';
 
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL;
-    this.token = localStorage.getItem('token'); // Zmieniono z 'authToken' na 'token'
+    // Pobierz token z obiektu user w localStorage
+    const user = localStorage.getItem('user');
+    this.token = user ? JSON.parse(user).token : null;
   }
 
   setToken(token) {
     this.token = token;
     if (token) {
-      localStorage.setItem('token', token); // Zmieniono z 'authToken' na 'token'
+      // Aktualizuj token w obiekcie user w localStorage
+      const user = localStorage.getItem('user');
+      if (user) {
+        const userData = JSON.parse(user);
+        userData.token = token;
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
     } else {
-      localStorage.removeItem('token'); // Zmieniono z 'authToken' na 'token'
+      // Usuń cały obiekt user przy wylogowaniu
+      localStorage.removeItem('user');
     }
   }
 

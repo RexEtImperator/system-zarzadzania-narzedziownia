@@ -515,6 +515,33 @@ app.post('/api/register', authenticateToken, (req, res) => {
     });
 });
 
+// Endpoint wyszukiwania narzędzia po kodzie kreskowym/QR
+app.get('/api/tools/search', authenticateToken, (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.status(400).json({ message: 'Kod jest wymagany' });
+  }
+
+  // Wyszukaj narzędzie po SKU, kodzie kreskowym lub kodzie QR
+  db.get(
+    'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? LIMIT 1',
+    [code, code, code],
+    (err, tool) => {
+      if (err) {
+        console.error('Błąd podczas wyszukiwania narzędzia:', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+      
+      if (!tool) {
+        return res.status(404).json({ message: 'Nie znaleziono narzędzia o podanym kodzie' });
+      }
+      
+      res.status(200).json(tool);
+    }
+  );
+});
+
 // Endpoint pobierania narzędzi
 app.get('/api/tools', authenticateToken, (req, res) => {
   db.all('SELECT * FROM tools', [], (err, tools) => {
@@ -557,7 +584,7 @@ app.post('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint aktualizacji narzędzia
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, status } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
@@ -565,8 +592,8 @@ app.put('/api/tools/:id', authenticateToken, (req, res) => {
   }
 
   db.run(
-    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serial_number, id],
+    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serial_number, status || 'dostępne', id],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
@@ -960,6 +987,41 @@ app.delete('/api/positions/:id', authenticateToken, (req, res) => {
     } else {
       res.json({ message: 'Pozycja została usunięta pomyślnie' });
     }
+  });
+});
+
+// ===== ENDPOINT STATYSTYK DASHBOARDU =====
+
+// Endpoint pobierania statystyk dla dashboardu
+app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
+  const queries = {
+    totalEmployees: 'SELECT COUNT(*) as count FROM employees',
+    activeDepartments: 'SELECT COUNT(DISTINCT name) as count FROM departments',
+    totalPositions: 'SELECT COUNT(DISTINCT name) as count FROM positions',
+    totalTools: 'SELECT COUNT(*) as count FROM tools'
+  };
+
+  const stats = {};
+  let completedQueries = 0;
+  const totalQueries = Object.keys(queries).length;
+
+  // Wykonaj wszystkie zapytania równolegle
+  Object.entries(queries).forEach(([key, query]) => {
+    db.get(query, [], (err, result) => {
+      if (err) {
+        console.error(`Błąd podczas pobierania ${key}:`, err.message);
+        stats[key] = 0; // Fallback do 0 w przypadku błędu
+      } else {
+        stats[key] = result.count;
+      }
+      
+      completedQueries++;
+      
+      // Gdy wszystkie zapytania są zakończone, wyślij odpowiedź
+      if (completedQueries === totalQueries) {
+        res.json(stats);
+      }
+    });
   });
 });
 

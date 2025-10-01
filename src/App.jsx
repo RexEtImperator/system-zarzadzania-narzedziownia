@@ -7,6 +7,7 @@ import {
   DepartmentManagementScreen, 
   PositionManagementScreen 
 } from './components';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Stałe uprawnień
 const PERMISSIONS = {
@@ -203,12 +204,12 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
       
       {/* Sidebar */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-slate-200">
-            <h1 className="text-xl font-bold text-slate-900">Zarządzanie Narzędziami</h1>
+          <div className="p-6 border-b border-slate-200 dark:border-gray-700">
+            <img src="/logo.png" alt="Logo systemu" className="w-48 object-contain drop-shadow-lg" />
           </div>
           
           <nav className="flex-1 p-4 space-y-2">
@@ -216,10 +217,10 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
               <button
                 key={item.id}
                 onClick={() => onNav(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors duration-200 ${
                   current === item.id
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                    : 'text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="text-xl">{item.icon}</span>
@@ -230,36 +231,6 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
         </div>
       </div>
     </>
-  );
-}
-
-function TopBar({ user, onLogout }) {
-  return (
-    <div className="hidden lg:flex items-center justify-between p-4 bg-white border-b border-slate-200">
-      <div className="flex items-center gap-4">
-        <span className="text-slate-600">Witaj, {user.full_name || user.username}!</span>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          user.role === 'administrator' ? 'bg-red-100 text-red-800' :
-          user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-          user.role === 'employee' ? 'bg-green-100 text-green-800' :
-          user.role === 'user' ? 'bg-purple-100 text-purple-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {user.role === 'administrator' ? '👑 Administrator' :
-           user.role === 'manager' ? '👔 Menedżer' :
-           user.role === 'employee' ? '👷 Pracownik' :
-           user.role === 'user' ? '👤 Użytkownik' :
-           '👁️ Obserwator'}
-        </span>
-      </div>
-      
-      <button
-        onClick={onLogout}
-        className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
-      >
-        Wyloguj
-      </button>
-    </div>
   );
 }
 
@@ -280,17 +251,17 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
   };
 
   return (
-    <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200">
+    <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 transition-colors duration-200">
       <button
         onClick={onMenuToggle}
-        className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg"
+        className="p-2 text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-gray-100 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
       
-      <h1 className="text-lg font-semibold text-slate-900">{getScreenTitle(currentScreen)}</h1>
+      <h1 className="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-200">{getScreenTitle(currentScreen)}</h1>
       
       <div className="w-10" /> {/* Spacer */}
     </div>
@@ -305,6 +276,7 @@ import EmployeesScreen from './components/EmployeesScreen';
 import AnalyticsScreen from './components/AnalyticsScreen';
 import LabelsManager from './components/LabelsManager';
 import AuditLogScreen from './components/AuditLogScreen';
+import TopBar from './components/TopBar';
 
 // Komponent zarządzania użytkownikami
 function UserManagementScreen({ user }) {
@@ -1083,54 +1055,65 @@ function App() {
   };
 
   if (!user) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return (
+      <ThemeProvider>
+        <LoginScreen onLogin={handleLogin} />
+      </ThemeProvider>
+    );
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar 
-        onNav={handleNavigation} 
-        current={currentScreen} 
-        user={user}
-        isMobileOpen={isMobileMenuOpen}
-        onMobileClose={closeMobileMenu}
-      />
-      
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* TopBar */}
-        <TopBar user={user} onLogout={handleLogout} />
-        
-        <MobileHeader 
-          onMenuToggle={toggleMobileMenu}
+    <ThemeProvider>
+      <div className="flex h-screen bg-slate-50 dark:bg-gray-900 overflow-hidden transition-colors duration-200">
+        <Sidebar 
+          onNav={handleNavigation} 
+          current={currentScreen} 
           user={user}
-          currentScreen={currentScreen}
+          isMobileOpen={isMobileMenuOpen}
+          onMobileClose={closeMobileMenu}
         />
         
-        <div className="flex-1 overflow-auto">
-          {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
-          {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} />}
-          {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
-          {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} />}
-          {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}
-          {currentScreen === 'audit' && <AuditLogScreen user={user} />}
-          {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
-          {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
-          {currentScreen === 'config' && <AppConfigScreen user={user} />}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* TopBar */}
+          <TopBar 
+            user={user} 
+            onLogout={handleLogout} 
+            onToggleSidebar={toggleMobileMenu}
+            isSidebarOpen={isMobileMenuOpen}
+          />
+          
+          <MobileHeader 
+            onMenuToggle={toggleMobileMenu}
+            user={user}
+            currentScreen={currentScreen}
+          />
+          
+          <div className="flex-1 overflow-auto">
+            {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
+            {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} />}
+            {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
+            {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} />}
+            {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}
+            {currentScreen === 'audit' && <AuditLogScreen user={user} />}
+            {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
+            {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
+            {currentScreen === 'config' && <AppConfigScreen user={user} />}
+          </div>
         </div>
+        
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
       </div>
-      
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-    </div>
+    </ThemeProvider>
   );
 }
 

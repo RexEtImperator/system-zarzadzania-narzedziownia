@@ -99,6 +99,22 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Metody specyficzne dla API
+  async getAuditLogs(params = {}) {
+    const queryParams = new URLSearchParams();
+    
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const endpoint = `/api/audit${queryString ? `?${queryString}` : ''}`;
+    
+    return this.get(endpoint);
+  }
 }
 
 const api = new ApiClient();

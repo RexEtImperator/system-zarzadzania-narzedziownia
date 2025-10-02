@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../api';
 import { AUDIT_ACTIONS } from '../constants';
 
 // Komponent dziennika audytu
@@ -28,15 +29,16 @@ function AuditLogScreen({ user }) {
         ...filters
       });
       
-      if (response.success) {
-        setAuditLogs(response.data.logs);
+      if (response.logs) {
+        setAuditLogs(response.logs);
         setPagination(prev => ({
           ...prev,
-          total: response.data.total,
-          totalPages: response.data.totalPages
+          total: response.pagination.total,
+          totalPages: response.pagination.totalPages
         }));
+        setError(null);
       } else {
-        setError(response.message);
+        setError('Nie udało się pobrać dziennika audytu');
       }
     } catch (error) {
       console.error('Błąd podczas pobierania dziennika audytu:', error);
@@ -64,22 +66,22 @@ function AuditLogScreen({ user }) {
   };
 
   return (
-    <div className="p-4 lg:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 lg:p-8 bg-slate-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
       <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-2">Dziennik audytu</h1>
-        <p className="text-slate-600">Historia wszystkich działań w systemie</p>
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2 transition-colors duration-200">Dziennik audytu</h1>
+        <p className="text-slate-600 dark:text-gray-400 transition-colors duration-200">Historia wszystkich działań w systemie</p>
       </div>
 
       {/* Filtry */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Filtry</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 p-6 mb-6 transition-colors duration-200">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 transition-colors duration-200">Filtry</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Akcja</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2 transition-colors duration-200">Akcja</label>
             <select
               value={filters.action}
               onChange={(e) => handleFilterChange('action', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-slate-900 dark:text-white transition-colors duration-200"
             >
               <option value="all">Wszystkie</option>
               {Object.entries(AUDIT_ACTIONS).map(([key, label]) => (
@@ -88,49 +90,49 @@ function AuditLogScreen({ user }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Użytkownik</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2 transition-colors duration-200">Użytkownik</label>
             <input
               type="text"
               value={filters.username}
               onChange={(e) => handleFilterChange('username', e.target.value)}
               placeholder="Nazwa użytkownika"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 transition-colors duration-200"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Data od</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2 transition-colors duration-200">Data od</label>
             <input
               type="date"
               value={filters.startDate}
               onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-slate-900 dark:text-white transition-colors duration-200"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Data do</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2 transition-colors duration-200">Data do</label>
             <input
               type="date"
               value={filters.endDate}
               onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-slate-900 dark:text-white transition-colors duration-200"
             />
           </div>
         </div>
       </div>
 
       {/* Lista dziennika */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 transition-colors duration-200">
         {loading ? (
           <div className="p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-slate-600">Ładowanie dziennika audytu...</p>
+            <p className="mt-2 text-slate-600 dark:text-gray-400 transition-colors duration-200">Ładowanie dziennika audytu...</p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-600">{error}</p>
+            <p className="text-red-600 dark:text-red-400 transition-colors duration-200">{error}</p>
             <button
               onClick={fetchAuditLogs}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg transition-colors duration-200"
             >
               Spróbuj ponownie
             </button>
@@ -139,43 +141,43 @@ function AuditLogScreen({ user }) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-gray-700 border-b border-slate-200 dark:border-gray-600 transition-colors duration-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       Data i czas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       Użytkownik
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       Akcja
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       Szczegóły
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       IP
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-slate-200 dark:divide-gray-600 transition-colors duration-200">
                   {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white transition-colors duration-200">
                         {formatDate(log.timestamp)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white transition-colors duration-200">
                         {log.username}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 transition-colors duration-200">
                           {getActionLabel(log.action)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900 max-w-xs truncate">
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white max-w-xs truncate transition-colors duration-200">
                         {log.details}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-gray-400 transition-colors duration-200">
                         {log.ip_address}
                       </td>
                     </tr>
@@ -186,8 +188,8 @@ function AuditLogScreen({ user }) {
 
             {/* Paginacja */}
             {pagination.totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-                <div className="text-sm text-slate-700">
+              <div className="px-6 py-4 border-t border-slate-200 dark:border-gray-600 flex items-center justify-between transition-colors duration-200">
+                <div className="text-sm text-slate-700 dark:text-gray-300 transition-colors duration-200">
                   Strona {pagination.page} z {pagination.totalPages} 
                   ({pagination.total} rekordów)
                 </div>
@@ -195,14 +197,14 @@ function AuditLogScreen({ user }) {
                   <button
                     onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                     disabled={pagination.page === 1}
-                    className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-slate-300 dark:border-gray-600 rounded hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-slate-900 dark:text-white transition-colors duration-200"
                   >
                     Poprzednia
                   </button>
                   <button
                     onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                     disabled={pagination.page === pagination.totalPages}
-                    className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-slate-300 dark:border-gray-600 rounded hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-slate-900 dark:text-white transition-colors duration-200"
                   >
                     Następna
                   </button>

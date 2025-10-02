@@ -10,8 +10,6 @@ const PositionManagementScreen = ({ apiClient }) => {
     name: '',
     description: '',
     departmentId: '',
-    minSalary: '',
-    maxSalary: '',
     requirements: '',
     status: 'active'
   });
@@ -25,56 +23,44 @@ const PositionManagementScreen = ({ apiClient }) => {
   const fetchPositions = async () => {
     try {
       setLoading(true);
-      // Symulacja danych - w rzeczywistej aplikacji pobierałbyś dane z API
-      const mockPositions = [
-        { 
-          id: 1, 
-          name: 'Programista Senior', 
-          description: 'Doświadczony programista', 
-          departmentName: 'IT',
-          departmentId: 1,
-          minSalary: 8000, 
-          maxSalary: 12000, 
-          employeeCount: 5, 
-          status: 'active' 
-        },
-        { 
-          id: 2, 
-          name: 'Specjalista HR', 
-          description: 'Specjalista ds. zasobów ludzkich', 
-          departmentName: 'HR',
-          departmentId: 2,
-          minSalary: 5000, 
-          maxSalary: 7000, 
-          employeeCount: 3, 
-          status: 'active' 
-        },
-        { 
-          id: 3, 
-          name: 'Analityk Finansowy', 
-          description: 'Analiza danych finansowych', 
-          departmentName: 'Finanse',
-          departmentId: 3,
-          minSalary: 6000, 
-          maxSalary: 9000, 
-          employeeCount: 4, 
-          status: 'active' 
-        },
-        { 
-          id: 4, 
-          name: 'Grafik', 
-          description: 'Projektowanie graficzne', 
-          departmentName: 'Marketing',
-          departmentId: 4,
-          minSalary: 4000, 
-          maxSalary: 6000, 
-          employeeCount: 0, 
-          status: 'inactive' 
-        }
-      ];
-      setPositions(mockPositions);
+      const data = await apiClient.get('/api/positions');
+      // Normalizacja ewentualnych pól z API
+      const normalized = (Array.isArray(data) ? data : []).map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        departmentId: p.departmentId || p.department_id || '',
+        departmentName: p.departmentName || p.department_name || '',
+        requirements: p.requirements || '',
+        employeeCount: p.employeeCount || p.employee_count || 0,
+        status: p.status || 'active'
+      }));
+      setPositions(normalized);
     } catch (error) {
       console.error('Błąd podczas pobierania stanowisk:', error);
+      // Fallback: użyj domyślnych nazw stanowisk z wymagań
+      const fallbackNames = [
+        'Kierownik działu',
+        'Automatyk',
+        'Elektryk',
+        'Mechanik',
+        'Narzędziowiec',
+        'Pomiarowiec',
+        'Tokarz',
+        'Spawacz',
+        'Ślusarz',
+        'Zewnętrzny'
+      ];
+      setPositions(fallbackNames.map((name, idx) => ({
+        id: idx + 1,
+        name,
+        description: '',
+        departmentId: '',
+        departmentName: '',
+        requirements: '',
+        employeeCount: 0,
+        status: 'active'
+      })));
     } finally {
       setLoading(false);
     }
@@ -82,16 +68,23 @@ const PositionManagementScreen = ({ apiClient }) => {
 
   const fetchDepartments = async () => {
     try {
-      // Symulacja danych departamentów
-      const mockDepartments = [
-        { id: 1, name: 'IT' },
-        { id: 2, name: 'HR' },
-        { id: 3, name: 'Finanse' },
-        { id: 4, name: 'Marketing' }
-      ];
-      setDepartments(mockDepartments);
+      const data = await apiClient.get('/api/departments');
+      const normalized = (Array.isArray(data) ? data : []).map(d => ({ id: d.id, name: d.name }));
+      setDepartments(normalized);
     } catch (error) {
       console.error('Błąd podczas pobierania departamentów:', error);
+      // Fallback: lista działów zgodna z wymaganiami
+      setDepartments([
+        { id: 1, name: 'Administracja' },
+        { id: 2, name: 'Automatyczny' },
+        { id: 3, name: 'Elektryczny' },
+        { id: 4, name: 'Mechaniczny' },
+        { id: 5, name: 'Narzędziownia' },
+        { id: 6, name: 'Skrawanie' },
+        { id: 7, name: 'Pomiarowy' },
+        { id: 8, name: 'Zewnętrzny' },
+        { id: 9, name: 'Ślusarko-spawalniczy' }
+      ]);
     }
   };
 
@@ -101,8 +94,6 @@ const PositionManagementScreen = ({ apiClient }) => {
       name: '',
       description: '',
       departmentId: '',
-      minSalary: '',
-      maxSalary: '',
       requirements: '',
       status: 'active'
     });
@@ -116,8 +107,6 @@ const PositionManagementScreen = ({ apiClient }) => {
       name: position.name,
       description: position.description,
       departmentId: position.departmentId.toString(),
-      minSalary: position.minSalary.toString(),
-      maxSalary: position.maxSalary.toString(),
       requirements: position.requirements || '',
       status: position.status
     });
@@ -146,10 +135,6 @@ const PositionManagementScreen = ({ apiClient }) => {
     if (!formData.departmentId) {
       newErrors.departmentId = 'Departament jest wymagany';
     }
-    if (formData.minSalary && formData.maxSalary && 
-        parseFloat(formData.minSalary) > parseFloat(formData.maxSalary)) {
-      newErrors.maxSalary = 'Maksymalne wynagrodzenie musi być większe od minimalnego';
-    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -167,9 +152,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                 ...pos, 
                 ...formData, 
                 departmentId: parseInt(formData.departmentId),
-                departmentName,
-                minSalary: parseFloat(formData.minSalary) || 0,
-                maxSalary: parseFloat(formData.maxSalary) || 0
+                departmentName
               }
             : pos
         ));
@@ -180,8 +163,6 @@ const PositionManagementScreen = ({ apiClient }) => {
           ...formData,
           departmentId: parseInt(formData.departmentId),
           departmentName,
-          minSalary: parseFloat(formData.minSalary) || 0,
-          maxSalary: parseFloat(formData.maxSalary) || 0,
           employeeCount: 0
         };
         setPositions(prev => [...prev, newPosition]);
@@ -194,8 +175,8 @@ const PositionManagementScreen = ({ apiClient }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { label: 'Aktywne', className: 'bg-green-100 text-green-800' },
-      inactive: { label: 'Nieaktywne', className: 'bg-red-100 text-red-800' }
+      active: { label: 'Aktywne', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' },
+      inactive: { label: 'Nieaktywne', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' }
     };
     
     const config = statusConfig[status] || statusConfig.active;
@@ -207,24 +188,15 @@ const PositionManagementScreen = ({ apiClient }) => {
     );
   };
 
-  const formatSalary = (min, max) => {
-    if (min && max) {
-      return `${min.toLocaleString()} - ${max.toLocaleString()} PLN`;
-    } else if (min) {
-      return `od ${min.toLocaleString()} PLN`;
-    } else if (max) {
-      return `do ${max.toLocaleString()} PLN`;
-    }
-    return 'Nie określono';
-  };
+  // Wynagrodzenie nie jest używane na stanowisku
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Zarządzanie stanowiskami</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Zarządzanie stanowiskami</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Zarządzaj stanowiskami pracy w organizacji
           </p>
         </div>
@@ -240,14 +212,14 @@ const PositionManagementScreen = ({ apiClient }) => {
       </div>
 
       {/* Positions Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         {loading ? (
           <div className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500">Ładowanie stanowisk...</p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Ładowanie stanowisk...</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {positions.map((position) => (
               <li key={position.id}>
                 <div className="px-4 py-4 flex items-center justify-between">
@@ -261,33 +233,31 @@ const PositionManagementScreen = ({ apiClient }) => {
                     </div>
                     <div className="ml-4">
                       <div className="flex items-center">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {position.name}
                         </div>
                         <div className="ml-2">
                           {getStatusBadge(position.status)}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {position.description}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Departament: {position.departmentName} • 
-                        Wynagrodzenie: {formatSalary(position.minSalary, position.maxSalary)} • 
-                        {position.employeeCount} pracowników
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Departament: {position.departmentName} • {position.employeeCount} pracowników
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEdit(position)}
-                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
                     >
                       Edytuj
                     </button>
                     <button
                       onClick={() => handleDelete(position.id)}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
                     >
                       Usuń
                     </button>
@@ -307,16 +277,16 @@ const PositionManagementScreen = ({ apiClient }) => {
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
                     {editingPosition ? 'Edytuj stanowisko' : 'Dodaj nowe stanowisko'}
                   </h3>
 
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Nazwa *
                       </label>
                       <input
@@ -325,7 +295,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                        className={`mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
                           errors.name ? 'border-red-300' : ''
                         }`}
                       />
@@ -335,7 +305,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                     </div>
 
                     <div>
-                      <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Departament *
                       </label>
                       <select
@@ -343,7 +313,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         id="departmentId"
                         value={formData.departmentId}
                         onChange={(e) => setFormData(prev => ({ ...prev, departmentId: e.target.value }))}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                        className={`mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
                           errors.departmentId ? 'border-red-300' : ''
                         }`}
                       >
@@ -360,7 +330,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Opis
                       </label>
                       <textarea
@@ -369,47 +339,14 @@ const PositionManagementScreen = ({ apiClient }) => {
                         rows={3}
                         value={formData.description}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="minSalary" className="block text-sm font-medium text-gray-700">
-                          Min. wynagrodzenie
-                        </label>
-                        <input
-                          type="number"
-                          name="minSalary"
-                          id="minSalary"
-                          value={formData.minSalary}
-                          onChange={(e) => setFormData(prev => ({ ...prev, minSalary: e.target.value }))}
-                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="maxSalary" className="block text-sm font-medium text-gray-700">
-                          Max. wynagrodzenie
-                        </label>
-                        <input
-                          type="number"
-                          name="maxSalary"
-                          id="maxSalary"
-                          value={formData.maxSalary}
-                          onChange={(e) => setFormData(prev => ({ ...prev, maxSalary: e.target.value }))}
-                          className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                            errors.maxSalary ? 'border-red-300' : ''
-                          }`}
-                        />
-                        {errors.maxSalary && (
-                          <p className="mt-1 text-sm text-red-600">{errors.maxSalary}</p>
-                        )}
-                      </div>
-                    </div>
+                    {/* Wynagrodzenie usunięte zgodnie z wymaganiami */}
 
                     <div>
-                      <label htmlFor="requirements" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="requirements" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Wymagania
                       </label>
                       <textarea
@@ -418,13 +355,13 @@ const PositionManagementScreen = ({ apiClient }) => {
                         rows={3}
                         value={formData.requirements}
                         onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="Wymagania dla tego stanowiska..."
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Status
                       </label>
                       <select
@@ -432,7 +369,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         id="status"
                         value={formData.status}
                         onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       >
                         <option value="active">Aktywne</option>
                         <option value="inactive">Nieaktywne</option>
@@ -441,7 +378,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                   <button
                     type="submit"
                     className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
@@ -451,7 +388,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
                     Anuluj
                   </button>

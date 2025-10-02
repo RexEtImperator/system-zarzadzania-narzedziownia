@@ -354,6 +354,50 @@ function initializeDatabase() {
       console.log('Tabela positions została utworzona lub już istnieje');
     }
   });
+
+  // Tabela uprawnień ról
+  db.run(`CREATE TABLE IF NOT EXISTS role_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    created_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(role, permission)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli role_permissions:', err.message);
+    } else {
+      console.log('Tabela role_permissions została utworzona lub już istnieje');
+      
+      // Inicjalizacja domyślnych uprawnień dla ról
+      const defaultPermissions = {
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS'],
+        'employee': ['ACCESS_TOOLS', 'VIEW_USERS'],
+        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG'],
+        'viewer': ['VIEW_USERS']
+      };
+
+      // Sprawdź czy uprawnienia już istnieją
+      db.get('SELECT COUNT(*) as count FROM role_permissions', (err, row) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania uprawnień:', err.message);
+        } else if (row.count === 0) {
+          // Dodaj domyślne uprawnienia
+          Object.entries(defaultPermissions).forEach(([role, permissions]) => {
+            permissions.forEach(permission => {
+              db.run('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)', 
+                [role, permission], (err) => {
+                  if (err) {
+                    console.error(`Błąd podczas dodawania uprawnienia ${permission} dla roli ${role}:`, err.message);
+                  }
+                });
+            });
+          });
+          console.log('Domyślne uprawnienia ról zostały dodane');
+        }
+      });
+    }
+  });
 }
 
 // Middleware do weryfikacji tokenu JWT
@@ -704,6 +748,46 @@ app.delete('/api/employees/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
     }
     res.status(200).json({ message: 'Pracownik został usunięty' });
+  });
+});
+
+// Endpoint usuwania wszystkich pracowników
+app.delete('/employees/all', authenticateToken, (req, res) => {
+  // Sprawdź uprawnienia administratora
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+
+  console.log('Rozpoczęcie usuwania wszystkich pracowników...');
+
+  db.run('DELETE FROM employees', function(err) {
+    if (err) {
+      console.error('Błąd podczas usuwania pracowników:', err);
+      return res.status(500).json({ message: 'Błąd serwera podczas usuwania pracowników' });
+    }
+    
+    console.log(`Usunięto ${this.changes} pracowników`);
+    
+    // Dodaj wpis do dziennika audytu
+    const auditQuery = `
+      INSERT INTO audit_logs (user_id, action, details, timestamp)
+      VALUES (?, ?, ?, datetime('now'))
+    `;
+    
+    db.run(auditQuery, [
+      req.user.id,
+      'DELETE_ALL_EMPLOYEES',
+      `Usunięto wszystkich pracowników (${this.changes} rekordów)`
+    ], (auditErr) => {
+      if (auditErr) {
+        console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+      }
+    });
+    
+    res.status(200).json({ 
+      message: 'Wszyscy pracownicy zostali usunięci',
+      deletedCount: this.changes
+    });
   });
 });
 
@@ -1542,4 +1626,154 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
       res.json(result);
     });
   });
+});
+
+// Endpointy do zarządzania uprawnieniami ról
+
+// Pobieranie uprawnień dla wszystkich ról
+app.get('/api/role-permissions', authenticateToken, (req, res) => {
+  // Sprawdź czy użytkownik ma uprawnienia administratora
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+  }
+
+  const query = `
+    SELECT role, permission 
+    FROM role_permissions 
+    ORDER BY role, permission
+  `;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Błąd podczas pobierania uprawnień ról:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    // Grupuj uprawnienia według ról
+    const rolePermissions = {};
+    rows.forEach(row => {
+      if (!rolePermissions[row.role]) {
+        rolePermissions[row.role] = [];
+      }
+      rolePermissions[row.role].push(row.permission);
+    });
+
+    res.json(rolePermissions);
+  });
+});
+
+// Aktualizacja uprawnień dla konkretnej roli
+app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
+  // Sprawdź czy użytkownik ma uprawnienia administratora
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+  }
+
+  const role = req.params.role;
+  const { permissions } = req.body;
+
+  if (!permissions || !Array.isArray(permissions)) {
+    return res.status(400).json({ message: 'Nieprawidłowe dane - wymagana jest tablica uprawnień' });
+  }
+
+  // Rozpocznij transakcję
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    // Usuń wszystkie istniejące uprawnienia dla tej roli
+    db.run('DELETE FROM role_permissions WHERE role = ?', [role], (err) => {
+      if (err) {
+        console.error(`Błąd podczas usuwania uprawnień dla roli ${role}:`, err.message);
+        db.run('ROLLBACK');
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+
+      // Dodaj nowe uprawnienia
+      const stmt = db.prepare('INSERT INTO role_permissions (role, permission) VALUES (?, ?)');
+      let errorOccurred = false;
+
+      permissions.forEach(permission => {
+        stmt.run([role, permission], (err) => {
+          if (err && !errorOccurred) {
+            console.error(`Błąd podczas dodawania uprawnienia ${permission} dla roli ${role}:`, err.message);
+            errorOccurred = true;
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+          }
+        });
+      });
+
+      stmt.finalize((err) => {
+        if (err || errorOccurred) {
+          if (!errorOccurred) {
+            console.error('Błąd podczas finalizacji statement:', err.message);
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+          }
+        } else {
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Błąd podczas zatwierdzania transakcji:', err.message);
+              return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+            }
+
+            // Dodaj wpis do audit log
+            const auditData = {
+              user_id: req.user.id,
+              action: 'UPDATE_ROLE_PERMISSIONS',
+              target_type: 'role',
+              target_id: role,
+              details: JSON.stringify({ 
+                role: role, 
+                permissions: permissions,
+                updated_by: req.user.username 
+              })
+            };
+
+            db.run(`INSERT INTO audit_logs (user_id, action, target_type, target_id, details, timestamp) 
+                    VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+              [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+              (err) => {
+                if (err) {
+                  console.error('Błąd podczas zapisywania do audit log:', err.message);
+                }
+              }
+            );
+
+            console.log(`Uprawnienia dla roli ${role} zostały zaktualizowane`);
+            res.json({ 
+              message: 'Uprawnienia zostały zaktualizowane pomyślnie',
+              role: role,
+              permissions: permissions
+            });
+          });
+        }
+      });
+    });
+  });
+});
+
+// Pobieranie dostępnych uprawnień
+app.get('/api/permissions', authenticateToken, (req, res) => {
+  // Sprawdź czy użytkownik ma uprawnienia administratora
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+  }
+
+  const availablePermissions = [
+    'VIEW_USERS',
+    'CREATE_USERS', 
+    'EDIT_USERS',
+    'DELETE_USERS',
+    'VIEW_ANALYTICS',
+    'ACCESS_TOOLS',
+    'MANAGE_DEPARTMENTS',
+    'MANAGE_POSITIONS',
+    'SYSTEM_SETTINGS',
+    'VIEW_ADMIN',
+    'MANAGE_USERS',
+    'VIEW_AUDIT_LOG'
+  ];
+
+  res.json(availablePermissions);
 });

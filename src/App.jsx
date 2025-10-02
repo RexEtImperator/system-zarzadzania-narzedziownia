@@ -5,9 +5,11 @@ import 'react-toastify/dist/ReactToastify.css';
 import api from './api';
 import { 
   DepartmentManagementScreen, 
-  PositionManagementScreen 
+  PositionManagementScreen,
+  AppConfigScreen 
 } from './components';
 import { ThemeProvider } from './contexts/ThemeContext';
+import PermissionsModal from './components/PermissionsModal';
 
 // Stałe uprawnień
 const PERMISSIONS = {
@@ -43,24 +45,29 @@ const AUDIT_ACTIONS = {
 
 // Domyślne działy
 const DEFAULT_DEPARTMENTS = [
-  'Produkcja',
-  'Magazyn',
-  'Konserwacja',
   'Administracja',
-  'IT',
-  'Narzędziownia'
+  'Automatyczny',
+  'Elektryczny',
+  'Mechaniczny',
+  'Narzędziownia',
+  'Skrawanie',
+  'Pomiarowy',
+  'Zewnętrzny',
+  'Ślusarko-spawalniczy'
 ];
 
-// Domyślne pozycje
+// Domyślne stanowiska
 const DEFAULT_POSITIONS = [
-  'Operator maszyn',
-  'Magazynier',
-  'Technik konserwacji',
-  'Specjalista ds. narzędzi',
-  'Kierownik magazynu',
-  'Administrator IT',
-  'Specjalista HR',
-  'Kontroler jakości'
+  'Kierownik działu',
+  'Automatyk',
+  'Elektryk',
+  'Mechanik',
+  'Narzędziowiec',
+  'Pomiarowiec',
+  'Tokarz',
+  'Spawacz',
+  'Ślusarz',
+  'Zewnętrzny'
 ];
 
 // Funkcja sprawdzania uprawnień
@@ -595,189 +602,11 @@ function UserManagementScreen({ user }) {
   );
 }
 
-// Komponent konfiguracji aplikacji
-function AppConfigScreen({ user }) {
-  const [departments, setDepartments] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [newDepartment, setNewDepartment] = useState('');
-  const [newPosition, setNewPosition] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchDepartments();
-    fetchPositions();
-  }, []);
-
-  const fetchDepartments = async () => {
-    try {
-      const data = await api.get('/api/departments');
-      setDepartments(data);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-      setDepartments(DEFAULT_DEPARTMENTS.map((name, index) => ({ id: index + 1, name })));
-    }
-  };
-
-  const fetchPositions = async () => {
-    try {
-      const data = await api.get('/api/positions');
-      setPositions(data);
-    } catch (error) {
-      console.error('Error fetching positions:', error);
-      setPositions(DEFAULT_POSITIONS.map((name, index) => ({ id: index + 1, name })));
-    }
-  };
-
-  const handleAddDepartment = async (e) => {
-    e.preventDefault();
-    if (!newDepartment.trim()) return;
-
-    try {
-      setLoading(true);
-      const department = await api.post('/api/departments', { name: newDepartment.trim() });
-      setDepartments([...departments, department]);
-      setNewDepartment('');
-      toast.success('Dział został dodany');
-    } catch (error) {
-      console.error('Error adding department:', error);
-      toast.error('Błąd podczas dodawania działu');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddPosition = async (e) => {
-    e.preventDefault();
-    if (!newPosition.trim()) return;
-
-    try {
-      setLoading(true);
-      const position = await api.post('/api/positions', { name: newPosition.trim() });
-      setPositions([...positions, position]);
-      setNewPosition('');
-      toast.success('Pozycja została dodana');
-    } catch (error) {
-      console.error('Error adding position:', error);
-      toast.error('Błąd podczas dodawania pozycji');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteDepartment = async (id, name) => {
-    if (!confirm(`Czy na pewno chcesz usunąć dział "${name}"?`)) return;
-
-    try {
-      await api.del(`/departments/${id}`);
-      setDepartments(departments.filter(d => d.id !== id));
-      toast.success('Dział został usunięty');
-    } catch (error) {
-      console.error('Error deleting department:', error);
-      toast.error('Błąd podczas usuwania działu');
-    }
-  };
-
-  const handleDeletePosition = async (id, name) => {
-    if (!confirm(`Czy na pewno chcesz usunąć pozycję "${name}"?`)) return;
-
-    try {
-      await api.del(`/positions/${id}`);
-      setPositions(positions.filter(p => p.id !== id));
-      toast.success('Pozycja została usunięta');
-    } catch (error) {
-      console.error('Error deleting position:', error);
-      toast.error('Błąd podczas usuwania pozycji');
-    }
-  };
-
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Konfiguracja aplikacji</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Działy */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Działy</h2>
-          
-          <form onSubmit={handleAddDepartment} className="mb-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newDepartment}
-                onChange={(e) => setNewDepartment(e.target.value)}
-                placeholder="Nazwa działu"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={loading || !newDepartment.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                Dodaj
-              </button>
-            </div>
-          </form>
-
-          <div className="space-y-2">
-            {departments.map((dept) => (
-              <div key={dept.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-900">{dept.name}</span>
-                <button
-                  onClick={() => handleDeleteDepartment(dept.id, dept.name)}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Usuń
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pozycje */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Pozycje</h2>
-          
-          <form onSubmit={handleAddPosition} className="mb-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newPosition}
-                onChange={(e) => setNewPosition(e.target.value)}
-                placeholder="Nazwa pozycji"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={loading || !newPosition.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                Dodaj
-              </button>
-            </div>
-          </form>
-
-          <div className="space-y-2">
-            {positions.map((pos) => (
-              <div key={pos.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-900">{pos.name}</span>
-                <button
-                  onClick={() => handleDeletePosition(pos.id, pos.name)}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Usuń
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Panel administracyjny
 function AdminPanel({ user, onNavigate }) {
   const [showDeleteHistoryConfirm, setShowDeleteHistoryConfirm] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [showDeleteEmployeesConfirm, setShowDeleteEmployeesConfirm] = useState(false);
 
   const handleDeleteHistory = async () => {
     try {
@@ -791,6 +620,18 @@ function AdminPanel({ user, onNavigate }) {
     }
   };
 
+  const handleDeleteEmployees = async () => {
+    try {
+      await api.delete('/employees/all');
+      toast.success('Wszyscy pracownicy zostali usunięci');
+      setShowDeleteEmployeesConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto wszystkich pracowników');
+    } catch (error) {
+      console.error('Error deleting employees:', error);
+      toast.error('Błąd podczas usuwania pracowników');
+    }
+  };
+
   return (
     <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="mb-6">
@@ -801,7 +642,7 @@ function AdminPanel({ user, onNavigate }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* User Management */}
         {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">👥</span>
@@ -811,6 +652,7 @@ function AdminPanel({ user, onNavigate }) {
                 <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzaj kontami użytkowników</p>
               </div>
             </div>
+            <div className="flex-1"></div>
             <button 
               onClick={() => onNavigate('user-management')}
               className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
@@ -820,50 +662,30 @@ function AdminPanel({ user, onNavigate }) {
           </div>
         )}
 
-        {/* System Configuration */}
+        {/* App Configuration */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">⚙️</span>
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">🎛️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Konfiguracja</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Ustawienia systemu</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Ustawienia aplikacji</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj parametry systemu</p>
               </div>
             </div>
+            <div className="flex-1"></div>
             <button 
-              onClick={() => onNavigate('config')}
-              className="w-full bg-green-600 dark:bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition-colors"
+              onClick={() => onNavigate('app-config')}
+              className="w-full bg-indigo-600 dark:bg-indigo-700 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-800 transition-colors"
             >
-              Otwórz konfigurację
-            </button>
-          </div>
-        )}
-
-        {/* Data Management */}
-        {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🗑️</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dane systemu</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzanie danymi</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setShowDeleteHistoryConfirm(true)}
-              className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
-            >
-              Usuń historię wydań
+              Otwórz ustawienia
             </button>
           </div>
         )}
 
         {/* Audit Log */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
               <span className="text-2xl">📋</span>
@@ -873,6 +695,7 @@ function AdminPanel({ user, onNavigate }) {
               <p className="text-sm text-slate-600 dark:text-slate-400">Przeglądaj historię operacji</p>
             </div>
           </div>
+          <div className="flex-1"></div>
           <button 
             onClick={() => onNavigate('audit')}
             className="w-full bg-purple-600 dark:bg-purple-700 text-white py-2 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors"
@@ -881,43 +704,103 @@ function AdminPanel({ user, onNavigate }) {
           </button>
         </div>
 
-        {/* Role Management */}
-        {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🎭</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
-              </div>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="dark:text-slate-300">👑 Administrator</span>
-                <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="dark:text-slate-300">👔 Menedżer</span>
-                <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="dark:text-slate-300">👷 Pracownik</span>
-                <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="dark:text-slate-300">👤 Użytkownik</span>
-                <span className="text-slate-600 dark:text-slate-400">Ograniczony dostęp</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="dark:text-slate-300">👁️ Obserwator</span>
-                <span className="text-slate-600 dark:text-slate-400">Tylko odczyt</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Role Management - Osobny grid */}
+      {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
+        <div className="mt-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Danger Zone</h1>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🎭</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="dark:text-slate-300">👑 Administrator</span>
+                  <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="dark:text-slate-300">👔 Menedżer</span>
+                  <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="dark:text-slate-300">👷 Pracownik</span>
+                  <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="dark:text-slate-300">👤 Użytkownik</span>
+                  <span className="text-slate-600 dark:text-slate-400">Ograniczony dostęp</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="dark:text-slate-300">👁️ Obserwator</span>
+                  <span className="text-slate-600 dark:text-slate-400">Tylko odczyt</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <button 
+                  onClick={() => setShowPermissionsModal(true)}
+                  className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
+                >
+                  Zarządzaj uprawnieniami
+                </button>
+              </div>
+            </div>
+
+            {/* Data Management */}
+            {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">🗑️</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dane systemu</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzanie danymi</p>
+                  </div>
+                </div>
+                <div className="flex-1"></div>
+                <button 
+                  onClick={() => setShowDeleteHistoryConfirm(true)}
+                  className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
+                >
+                  Usuń historię wydań
+                </button>
+              </div>
+            )}
+
+            {/* Delete Employees */}
+            {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">👥</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Usuń pracowników</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Usuń wszystkich pracowników</p>
+                  </div>
+                </div>
+                <div className="flex-1"></div>
+                <button 
+                  onClick={() => setShowDeleteEmployeesConfirm(true)}
+                  className="w-full bg-yellow-600 dark:bg-yellow-700 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-800 transition-colors"
+                >
+                  Usuń dane pracowników
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal potwierdzenia usunięcia historii */}
       <ConfirmationModal
@@ -929,6 +812,25 @@ function AdminPanel({ user, onNavigate }) {
         confirmText="Usuń historię"
         cancelText="Anuluj"
         type="danger"
+      />
+
+      {/* Modal potwierdzenia usunięcia pracowników */}
+      <ConfirmationModal
+        isOpen={showDeleteEmployeesConfirm}
+        onClose={() => setShowDeleteEmployeesConfirm(false)}
+        onConfirm={handleDeleteEmployees}
+        title="Usuń wszystkich pracowników"
+        message="Czy na pewno chcesz usunąć wszystkich pracowników z bazy danych? Ta operacja jest nieodwracalna i usunie wszystkie dane pracowników."
+        confirmText="Usuń pracowników"
+        cancelText="Anuluj"
+        type="danger"
+      />
+
+      {/* Modal zarządzania uprawnieniami */}
+      <PermissionsModal
+        isOpen={showPermissionsModal}
+        onClose={() => setShowPermissionsModal(false)}
+        user={user}
       />
     </div>
   );
@@ -946,16 +848,24 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
+    const savedScreen = localStorage.getItem('currentScreen');
+    
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         // Ustaw token w API client
         api.setToken(token);
+        
+        // Przywróć ostatni ekran jeśli istnieje
+        if (savedScreen) {
+          setCurrentScreen(savedScreen);
+        }
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('currentScreen');
       }
     }
   }, []);
@@ -990,6 +900,9 @@ function App() {
   const handleNavigation = (screen) => {
     setCurrentScreen(screen);
     setIsMobileMenuOpen(false);
+    
+    // Zapisz aktualny ekran w localStorage
+    localStorage.setItem('currentScreen', screen);
     
     // Dodaj wpis audytu dla nawigacji do ważnych sekcji
     const screenLabels = {
@@ -1045,6 +958,7 @@ function App() {
     // Usuń dane z localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('currentScreen');
     
     // Wyczyść token z API client
     api.setToken(null);
@@ -1097,7 +1011,8 @@ function App() {
             {currentScreen === 'audit' && <AuditLogScreen user={user} />}
             {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
             {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
-            {currentScreen === 'config' && <AppConfigScreen user={user} />}
+            {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
+            {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
           </div>
         </div>
         

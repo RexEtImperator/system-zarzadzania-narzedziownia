@@ -230,27 +230,19 @@ const DashboardScreen = ({ user }) => {
     }
   };
 
-  const StatCard = ({ title, value, icon, color = 'indigo', gradient = false }) => (
-    <div className={`${gradient ? `bg-gradient-to-br from-${color}-500 to-${color}-600 text-white` : 'bg-white dark:bg-gray-800'} overflow-hidden shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
-      <div className="p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <div className={`w-12 h-12 ${gradient ? 'bg-white bg-opacity-20' : `bg-${color}-500 dark:bg-${color}-600`} rounded-xl flex items-center justify-center shadow-lg transition-colors duration-200`}>
-              {React.cloneElement(icon, { 
-                className: `w-6 h-6 text-gray-600 dark:text-white` 
-              })}
-            </div>
-          </div>
-          <div className="ml-5 w-0 flex-1">
-            <dl>
-              <dt className={`text-sm font-medium ${gradient ? 'text-white text-opacity-90' : 'text-gray-600 dark:text-gray-400'} truncate transition-colors duration-200`}>
-                {title}
-              </dt>
-              <dd className={`text-2xl font-bold ${gradient ? 'text-white' : 'text-gray-600 dark:text-white'} mt-1 transition-colors duration-200`}>
-                {loading ? '...' : value}
-              </dd>
-            </dl>
-          </div>
+  const StatCard = ({ title, value, icon, color = 'blue' }) => (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
+          <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`}>
+            {loading ? '...' : value}
+          </p>
+        </div>
+        <div className={`w-12 h-12 bg-${color}-100 dark:bg-${color}-900/30 rounded-lg flex items-center justify-center`}>
+          {React.cloneElement(icon, { 
+            className: `w-6 h-6 text-${color}-600 dark:text-${color}-400` 
+          })}
         </div>
       </div>
     </div>
@@ -288,7 +280,7 @@ const DashboardScreen = ({ user }) => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200">Dashboard</h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 transition-colors duration-200">
-              Witaj, <span className="font-semibold text-indigo-600 dark:text-indigo-400">{user?.username}</span>! Oto przegląd systemu zarządzania.
+              Witaj, <span className="font-semibold text-indigo-600 dark:text-indigo-400">{user?.full_name || user?.username}</span>! Oto przegląd systemu zarządzania.
             </p>
           </div>
           <div className="hidden md:block">
@@ -304,7 +296,7 @@ const DashboardScreen = ({ user }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Łączna liczba pracowników"
+          title="Pracownicy"
           value={stats.totalEmployees}
           icon={
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,11 +304,10 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="blue"
-          gradient={false}
         />
         
         <StatCard
-          title="Aktywne departamenty"
+          title="Działy"
           value={stats.activeDepartments}
           icon={
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,7 +315,6 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="green"
-          gradient={false}
         />
         
         <StatCard
@@ -336,7 +326,6 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="purple"
-          gradient={false}
         />
         
         <StatCard
@@ -349,8 +338,73 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="orange"
-          gradient={false}
         />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
+        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
+              Szybkie akcje
+            </h3>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <button className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+              <div className="w-12 h-12 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
+                <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
+                Dodaj pracownika
+              </span>
+              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                Utwórz nowy profil pracownika
+              </span>
+            </button>
+            
+            <button 
+              onClick={() => setShowQuickIssueModal(true)}
+              className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-green-300 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
+              <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
+                <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200">
+                Szybkie wydanie
+              </span>
+              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                Skanuj kod narzędzia
+              </span>
+            </button>
+            
+            <button 
+              onClick={() => setShowQuickReturnModal(true)}
+              className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
+              <div className="w-12 h-12 mx-auto bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
+                <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+              </div>
+              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">
+                Szybki zwrot
+              </span>
+              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                Zwróć wydane narzędzia
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Tool History */}
@@ -452,73 +506,7 @@ const DashboardScreen = ({ user }) => {
           )}
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-              Szybkie akcje
-            </h3>
-          </div>
-        </div>
-        
-        <div className="p-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <button className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-              <div className="w-12 h-12 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
-                <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-                Dodaj pracownika
-              </span>
-              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Utwórz nowy profil pracownika
-              </span>
-            </button>
-            
-            <button 
-              onClick={() => setShowQuickIssueModal(true)}
-              className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-green-300 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
-              <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
-                <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200">
-                Szybkie wydanie
-              </span>
-              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Skanuj kod narzędzia
-              </span>
-            </button>
-            
-            <button 
-              onClick={() => setShowQuickReturnModal(true)}
-              className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
-              <div className="w-12 h-12 mx-auto bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                </svg>
-              </div>
-              <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">
-                Szybki zwrot
-              </span>
-              <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Zwróć wydane narzędzia
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-
+      
       {/* Quick Issue Modal */}
       {showQuickIssueModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">

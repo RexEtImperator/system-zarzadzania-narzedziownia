@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const DepartmentManagementScreen = ({ apiClient }) => {
   const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
@@ -15,23 +16,56 @@ const DepartmentManagementScreen = ({ apiClient }) => {
 
   useEffect(() => {
     fetchDepartments();
+    fetchEmployees();
   }, []);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      // Symulacja danych - w rzeczywistej aplikacji pobierałbyś dane z API
-      const mockDepartments = [
-        { id: 1, name: 'IT', description: 'Dział informatyczny', managerName: 'Jan Kowalski', employeeCount: 15, status: 'active' },
-        { id: 2, name: 'HR', description: 'Zasoby ludzkie', managerName: 'Anna Nowak', employeeCount: 8, status: 'active' },
-        { id: 3, name: 'Finanse', description: 'Dział finansowy', managerName: 'Piotr Wiśniewski', employeeCount: 12, status: 'active' },
-        { id: 4, name: 'Marketing', description: 'Dział marketingu', managerName: 'Maria Kowalczyk', employeeCount: 10, status: 'inactive' }
-      ];
-      setDepartments(mockDepartments);
+      const data = await apiClient.get('/api/departments');
+      setDepartments(data);
     } catch (error) {
       console.error('Błąd podczas pobierania departamentów:', error);
+      // Fallback: użyj domyślnych nazw działów z wymagań
+      const fallbackNames = [
+        'Administracja',
+        'Automatyczny',
+        'Elektryczny',
+        'Mechaniczny',
+        'Narzędziownia',
+        'Skrawanie',
+        'Pomiarowy',
+        'Zewnętrzny',
+        'Ślusarko-spawalniczy'
+      ];
+      setDepartments(fallbackNames.map((name, idx) => ({
+        id: idx + 1,
+        name,
+        description: '',
+        managerId: '',
+        managerName: 'Nie przypisano',
+        employeeCount: 0,
+        status: 'active'
+      })));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const data = await apiClient.get('/api/employees');
+      // Normalizuj do { id, name }
+      const normalized = data.map(e => ({ id: e.id || e.employee_id || e.brand_number, name: `${e.first_name} ${e.last_name}` }));
+      setEmployees(normalized);
+    } catch (error) {
+      console.error('Błąd podczas pobierania pracowników:', error);
+      // Fallback minimalny
+      setEmployees([
+        { id: 1, name: 'Jan Kowalski' },
+        { id: 2, name: 'Anna Nowak' },
+        { id: 3, name: 'Piotr Wiśniewski' }
+      ]);
     }
   };
 
@@ -84,22 +118,25 @@ const DepartmentManagementScreen = ({ apiClient }) => {
     }
 
     try {
+      const managerName = employees.find(e => String(e.id) === String(formData.managerId))?.name || 'Nie przypisano';
       if (editingDepartment) {
         // Aktualizacja
         setDepartments(prev => prev.map(dept => 
           dept.id === editingDepartment.id 
-            ? { ...dept, ...formData }
+            ? { ...dept, ...formData, managerName }
             : dept
         ));
+        // TODO: wywołanie API: await apiClient.put(`/api/departments/${editingDepartment.id}`, { ...formData })
       } else {
         // Dodawanie
         const newDepartment = {
           id: Date.now(),
           ...formData,
-          managerName: 'Nie przypisano',
+          managerName,
           employeeCount: 0
         };
         setDepartments(prev => [...prev, newDepartment]);
+        // TODO: wywołanie API: await apiClient.post('/api/departments', newDepartment)
       }
       setShowModal(false);
     } catch (error) {
@@ -248,6 +285,24 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
+                    </div>
+
+                    <div>
+                      <label htmlFor="managerId" className="block text-sm font-medium text-gray-700">
+                        Kierownik działu
+                      </label>
+                      <select
+                        name="managerId"
+                        id="managerId"
+                        value={formData.managerId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, managerId: e.target.value }))}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      >
+                        <option value="">Nie przypisano</option>
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

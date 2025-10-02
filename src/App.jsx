@@ -185,7 +185,7 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'labels', label: 'Etykiety', icon: '🏷️', permission: PERMISSIONS.VIEW_TOOLS },
-    { id: 'admin', label: 'Admin', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
+    { id: 'admin', label: 'Ustawienia', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
   ];
 
   const filteredItems = menuItems.filter(item => 
@@ -242,7 +242,7 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
       employees: 'Pracownicy',
       analytics: 'Analityka',
       labels: 'Etykiety',
-      admin: 'Panel Administracyjny',
+      admin: 'Ustawienia',
       'user-management': 'Zarządzanie użytkownikami',
       config: 'Konfiguracja',
       audit: 'Dziennik audytu'
@@ -781,7 +781,7 @@ function AdminPanel({ user, onNavigate }) {
 
   const handleDeleteHistory = async () => {
     try {
-      await api.del('/tools/history');
+      await api.delete('/tools/history');
       toast.success('Historia wydań została usunięta');
       setShowDeleteHistoryConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię wydań narzędzi');
@@ -792,28 +792,28 @@ function AdminPanel({ user, onNavigate }) {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Panel Administracyjny</h1>
-        <p className="text-slate-600">Zarządzaj systemem i konfiguracją</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ustawienia</h1>
+        <p className="text-slate-600 dark:text-slate-400">Zarządzaj systemem i konfiguracją</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* User Management */}
         {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">👥</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Użytkownicy</h3>
-                <p className="text-sm text-slate-600">Zarządzaj kontami użytkowników</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Użytkownicy</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzaj kontami użytkowników</p>
               </div>
             </div>
             <button 
               onClick={() => onNavigate('user-management')}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
             >
               Zarządzaj użytkownikami
             </button>
@@ -822,19 +822,19 @@ function AdminPanel({ user, onNavigate }) {
 
         {/* System Configuration */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">⚙️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Konfiguracja</h3>
-                <p className="text-sm text-slate-600">Ustawienia systemu</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Konfiguracja</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Ustawienia systemu</p>
               </div>
             </div>
             <button 
               onClick={() => onNavigate('config')}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+              className="w-full bg-green-600 dark:bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition-colors"
             >
               Otwórz konfigurację
             </button>
@@ -843,19 +843,19 @@ function AdminPanel({ user, onNavigate }) {
 
         {/* Data Management */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">🗑️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Dane systemu</h3>
-                <p className="text-sm text-slate-600">Zarządzanie danymi</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dane systemu</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzanie danymi</p>
               </div>
             </div>
             <button 
               onClick={() => setShowDeleteHistoryConfirm(true)}
-              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+              className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
             >
               Usuń historię wydań
             </button>
@@ -863,19 +863,19 @@ function AdminPanel({ user, onNavigate }) {
         )}
 
         {/* Audit Log */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
               <span className="text-2xl">📋</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Dziennik audytu</h3>
-              <p className="text-sm text-slate-600">Przeglądaj historię operacji</p>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dziennik audytu</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Przeglądaj historię operacji</p>
             </div>
           </div>
           <button 
             onClick={() => onNavigate('audit')}
-            className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+            className="w-full bg-purple-600 dark:bg-purple-700 text-white py-2 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors"
           >
             Zobacz dziennik
           </button>
@@ -883,36 +883,36 @@ function AdminPanel({ user, onNavigate }) {
 
         {/* Role Management */}
         {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">🎭</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Role i uprawnienia</h3>
-                <p className="text-sm text-slate-600">Konfiguruj role użytkowników</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
               </div>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>👑 Administrator</span>
-                <span className="text-slate-600">Pełny dostęp</span>
+                <span className="dark:text-slate-300">👑 Administrator</span>
+                <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
               </div>
               <div className="flex justify-between">
-                <span>👔 Menedżer</span>
-                <span className="text-slate-600">Zarządzanie + analityka</span>
+                <span className="dark:text-slate-300">👔 Menedżer</span>
+                <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
               </div>
               <div className="flex justify-between">
-                <span>👷 Pracownik</span>
-                <span className="text-slate-600">Podstawowe operacje</span>
+                <span className="dark:text-slate-300">👷 Pracownik</span>
+                <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
               </div>
               <div className="flex justify-between">
-                <span>👤 Użytkownik</span>
-                <span className="text-slate-600">Ograniczony dostęp</span>
+                <span className="dark:text-slate-300">👤 Użytkownik</span>
+                <span className="text-slate-600 dark:text-slate-400">Ograniczony dostęp</span>
               </div>
               <div className="flex justify-between">
-                <span>👁️ Obserwator</span>
-                <span className="text-slate-600">Tylko odczyt</span>
+                <span className="dark:text-slate-300">👁️ Obserwator</span>
+                <span className="text-slate-600 dark:text-slate-400">Tylko odczyt</span>
               </div>
             </div>
           </div>
@@ -994,7 +994,7 @@ function App() {
     // Dodaj wpis audytu dla nawigacji do ważnych sekcji
     const screenLabels = {
       'analytics': 'Przeglądano sekcję analityki',
-      'admin': 'Dostęp do panelu administracyjnego',
+      'admin': 'Dostęp do ustawień systemu',
       'audit': 'Przeglądano dziennik audytu'
     };
     

@@ -707,6 +707,59 @@ app.delete('/api/employees/:id', authenticateToken, (req, res) => {
   });
 });
 
+// Endpoint do usuwania historii wydań i zwrotów
+app.delete('/tools/history', authenticateToken, (req, res) => {
+  console.log('Rozpoczęcie usuwania historii wydań i zwrotów...');
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('Błąd rozpoczęcia transakcji:', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      // Usuń wszystkie rekordy z tabeli tool_issues
+      db.run('DELETE FROM tool_issues', function(err) {
+        if (err) {
+          console.error('Błąd usuwania z tabeli tool_issues:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań' });
+        }
+
+        const deletedIssues = this.changes;
+        console.log(`Usunięto ${deletedIssues} rekordów z tabeli tool_issues`);
+
+        // Zresetuj status wszystkich narzędzi na 'dostępne'
+        db.run('UPDATE tools SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
+          if (err) {
+            console.error('Błąd resetowania statusów narzędzi:', err);
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd podczas resetowania statusów narzędzi' });
+          }
+
+          const updatedTools = this.changes;
+          console.log(`Zaktualizowano status ${updatedTools} narzędzi na 'dostępne'`);
+
+          // Zatwierdź transakcję
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Błąd zatwierdzania transakcji:', err);
+              return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+            }
+
+            console.log('Historia wydań i zwrotów została pomyślnie usunięta');
+            res.json({ 
+              message: 'Historia wydań i zwrotów została pomyślnie usunięta',
+              deleted_issues: deletedIssues,
+              updated_tools: updatedTools
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
 // Uruchomienie serwera
 // Endpoints dla zarządzania użytkownikami
 

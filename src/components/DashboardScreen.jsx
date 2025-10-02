@@ -210,101 +210,19 @@ const DashboardScreen = ({ user }) => {
         activeDepartments: statsRes.activeDepartments || 0,
         totalPositions: statsRes.totalPositions || 0,
         totalTools: statsRes.totalTools || 0,
-        toolHistory: toolHistoryData.length > 0 ? toolHistoryData : [
-          { 
-            id: 1, 
-            action: 'wydanie', 
-            toolName: 'Wiertarka udarowa Bosch', 
-            employeeName: 'Jan Kowalski', 
-            time: '2 godziny temu',
-            quantity: 1
-          },
-          { 
-            id: 2, 
-            action: 'zwrot', 
-            toolName: 'Młot pneumatyczny', 
-            employeeName: 'Anna Nowak', 
-            time: '4 godziny temu',
-            quantity: 1
-          },
-          { 
-            id: 3, 
-            action: 'wydanie', 
-            toolName: 'Piła łańcuchowa Stihl', 
-            employeeName: 'Piotr Wiśniewski', 
-            time: '1 dzień temu',
-            quantity: 1
-          },
-          { 
-            id: 4, 
-            action: 'zwrot', 
-            toolName: 'Lutownica 60W', 
-            employeeName: 'Maria Kowalczyk', 
-            time: '2 dni temu',
-            quantity: 2
-          },
-          { 
-            id: 5, 
-            action: 'wydanie', 
-            toolName: 'Klucz dynamometryczny', 
-            employeeName: 'Tomasz Nowicki', 
-            time: '3 dni temu',
-            quantity: 1
-          },
-          { 
-            id: 6, 
-            action: 'zwrot', 
-            toolName: 'Szlifierka kątowa', 
-            employeeName: 'Katarzyna Zielińska', 
-            time: '4 dni temu',
-            quantity: 1
-          }
-        ]
+        toolHistory: toolHistoryData
       };
       
       setStats(dashboardStats);
     } catch (error) {
       console.error('Błąd podczas pobierania danych dashboard:', error);
-      // Fallback do danych mockowych z żądanymi wartościami
+      // Fallback do pustych danych w przypadku błędu
       const mockStats = {
-        totalEmployees: 156,
-        activeDepartments: 8,
-        totalPositions: 24,
-        totalTools: 45,
-        toolHistory: [
-          { 
-            id: 1, 
-            action: 'wydanie', 
-            toolName: 'Wiertarka udarowa Bosch', 
-            employeeName: 'Jan Kowalski', 
-            time: '2 godziny temu',
-            quantity: 1
-          },
-          { 
-            id: 2, 
-            action: 'zwrot', 
-            toolName: 'Młot pneumatyczny', 
-            employeeName: 'Anna Nowak', 
-            time: '4 godziny temu',
-            quantity: 1
-          },
-          { 
-            id: 3, 
-            action: 'wydanie', 
-            toolName: 'Piła łańcuchowa Stihl', 
-            employeeName: 'Piotr Wiśniewski', 
-            time: '1 dzień temu',
-            quantity: 1
-          },
-          { 
-            id: 4, 
-            action: 'zwrot', 
-            toolName: 'Lutownica 60W', 
-            employeeName: 'Maria Kowalczyk', 
-            time: '2 dni temu',
-            quantity: 2
-          }
-        ]
+        totalEmployees: 0,
+        activeDepartments: 0,
+        totalPositions: 0,
+        totalTools: 0,
+        toolHistory: []
       };
       setStats(mockStats);
     } finally {
@@ -317,18 +235,18 @@ const DashboardScreen = ({ user }) => {
       <div className="p-6">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <div className={`w-12 h-12 ${gradient ? 'bg-white bg-opacity-20' : `bg-${color}-500`} rounded-xl flex items-center justify-center shadow-lg`}>
+            <div className={`w-12 h-12 ${gradient ? 'bg-white bg-opacity-20' : `bg-${color}-500 dark:bg-${color}-600`} rounded-xl flex items-center justify-center shadow-lg transition-colors duration-200`}>
               {React.cloneElement(icon, { 
-                className: `w-6 h-6 ${gradient ? 'text-white' : 'text-white'}` 
+                className: `w-6 h-6 text-gray-600 dark:text-white` 
               })}
             </div>
           </div>
           <div className="ml-5 w-0 flex-1">
             <dl>
-              <dt className={`text-sm font-medium ${gradient ? 'text-white text-opacity-90' : 'text-gray-500 dark:text-gray-400'} truncate transition-colors duration-200`}>
+              <dt className={`text-sm font-medium ${gradient ? 'text-white text-opacity-90' : 'text-gray-600 dark:text-gray-400'} truncate transition-colors duration-200`}>
                 {title}
               </dt>
-              <dd className={`text-2xl font-bold ${gradient ? 'text-white' : 'text-gray-900 dark:text-white'} mt-1 transition-colors duration-200`}>
+              <dd className={`text-2xl font-bold ${gradient ? 'text-white' : 'text-gray-600 dark:text-white'} mt-1 transition-colors duration-200`}>
                 {loading ? '...' : value}
               </dd>
             </dl>
@@ -394,7 +312,7 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="blue"
-          gradient={true}
+          gradient={false}
         />
         
         <StatCard
@@ -406,7 +324,7 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="green"
-          gradient={true}
+          gradient={false}
         />
         
         <StatCard
@@ -418,7 +336,7 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="purple"
-          gradient={true}
+          gradient={false}
         />
         
         <StatCard
@@ -431,7 +349,7 @@ const DashboardScreen = ({ user }) => {
             </svg>
           }
           color="orange"
-          gradient={true}
+          gradient={false}
         />
       </div>
 

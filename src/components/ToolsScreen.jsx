@@ -381,14 +381,14 @@ function ToolsScreen() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <span className="text-slate-500">Ładowanie...</span>
+      <div className="flex items-center justify-center min-h-screen dark:bg-slate-900">
+        <span className="text-slate-500 dark:text-slate-400">Ładowanie...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-white min-h-screen">
+    <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
       <style jsx>{`
         /* Optymalizacja renderowania tekstu dla lepszej ostrości */
         .sharp-text {
@@ -428,22 +428,22 @@ function ToolsScreen() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 sharp-text">Zarządzanie narzędziami</h1>
-          <p className="text-slate-600 sharp-text">Dodawaj, edytuj i śledź narzędzia w systemie</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sharp-text">Zarządzanie narzędziami</h1>
+          <p className="text-slate-600 dark:text-slate-400 sharp-text">Dodawaj, edytuj i śledź narzędzia w systemie</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors sharp-text"
+          className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors sharp-text"
         >
           Dodaj narzędzie
         </button>
       </div>
 
       {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2 sharp-text">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
               Wyszukaj narzędzie
             </label>
             <input
@@ -451,17 +451,17 @@ function ToolsScreen() {
               placeholder="Nazwa, SKU, kategoria..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2 sharp-text">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
               Kategoria
             </label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
             >
               <option value="">Wszystkie kategorie</option>
               {categories.map(category => (
@@ -470,13 +470,13 @@ function ToolsScreen() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2 sharp-text">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
               Status
             </label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
             >
               <option value="">Wszystkie statusy</option>
               {statuses.map(status => (
@@ -490,17 +490,17 @@ function ToolsScreen() {
       {/* Tools List */}
       {loading ? (
         <div className="p-8 text-center">
-          <div className="text-slate-400 text-6xl mb-4">🔧</div>
-          <h3 className="text-lg font-medium text-slate-900 mb-2 sharp-text">Ładowanie narzędzi...</h3>
-          <p className="text-slate-600 sharp-text">
+          <div className="text-slate-400 dark:text-slate-500 text-6xl mb-4">🔧</div>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">Ładowanie narzędzi...</h3>
+          <p className="text-slate-600 dark:text-slate-400 sharp-text">
             Proszę czekać...
           </p>
         </div>
       ) : filteredTools.length === 0 ? (
         <div className="p-8 text-center">
-          <div className="text-slate-400 text-6xl mb-4">🔧</div>
-          <h3 className="text-lg font-medium text-slate-900 mb-2 sharp-text">Brak narzędzi</h3>
-          <p className="text-slate-600 sharp-text">
+          <div className="text-slate-400 dark:text-slate-500 text-6xl mb-4">🔧</div>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">Brak narzędzi</h3>
+          <p className="text-slate-600 dark:text-slate-400 sharp-text">
             {searchTerm || selectedCategory || selectedStatus 
               ? 'Nie znaleziono narzędzi spełniających kryteria wyszukiwania.'
               : 'Dodaj pierwsze narzędzie, aby rozpocząć zarządzanie.'}
@@ -509,55 +509,55 @@ function ToolsScreen() {
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">Nazwa</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">Kategoria</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">Status</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">Lokalizacja</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">SKU</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 sharp-text">Akcje</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Nazwa</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Kategoria</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Status</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Lokalizacja</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">SKU</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Akcje</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
                 {filteredTools.map((tool) => (
                   <tr 
                     key={tool.id} 
-                    className="hover:bg-slate-50 cursor-pointer"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                     onClick={() => handleRowClick(tool)}
                   >
                     <td className="p-4">
-                      <div className="font-medium text-slate-900 sharp-text">{tool.name}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100 sharp-text">{tool.name}</div>
                       {tool.description && (
-                        <div className="text-sm text-slate-500 sharp-text">{tool.description}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 sharp-text">{tool.description}</div>
                       )}
                     </td>
-                    <td className="p-4 text-slate-600 sharp-text">{tool.category || '-'}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.category || '-'}</td>
                     <td className="p-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${
-                        tool.status === 'dostępne' ? 'bg-green-100 text-green-800' :
-                        tool.status === 'wydane' ? 'bg-yellow-100 text-yellow-800' :
-                        tool.status === 'serwis' ? 'bg-red-100 text-red-800' :
-                        'bg-slate-100 text-slate-800'
+                        tool.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                        tool.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                        tool.status === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
+                        'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                       }`}>
                         {tool.status || 'nieznany'}
                       </span>
                     </td>
-                    <td className="p-4 text-slate-600 sharp-text">{tool.location || '-'}</td>
-                    <td className="p-4 text-slate-600 font-mono text-sm sharp-text">{tool.sku || '-'}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.location || '-'}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.sku || '-'}</td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleOpenModal(tool)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium sharp-text"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium sharp-text"
                         >
                           Edytuj
                         </button>
                         <button
                           onClick={() => handleDelete(tool.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium sharp-text"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium sharp-text"
                         >
                           Usuń
                         </button>
@@ -570,25 +570,25 @@ function ToolsScreen() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden divide-y divide-slate-200">
+          <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
             {filteredTools.map((tool) => (
               <div 
                 key={tool.id} 
-                className="p-4 cursor-pointer hover:bg-slate-50"
+                className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800"
                 onClick={() => handleRowClick(tool)}
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <div className="font-medium text-slate-900 sharp-text">{tool.name}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100 sharp-text">{tool.name}</div>
                     {tool.description && (
-                      <div className="text-sm text-slate-500 mt-1 sharp-text">{tool.description}</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 sharp-text">{tool.description}</div>
                     )}
                   </div>
                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${
-                    tool.status === 'dostępne' ? 'bg-green-100 text-green-800' :
-                    tool.status === 'wydane' ? 'bg-yellow-100 text-yellow-800' :
-                    tool.status === 'serwis' ? 'bg-red-100 text-red-800' :
-                    'bg-slate-100 text-slate-800'
+                    tool.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                    tool.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                    tool.status === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
+                    'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                   }`}>
                     {tool.status || 'nieznany'}
                   </span>
@@ -596,29 +596,29 @@ function ToolsScreen() {
                 
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between">
-                    <span className="text-slate-500 sharp-text">Kategoria:</span>
-                    <span className="text-slate-900 sharp-text">{tool.category || '-'}</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Kategoria:</span>
+                    <span className="text-slate-900 dark:text-slate-100 sharp-text">{tool.category || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 sharp-text">Lokalizacja:</span>
-                    <span className="text-slate-900 sharp-text">{tool.location || '-'}</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Lokalizacja:</span>
+                    <span className="text-slate-900 dark:text-slate-100 sharp-text">{tool.location || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 sharp-text">SKU:</span>
-                    <span className="text-slate-900 font-mono text-xs sharp-text">{tool.sku || '-'}</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.sku || '-'}</span>
                   </div>
                 </div>
                 
-                <div className="flex gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-600" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => handleOpenModal(tool)}
-                    className="flex-1 bg-blue-50 text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium sharp-text"
+                    className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium sharp-text"
                   >
                     Edytuj
                   </button>
                   <button
                     onClick={() => handleDelete(tool.id)}
-                    className="flex-1 bg-red-50 text-red-600 py-2 px-3 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium sharp-text"
+                    className="flex-1 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 py-2 px-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors text-sm font-medium sharp-text"
                   >
                     Usuń
                   </button>
@@ -640,15 +640,15 @@ function ToolsScreen() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-slate-900 sharp-text">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 sharp-text">
                   {editingTool ? 'Edytuj narzędzie' : 'Dodaj narzędzie'}
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   <span className="text-2xl">×</span>
                 </button>
@@ -658,7 +658,7 @@ function ToolsScreen() {
                 {/* First row - Name and SKU */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Nazwa *
                     </label>
                     <input
@@ -666,19 +666,19 @@ function ToolsScreen() {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text ${
-                        errors.name ? 'border-red-300' : 'border-slate-300'
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                        errors.name ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                       }`}
                       placeholder="Nazwa narzędzia"
                     />
                     {errors.name && (
-                      <p className="text-red-600 text-sm mt-1 sharp-text">{errors.name}</p>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.name}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
-                      SKU {!editingTool && <span className="text-slate-500 text-xs">(auto)</span>}
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                      SKU {!editingTool && <span className="text-slate-500 dark:text-slate-400 text-xs">(auto)</span>}
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -686,22 +686,22 @@ function ToolsScreen() {
                         name="sku"
                         value={formData.sku}
                         onChange={handleInputChange}
-                        className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text ${
-                          errors.sku ? 'border-red-300' : 'border-slate-300'
+                        className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                          errors.sku ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                         placeholder={editingTool ? "SKU narzędzia" : "SKU (opcjonalne)"}
                       />
                       <button
                         type="button"
                         onClick={() => setShowBarcodeScanner(true)}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                        className="px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                         title="Skanuj kod kreskowy/QR"
                       >
                         📷
                       </button>
                     </div>
                     {errors.sku && (
-                      <p className="text-red-600 text-sm mt-1 sharp-text">{errors.sku}</p>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.sku}</p>
                     )}
                   </div>
                 </div>
@@ -709,7 +709,7 @@ function ToolsScreen() {
                 {/* Second row - Category and Location */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Kategoria *
                     </label>
                     <input
@@ -717,18 +717,18 @@ function ToolsScreen() {
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text ${
-                        errors.category ? 'border-red-300' : 'border-slate-300'
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                        errors.category ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                       }`}
                       placeholder="Kategoria narzędzia"
                     />
                     {errors.category && (
-                      <p className="text-red-600 text-sm mt-1 sharp-text">{errors.category}</p>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.category}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Lokalizacja
                     </label>
                     <input
@@ -736,7 +736,7 @@ function ToolsScreen() {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
                       placeholder="Lokalizacja narzędzia"
                     />
                   </div>
@@ -745,7 +745,7 @@ function ToolsScreen() {
                 {/* Third row - Quantity and Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Ilość *
                     </label>
                     <input
@@ -754,17 +754,17 @@ function ToolsScreen() {
                       value={formData.quantity}
                       onChange={handleInputChange}
                       min="1"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text ${
-                        errors.quantity ? 'border-red-300' : 'border-slate-300'
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                        errors.quantity ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                       }`}
                     />
                     {errors.quantity && (
-                      <p className="text-red-600 text-sm mt-1 sharp-text">{errors.quantity}</p>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.quantity}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Status
                     </label>
                     <select
@@ -772,8 +772,8 @@ function ToolsScreen() {
                       value={formData.status}
                       onChange={handleInputChange}
                       disabled={!!editingTool}
-                      className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text ${
-                        editingTool ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                      className={`w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text ${
+                        editingTool ? 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed' : ''
                       }`}
                     >
                       <option value="dostępne">Dostępne</option>
@@ -785,7 +785,7 @@ function ToolsScreen() {
 
                 {/* Description - full width */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1 sharp-text">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                     Opis
                   </label>
                   <textarea
@@ -793,27 +793,27 @@ function ToolsScreen() {
                     value={formData.description}
                     onChange={handleInputChange}
                     rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
                     placeholder="Opis narzędzia"
                   />
                 </div>
 
                 {errors.submit && (
-                  <div className="text-red-600 text-sm sharp-text">{errors.submit}</div>
+                  <div className="text-red-600 dark:text-red-400 text-sm sharp-text">{errors.submit}</div>
                 )}
 
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="flex-1 px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors sharp-text"
+                    className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors sharp-text"
                   >
                     Anuluj
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 sharp-text"
+                    className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors disabled:opacity-50 sharp-text"
                   >
                     {isLoading ? 'Zapisywanie...' : (editingTool ? 'Zaktualizuj' : 'Dodaj')}
                   </button>
@@ -827,15 +827,15 @@ function ToolsScreen() {
       {/* Tool Details Modal */}
       {showDetailsModal && selectedTool && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900 sharp-text">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 sharp-text">
                   Szczegóły narzędzia: {selectedTool.name}
                 </h2>
                 <button
                   onClick={() => setShowDetailsModal(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   <span className="text-2xl">×</span>
                 </button>
@@ -845,39 +845,39 @@ function ToolsScreen() {
                 {/* Tool Information */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 sharp-text">Informacje o narzędziu</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Informacje o narzędziu</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-slate-500 sharp-text">Nazwa:</span>
-                        <span className="text-slate-900 font-medium sharp-text">{selectedTool.name}</span>
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Nazwa:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-medium sharp-text">{selectedTool.name}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500 sharp-text">SKU:</span>
-                        <span className="text-slate-900 font-mono sharp-text">{selectedTool.sku}</span>
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-mono sharp-text">{selectedTool.sku}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500 sharp-text">Kategoria:</span>
-                        <span className="text-slate-900 sharp-text">{selectedTool.category || '-'}</span>
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Kategoria:</span>
+                        <span className="text-slate-900 dark:text-slate-100 sharp-text">{selectedTool.category || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500 sharp-text">Lokalizacja:</span>
-                        <span className="text-slate-900 sharp-text">{selectedTool.location || '-'}</span>
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Lokalizacja:</span>
+                        <span className="text-slate-900 dark:text-slate-100 sharp-text">{selectedTool.location || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500 sharp-text">Status:</span>
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Status:</span>
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${
-                          selectedTool.status === 'dostępne' ? 'bg-green-100 text-green-800' :
-                          selectedTool.status === 'wydane' ? 'bg-yellow-100 text-yellow-800' :
-                          selectedTool.status === 'serwis' ? 'bg-red-100 text-red-800' :
-                          'bg-slate-100 text-slate-800'
+                          selectedTool.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                          selectedTool.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                          selectedTool.status === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
+                          'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                         }`}>
                           {selectedTool.status || 'nieznany'}
                         </span>
                       </div>
                       {selectedTool.description && (
                         <div>
-                          <span className="text-slate-500 sharp-text">Opis:</span>
-                          <p className="text-slate-900 mt-1 sharp-text">{selectedTool.description}</p>
+                          <span className="text-slate-500 dark:text-slate-400 sharp-text">Opis:</span>
+                          <p className="text-slate-900 dark:text-slate-100 mt-1 sharp-text">{selectedTool.description}</p>
                         </div>
                       )}
                     </div>
@@ -886,7 +886,7 @@ function ToolsScreen() {
                   <div className="pt-4">
                     <button
                       onClick={() => downloadLabel(selectedTool)}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 sharp-text"
+                      className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
                     >
                       Pobierz etykietę
                     </button>
@@ -896,14 +896,14 @@ function ToolsScreen() {
                 {/* QR Code and Barcode */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 sharp-text">Kod QR</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod QR</h3>
                     <div className="flex justify-center">
                       <QRCodeDisplay text={selectedTool.sku} />
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 sharp-text">Kod kreskowy</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod kreskowy</h3>
                     <div className="flex justify-center">
                       <BarcodeDisplay text={selectedTool.sku} />
                     </div>

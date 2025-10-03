@@ -77,16 +77,49 @@ Uwagi:
 ## Struktura projektu
 
 ```
-├── src/                    # Kod źródłowy frontend
-│   ├── App.jsx            # Główny komponent aplikacji
-│   ├── api.js             # Klient API
-│   ├── index.js           # Punkt wejścia
-│   └── index.css          # Style CSS
-├── public/                # Pliki statyczne
-├── backend/               # Konfiguracja backend
-├── server.js              # Serwer Express.js
-├── database.db            # Baza danych SQLite
-└── package.json           # Zależności projektu
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # Pipeline CI (build/test)
+├── public/                    # Pliki statyczne
+│   ├── index.html
+│   ├── favicon.ico
+│   ├── localhost.crt          # Certyfikat dev (HTTPS frontend)
+│   └── logos/                 # Zasoby graficzne
+├── ssl/                       # Klucze/certyfikaty lokalne
+│   ├── localhost.crt
+│   └── localhost.key
+├── src/                       # Kod źródłowy frontendu (React)
+│   ├── App.jsx                # Główny komponent aplikacji
+│   ├── api.js                 # Klient API + tokeny
+│   ├── constants.js           # Stałe aplikacji
+│   ├── index.js               # Punkt wejścia
+│   ├── index.css              # Style globalne
+│   ├── setupProxy.js          # Proxy do backendu w dev
+│   ├── contexts/
+│   │   └── ThemeContext.js    # Kontekst motywu
+│   ├── utils/
+│   │   └── dateUtils.js       # Pomocnicze funkcje dat
+│   └── components/            # Ekrany i komponenty UI
+│       ├── DashboardScreen.jsx
+│       ├── ToolsScreen.jsx
+│       ├── EmployeesScreen.jsx
+│       ├── BhpScreen.jsx
+│       ├── AppConfigScreen.jsx
+│       ├── Sidebar.jsx
+│       ├── TopBar.jsx
+│       └── ...                # Pozostałe komponenty (modale, skanery, itd.)
+├── server.js                  # Serwer Express (API, proxy, backupy)
+├── backups/                   # Zrzuty kopii zapasowych
+├── backend/
+│   └── package.json           # Metadane/backend (pomocnicze)
+├── test_*.js                  # Skrypty testowe i narzędziowe (dev)
+├── generate-ssl.js            # Generator certyfikatów dev
+├── install-cert.bat           # Instalator certyfikatu w Windows
+├── README.md                  # Dokumentacja
+├── CHANGELOG.md               # Zmiany w wersjach
+├── license.md                 # Licencja MIT
+├── package.json               # Zależności i skrypty npm
+└── package-lock.json          # Lockfile npm
 ```
 
 ## Jak uruchomić

@@ -31,3 +31,18 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 - Drobne porządki w komponentach UI, nowe logotypy w `public/logos/`.
 
 [1.1.1]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.1
+
+## [1.2.0] - 2025-10-03
+
+### Dodane / Zmienione
+- Narzędzia: komunikat potwierdzenia po edycji (toast) — „Pomyślnie zaktualizowano dane narzędzia”.
+- BHP: poprawione sortowanie listy przeglądów dla „Najbliższy” i „Najdalszy”.
+- API Narzędzia: poprawione endpointy w UI (`PUT/DELETE /api/tools/:id`).
+- Konfiguracja: zakładka „Backup” — wyświetlanie ostatniej kopii, listy plików oraz przycisk „Wykonaj kopię”.
+- Dokumentacja: zaktualizowana sekcja „Struktura projektu” w README.
+
+### Techniczne
+- Fix: obsługa odpowiedzi `POST /api/tools` bez użycia `.data` (klient zwraca obiekt bez wrappera).
+- Guard: defensywny `filter(Boolean)` przy filtrowaniu listy narzędzi, aby uniknąć błędów na pustych wpisach.
+
+[1.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0

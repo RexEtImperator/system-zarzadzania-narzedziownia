@@ -50,6 +50,30 @@ npm run server
 npm start
 ```
 
+## Konfiguracja .env
+
+Zalecane zmienne środowiskowe dla rozwoju lokalnego:
+
+- Backend (`.env` w katalogu głównym):
+  - `PORT=3000`
+  - `JWT_SECRET=twój_sekretny_klucz` (opcjonalnie; w kodzie jest domyślny klucz)
+  - `CORS_ORIGINS=http://localhost:3001,http://localhost:3000` (opcjonalnie)
+
+- Frontend (`.env.development.local`):
+  - `PORT=3001`
+  - `HTTPS=true`
+  - `SSL_CRT_FILE=ssl\\localhost.crt`
+  - `SSL_KEY_FILE=ssl\\localhost.key`
+  - `REACT_APP_API_BASE=http://localhost:3000` (opcjonalnie; w dev działa proxy z `src/setupProxy.js`)
+
+- Certyfikaty i urządzenia mobilne:
+  - Wygeneruj certyfikaty: `node generate-ssl.js`, następnie uruchom `install-cert.bat`
+  - Instrukcja instalacji certyfikatu na telefonach: [mobile-cert-install.md](mobile-cert-install.md)
+
+Uwagi:
+- CRA respektuje `PORT` i `HTTPS` dla frontendu; backend czyta `process.env.PORT`.
+- Jeśli `3001` jest zajęty, ustaw inny port w `.env.development.local`.
+
 ## Struktura projektu
 
 ```

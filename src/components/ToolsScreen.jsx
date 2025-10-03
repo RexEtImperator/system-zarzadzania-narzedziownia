@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import api from '../api';
 import BarcodeScanner from './BarcodeScanner';
 import QRCode from 'qrcode';
@@ -32,7 +33,7 @@ function ToolsScreen() {
   const statuses = [...new Set((tools || []).map(tool => tool.status).filter(Boolean))];
 
   // Filter tools based on search and filters
-  const filteredTools = (tools || []).filter(tool => {
+  const filteredTools = (tools || []).filter(Boolean).filter(tool => {
     const matchesSearch = !searchTerm || 
       tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tool.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,15 +111,17 @@ function ToolsScreen() {
       }
 
       if (editingTool) {
-        await api.put(`/tools/${editingTool.id}`, dataToSubmit);
+        await api.put(`/api/tools/${editingTool.id}`, dataToSubmit);
         setTools(prevTools => 
           prevTools.map(tool => 
             tool.id === editingTool.id ? { ...tool, ...dataToSubmit } : tool
           )
         );
+        toast.success('Pomyślnie zaktualizowano dane narzędzia');
       } else {
         const response = await api.post('/api/tools', dataToSubmit);
-        setTools(prevTools => [...prevTools, response.data]);
+        // API client zwraca bezpośrednio obiekt narzędzia, nie { data }
+        setTools(prevTools => [...prevTools, response]);
       }
 
       handleCloseModal();
@@ -166,7 +169,7 @@ function ToolsScreen() {
     }
 
     try {
-      await api.delete(`/tools/${toolId}`);
+      await api.delete(`/api/tools/${toolId}`);
       setTools(prevTools => prevTools.filter(tool => tool.id !== toolId));
     } catch (error) {
       console.error('Error deleting tool:', error);

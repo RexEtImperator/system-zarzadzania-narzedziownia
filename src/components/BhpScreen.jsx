@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../api';
 import { toast } from 'react-toastify';
 import { PERMISSIONS } from '../constants';
@@ -69,6 +70,364 @@ function BhpScreen({ employees = [], user }) {
   const [returnModal, setReturnModal] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeIssueId, setActiveIssueId] = useState('');
+
+  // ===== Eksport listy i szczegółów =====
+  const downloadBlob = (filename, mime, content) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatDate = (val) => (val ? new Date(val).toLocaleDateString('pl-PL') : '');
+
+  const exportListToCSV = () => {
+    const headers = [
+      'Nr ewidencyjny',
+      'Producent',
+      'Model',
+      'Nr seryjny',
+      'Nr katalogowy',
+      'Data produkcji',
+      'Data przeglądu',
+      'Status',
+      'Przypisany (imię)',
+      'Przypisany (nazwisko)'
+    ];
+    const rows = (filteredItems || []).map(item => [
+      item.inventory_number || '',
+      item.manufacturer || '',
+      item.model || '',
+      item.serial_number || '',
+      item.catalog_number || '',
+      formatDate(item.production_date),
+      formatDate(item.inspection_date),
+      item.status || '',
+      item.assigned_employee_first_name || '',
+      item.assigned_employee_last_name || ''
+    ]);
+    const csv = [headers.join(';'), ...rows.map(r => r.map(v => String(v).replace(/;/g, ',')).join(';'))].join('\n');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadBlob(`bhp_lista_${stamp}.csv`, 'text/csv;charset=utf-8;', csv);
+  };
+
+  const exportListToPDF = () => {
+    const stamp = new Date().toLocaleString('pl-PL');
+    const itemsArr = filteredItems || [];
+    const hasAnyShock = itemsArr.some(it => it.shock_absorber_name || it.shock_absorber_model || it.shock_absorber_serial || it.shock_absorber_catalog_number || it.shock_absorber_production_date);
+    const hasAnySrd = itemsArr.some(it => it.srd_manufacturer || it.srd_model || it.srd_serial_number || it.srd_catalog_number || it.srd_production_date);
+
+    const headerCells = [
+      'Nr ewidencyjny',
+      'Producent / Model',
+      'Nr seryjny',
+      'Nr katalogowy',
+      'Data produkcji',
+      'Data przeglądu',
+      'Status',
+      'Przypisany'
+    ];
+    if (hasAnyShock) {
+      headerCells.push('Amortyzator: Producent', 'Amortyzator: Model', 'Amortyzator: S/N', 'Amortyzator: Kat.', 'Amortyzator: Data prod.');
+    }
+    if (hasAnySrd) {
+      headerCells.push('SRD: Producent', 'SRD: Model', 'SRD: S/N', 'SRD: Kat.', 'SRD: Data prod.');
+    }
+
+    const headerHtml = headerCells.map(h => `<th>${h}</th>`).join('');
+
+    const tableRows = itemsArr.map(item => {
+      const cells = [
+        `<td>${item.inventory_number || ''}</td>`,
+        `<td>${(item.manufacturer || '')} ${item.model ? '— ' + item.model : ''}</td>`,
+        `<td>${item.serial_number || ''}</td>`,
+        `<td>${item.catalog_number || ''}</td>`,
+        `<td>${formatDate(item.production_date) || ''}</td>`,
+        `<td>${formatDate(item.inspection_date) || ''}</td>`,
+        `<td>${item.status || ''}</td>`,
+        `<td>${[(item.assigned_employee_first_name || ''),(item.assigned_employee_last_name || '')].join(' ').trim()}</td>`
+      ];
+      if (hasAnyShock) {
+        const shockName = item.shock_absorber_name || '-';
+        const shockModel = item.shock_absorber_model || '-';
+        const shockSerial = item.shock_absorber_serial || '-';
+        const shockCatalog = item.shock_absorber_catalog_number || '-';
+        const shockProdDate = item.shock_absorber_production_date ? formatDate(item.shock_absorber_production_date) : '-';
+        cells.push(
+          `<td>${shockName}</td>`,
+          `<td>${shockModel}</td>`,
+          `<td>${shockSerial}</td>`,
+          `<td>${shockCatalog}</td>`,
+          `<td>${shockProdDate}</td>`
+        );
+      }
+      if (hasAnySrd) {
+        const srdMan = item.srd_manufacturer || '-';
+        const srdModel = item.srd_model || '-';
+        const srdSerial = item.srd_serial_number || '-';
+        const srdCatalog = item.srd_catalog_number || '-';
+        const srdProdDate = item.srd_production_date ? formatDate(item.srd_production_date) : '-';
+        cells.push(
+          `<td>${srdMan}</td>`,
+          `<td>${srdModel}</td>`,
+          `<td>${srdSerial}</td>`,
+          `<td>${srdCatalog}</td>`,
+          `<td>${srdProdDate}</td>`
+        );
+      }
+      return `<tr>${cells.join('')}</tr>`;
+    }).join('');
+
+    const html = `
+      <html>
+      <head>
+        <meta charset=\"utf-8\" />
+        <title>Eksport BHP — lista</title>
+        <style>
+          body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
+          h1 { font-size: 18px; margin: 0 0 8px; }
+          .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+          th { background: #eee; }
+          .muted { color: #666; }
+          @page { size: A4; margin: 10mm; }
+        </style>
+      </head>
+      <body>
+        <h1>Sprzęt BHP — lista</h1>
+        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <table>
+          <thead>
+            <tr>
+              ${headerHtml}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </body>
+      </html>`;
+    const w = window.open('', '_blank');
+    if (!w) return alert('Pop-up zablokowany — zezwól na otwieranie nowych okien');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  const exportListToXLSX = () => {
+    const itemsArr = filteredItems || [];
+    const hasAnyShock = itemsArr.some(it => it.shock_absorber_name || it.shock_absorber_model || it.shock_absorber_serial || it.shock_absorber_catalog_number || it.shock_absorber_production_date);
+    const hasAnySrd = itemsArr.some(it => it.srd_manufacturer || it.srd_model || it.srd_serial_number || it.srd_catalog_number || it.srd_production_date);
+
+    const headers = [
+      'Nr ewidencyjny',
+      'Producent',
+      'Model',
+      'Nr seryjny',
+      'Nr katalogowy',
+      'Data produkcji',
+      'Data przeglądu',
+      'Status',
+      'Przypisany (imię)',
+      'Przypisany (nazwisko)'
+    ];
+    if (hasAnyShock) headers.push('Amortyzator');
+    if (hasAnySrd) headers.push('Urządzenie samohamowne');
+
+    const rows = itemsArr.map(item => {
+      const base = [
+        item.inventory_number || '',
+        item.manufacturer || '',
+        item.model || '',
+        item.serial_number || '',
+        item.catalog_number || '',
+        formatDate(item.production_date) || '',
+        formatDate(item.inspection_date) || '',
+        item.status || '',
+        item.assigned_employee_first_name || '',
+        item.assigned_employee_last_name || ''
+      ];
+      if (hasAnyShock) {
+        const shockParts = [];
+        if (item.shock_absorber_name) shockParts.push(`Prod.: ${item.shock_absorber_name}`);
+        if (item.shock_absorber_model) shockParts.push(`Model: ${item.shock_absorber_model}`);
+        if (item.shock_absorber_serial) shockParts.push(`S/N: ${item.shock_absorber_serial}`);
+        if (item.shock_absorber_catalog_number) shockParts.push(`Kat.: ${item.shock_absorber_catalog_number}`);
+        if (item.shock_absorber_production_date) shockParts.push(`Prod. data: ${formatDate(item.shock_absorber_production_date)}`);
+        base.push(shockParts.length ? shockParts.join(' • ') : '');
+      }
+      if (hasAnySrd) {
+        const srdParts = [];
+        if (item.srd_manufacturer) srdParts.push(`Prod.: ${item.srd_manufacturer}`);
+        if (item.srd_model) srdParts.push(`Model: ${item.srd_model}`);
+        if (item.srd_serial_number) srdParts.push(`S/N: ${item.srd_serial_number}`);
+        if (item.srd_catalog_number) srdParts.push(`Kat.: ${item.srd_catalog_number}`);
+        if (item.srd_production_date) srdParts.push(`Prod. data: ${formatDate(item.srd_production_date)}`);
+        base.push(srdParts.length ? srdParts.join(' • ') : '');
+      }
+      return base;
+    });
+    const aoa = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'BHP');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadBlob(`bhp_lista_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
+  };
+
+  const exportDetailsToCSV = () => {
+    if (!detailsItem || !detailsData) return;
+    const headers = ['Pole', 'Wartość'];
+    const fields = [
+      ['Nr ewidencyjny', detailsItem.inventory_number || ''],
+      ['Producent', detailsData.manufacturer || ''],
+      ['Model', detailsData.model || ''],
+      ['Nr seryjny', detailsData.serial_number || ''],
+      ['Nr katalogowy', detailsData.catalog_number || ''],
+      ['Data produkcji', formatDate(detailsData.production_date) || ''],
+      ['Rozpoczęcie użytkowania', formatDate(detailsData.harness_start_date) || ''],
+      ['Data przeglądu', formatDate(detailsData.inspection_date) || ''],
+      ['Status', detailsItem.status || ''],
+      ['Przypisany', `${(detailsItem.assigned_employee_first_name || '')} ${(detailsItem.assigned_employee_last_name || '')}`.trim()]
+    ];
+    const csv = [headers.join(';'), ...fields.map(([k,v]) => `${String(k).replace(/;/g, ',')};${String(v).replace(/;/g, ',')}`)].join('\n');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadBlob(`bhp_${detailsItem.inventory_number || 'pozycja'}_${stamp}.csv`, 'text/csv;charset=utf-8;', csv);
+  };
+
+  const exportDetailsToPDF = () => {
+    if (!detailsItem || !detailsData) return;
+    const stamp = new Date().toLocaleString('pl-PL');
+    const hasShock = !!(detailsData.shock_absorber_name || detailsData.shock_absorber_model || detailsData.shock_absorber_serial || detailsData.shock_absorber_catalog_number || detailsData.shock_absorber_production_date);
+    const hasSrd = !!(detailsData.srd_manufacturer || detailsData.srd_model || detailsData.srd_serial_number || detailsData.srd_catalog_number || detailsData.srd_production_date);
+
+    const rows = [
+      ['Nr ewidencyjny', detailsItem.inventory_number || '-'],
+      ['Producent', detailsData.manufacturer || '-'],
+      ['Model', detailsData.model || '-'],
+      ['Nr seryjny', detailsData.serial_number || '-'],
+      ['Nr katalogowy', detailsData.catalog_number || '-'],
+      ['Data produkcji', formatDate(detailsData.production_date) || '-'],
+      ['Rozpoczęcie użytkowania', formatDate(detailsData.harness_start_date) || '-'],
+      ['Data przeglądu', formatDate(detailsData.inspection_date) || '-'],
+      ['Status', detailsItem.status || '-'],
+      ['Przypisany', `${(detailsItem.assigned_employee_first_name || '')} ${(detailsItem.assigned_employee_last_name || '')}`.trim() || '-']
+    ];
+
+    if (hasShock) {
+      rows.push(
+        ['Amortyzator: Producent', detailsData.shock_absorber_name || '-'],
+        ['Amortyzator: Model', detailsData.shock_absorber_model || '-'],
+        ['Amortyzator: S/N', detailsData.shock_absorber_serial || '-'],
+        ['Amortyzator: Nr katalogowy', detailsData.shock_absorber_catalog_number || '-'],
+        ['Amortyzator: Data produkcji', detailsData.shock_absorber_production_date ? formatDate(detailsData.shock_absorber_production_date) : '-']
+      );
+    }
+
+    if (hasSrd) {
+      rows.push(
+        ['SRD: Producent', detailsData.srd_manufacturer || '-'],
+        ['SRD: Model', detailsData.srd_model || '-'],
+        ['SRD: S/N', detailsData.srd_serial_number || '-'],
+        ['SRD: Nr katalogowy', detailsData.srd_catalog_number || '-'],
+        ['SRD: Data produkcji', detailsData.srd_production_date ? formatDate(detailsData.srd_production_date) : '-']
+      );
+    }
+
+    const tableRowsHtml = rows.map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`).join('');
+
+    const html = `
+      <html><head><meta charset=\"utf-8\" />
+      <title>Eksport BHP — szczegóły ${detailsItem.inventory_number || ''}</title>
+      <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 8px; }
+        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead th { background: #f3f4f6; color: #111827; text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        tbody td { padding: 8px; border-bottom: 1px solid #eee; }
+        tbody tr:nth-child(even) td { background: #fafafa; }
+        @page { size: A4; margin: 12mm; }
+      </style>
+      </head>
+      <body>
+        <h1>Szczegóły BHP: ${detailsItem.inventory_number || ''}</h1>
+        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Pole</th>
+              <th>Wartość</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+        </table>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return alert('Pop-up zablokowany — zezwól na otwieranie nowych okien');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  const exportDetailsToXLSX = () => {
+    if (!detailsItem || !detailsData) return;
+    const rows = [
+      ['Nr ewidencyjny', detailsItem.inventory_number || ''],
+      ['Producent', detailsData.manufacturer || ''],
+      ['Model', detailsData.model || ''],
+      ['Nr seryjny', detailsData.serial_number || ''],
+      ['Nr katalogowy', detailsData.catalog_number || ''],
+      ['Data produkcji', formatDate(detailsData.production_date) || ''],
+      ['Rozpoczęcie użytkowania', formatDate(detailsData.harness_start_date) || ''],
+      ['Data przeglądu', formatDate(detailsData.inspection_date) || ''],
+      ['Status', detailsItem.status || ''],
+      ['Przypisany', `${(detailsItem.assigned_employee_first_name || '')} ${(detailsItem.assigned_employee_last_name || '')}`.trim()]
+    ];
+
+    const hasShock = !!(detailsData.shock_absorber_name || detailsData.shock_absorber_model || detailsData.shock_absorber_serial || detailsData.shock_absorber_catalog_number || detailsData.shock_absorber_production_date);
+    const hasSrd = !!(detailsData.srd_manufacturer || detailsData.srd_model || detailsData.srd_serial_number || detailsData.srd_catalog_number || detailsData.srd_production_date);
+
+    if (hasShock) {
+      rows.push(
+        ['Amortyzator: Producent', detailsData.shock_absorber_name || ''],
+        ['Amortyzator: Model', detailsData.shock_absorber_model || ''],
+        ['Amortyzator: S/N', detailsData.shock_absorber_serial || ''],
+        ['Amortyzator: Nr katalogowy', detailsData.shock_absorber_catalog_number || ''],
+        ['Amortyzator: Data produkcji', detailsData.shock_absorber_production_date ? formatDate(detailsData.shock_absorber_production_date) : '']
+      );
+    }
+
+    if (hasSrd) {
+      rows.push(
+        ['SRD: Producent', detailsData.srd_manufacturer || ''],
+        ['SRD: Model', detailsData.srd_model || ''],
+        ['SRD: S/N', detailsData.srd_serial_number || ''],
+        ['SRD: Nr katalogowy', detailsData.srd_catalog_number || ''],
+        ['SRD: Data produkcji', detailsData.srd_production_date ? formatDate(detailsData.srd_production_date) : '']
+      );
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([['Pole', 'Wartość'], ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Szczegóły');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    const base = detailsItem.inventory_number || 'pozycja';
+    downloadBlob(`bhp_${base}_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
+  };
 
   useEffect(() => {
     fetchItems();
@@ -334,26 +693,31 @@ function BhpScreen({ employees = [], user }) {
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
   };
 
-  const filteredItems = reviewsFilter
-    ? (() => {
-        const upcoming = [];
-        const overdue = [];
-        const noDate = [];
-        filteredItemsBase.forEach(item => {
-          const d = getDiffDays(item.inspection_date);
-          if (d === null) {
-            noDate.push(item);
-          } else if (d >= 0) {
-            upcoming.push({ item, d });
-          } else {
-            overdue.push({ item, d });
-          }
-        });
-        upcoming.sort((a, b) => a.d - b.d);
-        overdue.sort((a, b) => a.d - b.d); // more overdue first (-10 before -2)
-        return [...upcoming.map(x => x.item), ...overdue.map(x => x.item), ...noDate];
-      })()
-    : filteredItemsBase;
+  const filteredItems = (() => {
+    const upcoming = [];
+    const overdue = [];
+    const noDate = [];
+    filteredItemsBase.forEach(item => {
+      const d = getDiffDays(item.inspection_date);
+      if (d === null) {
+        noDate.push(item);
+      } else if (d >= 0) {
+        upcoming.push({ item, d });
+      } else {
+        overdue.push({ item, d });
+      }
+    });
+    if (reviewsFilter) {
+      // Najbliższy przegląd: przyszłe daty rosnąco, zaległe bardziej zaległe pierwsze
+      upcoming.sort((a, b) => a.d - b.d);
+      overdue.sort((a, b) => a.d - b.d);
+    } else {
+      // Najdalszy przegląd: przyszłe daty malejąco (najpóźniejsze pierwsze), zaległe mniej zaległe pierwsze
+      upcoming.sort((a, b) => b.d - a.d);
+      overdue.sort((a, b) => b.d - a.d);
+    }
+    return [...upcoming.map(x => x.item), ...overdue.map(x => x.item), ...noDate];
+  })();
 
   if (loading) {
     return (
@@ -432,14 +796,30 @@ function BhpScreen({ employees = [], user }) {
               onClick={() => setReviewsFilter(prev => !prev)}
               className={`w-full px-3 py-2 rounded-lg border ${reviewsFilter ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'}`}
             >
-              {reviewsFilter ? 'Sortuj wg najbliższego przeglądu (ON)' : 'Sortuj wg najbliższego przeglądu (OFF)'}
+              {reviewsFilter ? 'Najbliższy przegląd' : 'Najdalszy przegląd'}
             </button>
           </div>
         </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={exportListToPDF}
+            className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90"
+          >
+            Eksportuj jako PDF
+          </button>
+          <button
+            type="button"
+            onClick={exportListToXLSX}
+            className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800"
+          >
+            Eksportuj jako EXCEL
+          </button>
+        </div>
       </div>
 
-      {/* Tabela BHP */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Widok desktop (tabela) */}
+      <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
@@ -504,6 +884,80 @@ function BhpScreen({ employees = [], user }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Widok mobilny (karty) */}
+      <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
+        {filteredItems.map((item) => (
+          <div
+            key={item.id}
+            className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800"
+            onClick={() => openDetails(item)}
+          >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">
+                    {item.manufacturer || '-'} {item.model ? `— ${item.model}` : ''}
+                  </div>
+                  {item.is_set ? (
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Zestaw: amortyzator {item.shock_absorber_name || '-'} {item.shock_absorber_model || ''} • nr {item.shock_absorber_serial || '-'} • kat. {item.shock_absorber_catalog_number || '-'}
+                    </div>
+                  ) : null}
+                  {item.assigned_employee_first_name || item.assigned_employee_last_name ? (
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Przypisano: {item.assigned_employee_first_name || ''} {item.assigned_employee_last_name || ''}
+                    </div>
+                  ) : null}
+                </div>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                  item.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                  item.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                  'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
+                }`}>
+                  {item.status || 'nieznany'}
+                </span>
+              </div>
+
+            <div className="space-y-2 text-sm mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Nr ewidencyjny:</span>
+                <span className="text-slate-900 dark:text-slate-100 font-mono text-xs">{item.inventory_number || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Seryjny:</span>
+                <span className="text-slate-900 dark:text-slate-100">{item.serial_number || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Katalogowy:</span>
+                <span className="text-slate-900 dark:text-slate-100">{item.catalog_number || '-'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Przegląd:</span>
+                <span className="text-slate-900 dark:text-slate-100">{item.inspection_date ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '-'}</span>
+              </div>
+              <div>
+                {renderReminderBadge(item.inspection_date)}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-600" onClick={(e) => e.stopPropagation()}>
+              {canManageBhp ? (
+                <>
+                  <button onClick={() => openModal(item)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">Edytuj</button>
+                  <button onClick={() => deleteItem(item.id)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium">Usuń</button>
+                  {item.status !== 'wydane' ? (
+                    <button onClick={() => openIssue(item)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 text-sm font-medium">Wydaj</button>
+                  ) : (
+                    <button onClick={() => openReturn(item)} className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">Zwrot</button>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-slate-500 dark:text-slate-400">Brak uprawnień do akcji</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Modal dodawania/edycji */}
@@ -650,7 +1104,21 @@ function BhpScreen({ employees = [], user }) {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Szczegóły BHP: {detailsItem.inventory_number}</h2>
-              <button onClick={() => { setDetailsItem(null); setDetailsData(null); }} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><span className="text-2xl">×</span></button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={exportDetailsToPDF}
+                  className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90"
+                >
+                  Eksportuj do PDF
+                </button>
+                <button
+                  onClick={exportDetailsToXLSX}
+                  className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800"
+                >
+                  Eksportuj do EXCEL
+                </button>
+                <button onClick={() => { setDetailsItem(null); setDetailsData(null); }} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><span className="text-2xl">×</span></button>
+              </div>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 text-sm">
@@ -661,6 +1129,7 @@ function BhpScreen({ employees = [], user }) {
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Data produkcji:</span><span className="text-slate-900 dark:text-slate-100">{detailsData.production_date ? new Date(detailsData.production_date).toLocaleDateString('pl-PL') : '-'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Rozpoczęcie użytkowania:</span><span className="text-slate-900 dark:text-slate-100">{detailsData.harness_start_date ? new Date(detailsData.harness_start_date).toLocaleDateString('pl-PL') : '-'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Przegląd:</span><span className="text-slate-900 dark:text-slate-100">{detailsData.inspection_date ? new Date(detailsData.inspection_date).toLocaleDateString('pl-PL') : '-'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Przypisany:</span><span className="text-slate-900 dark:text-slate-100">{(detailsItem?.assigned_employee_first_name || detailsItem?.assigned_employee_last_name) ? `${detailsItem?.assigned_employee_first_name || ''} ${detailsItem?.assigned_employee_last_name || ''}`.trim() : '-'}</span></div>
 
                 {(() => {
                   const hasShock = !!(detailsData.shock_absorber_name || detailsData.shock_absorber_model || detailsData.shock_absorber_serial || detailsData.shock_absorber_catalog_number || detailsData.shock_absorber_production_date);

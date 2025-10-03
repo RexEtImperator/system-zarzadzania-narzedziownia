@@ -47,6 +47,10 @@ const AppConfigScreen = ({ apiClient }) => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoTs, setLogoTs] = useState(Date.now());
   const [logoHistory, setLogoHistory] = useState([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backups, setBackups] = useState([]);
+  const [lastBackupFile, setLastBackupFile] = useState(null);
+  const [lastBackupAt, setLastBackupAt] = useState(null);
 
   useEffect(() => {
     loadConfig();
@@ -72,6 +76,7 @@ const AppConfigScreen = ({ apiClient }) => {
           backupFrequency: general.backupFrequency || prev.notifications.backupFrequency
         }
       }));
+      setLastBackupAt(general.lastBackupAt || null);
     } catch (error) {
       console.error('Błąd podczas ładowania konfiguracji:', error);
     } finally {
@@ -125,7 +130,8 @@ const AppConfigScreen = ({ apiClient }) => {
     { id: 'security', name: 'Bezpieczeństwo', icon: '🔒' },
     { id: 'features', name: 'Funkcje', icon: '🎛️' },
     { id: 'departments', name: 'Działy', icon: '🏢' },
-    { id: 'positions', name: 'Stanowiska', icon: '👔' }
+    { id: 'positions', name: 'Stanowiska', icon: '👔' },
+    { id: 'backup', name: 'Backup', icon: '💾' }
   ];
 
   const handleLogoChange = (e) => {
@@ -623,6 +629,95 @@ const AppConfigScreen = ({ apiClient }) => {
     </div>
   );
 
+  const formatDateTime = (dt) => {
+    if (!dt) return '-';
+    try {
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return dt;
+      return d.toLocaleString('pl-PL');
+    } catch {
+      return dt;
+    }
+  };
+
+  const loadBackups = async () => {
+    try {
+      setBackupLoading(true);
+      const resp = await apiClient.get('/api/backup/list');
+      const files = Array.isArray(resp?.backups) ? resp.backups.map(b => b.file) : [];
+      setBackups(files);
+      // Posortuj nazwy plików malejąco (database-YYYYMMDD-HHMMSS.db)
+      const sorted = files.slice().sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+      setLastBackupFile(sorted[0] || null);
+    } catch (err) {
+      // Brak uprawnień (403) lub inny błąd – pokaż tylko lastBackupAt z configu
+      console.warn('Nie udało się pobrać listy backupów:', err?.message || err);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Po wczytaniu konfiguracji spróbuj pobrać listę backupów
+    loadBackups();
+  }, []);
+
+  const runBackup = async () => {
+    try {
+      setBackupLoading(true);
+      await apiClient.post('/api/backup/run', {});
+      toast.success('Kopia zapasowa wykonana');
+      // Odśwież informacje po udanym backupie
+      await loadConfig();
+      await loadBackups();
+    } catch (err) {
+      const msg = err?.message || 'Nie udało się wykonać kopii zapasowej';
+      toast.error(msg);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const renderBackupTab = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Kopie zapasowe bazy danych</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+            <div className="text-sm text-gray-700 dark:text-gray-300">Ostatnia kopia (z konfiguracji)</div>
+            <div className="mt-1 text-base font-medium text-gray-900 dark:text-white">{formatDateTime(lastBackupAt)}</div>
+          </div>
+          <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+            <div className="text-sm text-gray-700 dark:text-gray-300">Ostatni plik w folderze backups</div>
+            <div className="mt-1 text-base font-medium text-gray-900 dark:text-white">{lastBackupFile || '-'}</div>
+          </div>
+        </div>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={runBackup}
+            disabled={backupLoading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 dark:bg-indigo-700 hover:bg-indigo-700 dark:hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          >
+            {backupLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Trwa wykonywanie kopii...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10v10H7z" />
+                </svg>
+                Wykonaj kopię zapasową
+              </>
+            )}
+          </button>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Wymagane uprawnienia administratora</span>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
@@ -635,6 +730,8 @@ const AppConfigScreen = ({ apiClient }) => {
         return <DepartmentManagementScreen apiClient={apiClient} />;
       case 'positions':
         return <PositionManagementScreen apiClient={apiClient} />;
+      case 'backup':
+        return renderBackupTab();
       default:
         return renderGeneralTab();
     }

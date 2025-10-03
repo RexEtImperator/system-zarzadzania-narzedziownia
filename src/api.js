@@ -74,7 +74,29 @@ class ApiClient {
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        // Spróbuj wyciągnąć wiadomość z JSON
+        let message = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed && parsed.message) message = parsed.message;
+        } catch (_) {}
+
+        // Jeśli token jest nieprawidłowy lub wygasł, wyczyść go aby wymusić ponowne logowanie
+        if (
+          response.status === 401 ||
+          response.status === 403 ||
+          (typeof message === 'string' && message.includes('Nieprawidłowy token'))
+        ) {
+          console.warn('[API] Invalid or expired token detected. Clearing token and requiring re-login.');
+          // Wyczyść token z klienta i localStorage
+          this.setToken(null);
+          localStorage.removeItem('token');
+        }
+
+        const err = new Error(message || `HTTP error! status: ${response.status}`);
+        // Dodaj status do błędu dla lepszej obsługi po stronie wywołującej
+        err.status = response.status;
+        throw err;
       }
 
       const data = await response.json();
@@ -150,7 +172,25 @@ class ApiClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        let message = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed && parsed.message) message = parsed.message;
+        } catch (_) {}
+
+        if (
+          response.status === 401 ||
+          response.status === 403 ||
+          (typeof message === 'string' && message.includes('Nieprawidłowy token'))
+        ) {
+          console.warn('[API] Invalid or expired token detected (multipart). Clearing token and requiring re-login.');
+          this.setToken(null);
+          localStorage.removeItem('token');
+        }
+
+        const err = new Error(message || `HTTP error! status: ${response.status}`);
+        err.status = response.status;
+        throw err;
       }
 
       try {

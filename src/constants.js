@@ -22,9 +22,13 @@ export const PERMISSIONS = {
   
   // Analityka
   VIEW_ANALYTICS: 'view_analytics',
-  
+
   // Narzędzia
-  ACCESS_TOOLS: 'access_tools'
+  ACCESS_TOOLS: 'access_tools',
+
+  // BHP
+  VIEW_BHP: 'view_bhp',
+  MANAGE_BHP: 'manage_bhp'
 };
 
 // Role użytkowników
@@ -159,7 +163,9 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_ANALYTICS,
       PERMISSIONS.ACCESS_TOOLS,
       PERMISSIONS.MANAGE_DEPARTMENTS,
-      PERMISSIONS.MANAGE_POSITIONS
+      PERMISSIONS.MANAGE_POSITIONS,
+      PERMISSIONS.VIEW_BHP,
+      PERMISSIONS.MANAGE_BHP
     ],
     [ROLES.HR]: [
       PERMISSIONS.VIEW_USERS,
@@ -172,7 +178,8 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.ACCESS_TOOLS,
       PERMISSIONS.VIEW_USERS,
       PERMISSIONS.VIEW_ANALYTICS,
-      PERMISSIONS.VIEW_AUDIT_LOG
+      PERMISSIONS.VIEW_AUDIT_LOG,
+      PERMISSIONS.VIEW_BHP
     ]
   };
 

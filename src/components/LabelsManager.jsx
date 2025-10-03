@@ -201,7 +201,7 @@ function LabelsManager({ tools, user }) {
         {/* Checkbox "Zaznacz wszystkie" */}
         {tools.length > 0 && (
           <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-            <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
               <input
                 type="checkbox"
                 checked={isAllSelected}
@@ -209,7 +209,7 @@ function LabelsManager({ tools, user }) {
                   if (el) el.indeterminate = isIndeterminate;
                 }}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                className="w-4 h-4 accent-blue-600 dark:accent-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
               />
               <div className="flex-1">
                 <p className="font-medium text-slate-900 dark:text-slate-100">
@@ -223,30 +223,56 @@ function LabelsManager({ tools, user }) {
           </div>
         )}
         
-        <div className="space-y-4">
-          {tools.map(tool => (
-            <div key={tool.id} className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-              <input
-                type="checkbox"
-                checked={selectedTools.includes(tool.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedTools([...selectedTools, tool.id]);
-                  } else {
-                    setSelectedTools(selectedTools.filter(id => id !== tool.id));
-                  }
-                }}
-                className="w-4 h-4 text-blue-600 dark:text-blue-400"
-              />
-              <div className="flex-1">
-                <p className="font-medium text-slate-900 dark:text-slate-100">{tool.name}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">SKU: {tool.sku}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tools.map(tool => {
+            const isSelected = selectedTools.includes(tool.id);
+            const toggleSelect = (id, checked = null) => {
+              setSelectedTools(prev => {
+                const currentlySelected = prev.includes(id);
+                const shouldSelect = checked !== null ? checked : !currentlySelected;
+                if (shouldSelect) return [...prev, id];
+                return prev.filter(x => x !== id);
+              });
+            };
+            return (
+              <div
+                key={tool.id}
+                onClick={() => toggleSelect(tool.id)}
+                className={`cursor-pointer rounded-xl border p-4 transition-shadow shadow-sm 
+                  ${isSelected 
+                    ? 'border-blue-500 dark:border-blue-600 ring-2 ring-blue-200 dark:ring-blue-500/40 bg-blue-50/50 dark:bg-blue-900/25' 
+                    : 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{tool.name}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">SKU: {tool.sku}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      title="Pobierz etykietę"
+                      onClick={async (e) => { e.stopPropagation(); await downloadSingleLabel(tool); }}
+                      className="px-2 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                      aria-label="Pobierz etykietę"
+                    >
+                      📄
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(tool.id, e.target.checked); }}
+                      className="mt-1 w-4 h-4 accent-blue-600 dark:accent-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
+                      aria-label="Zaznacz narzędzie"
+                    />
+                  </div>
+                </div>
                 {tool.category && (
-                  <p className="text-sm text-slate-500 dark:text-slate-500">Kategoria: {tool.category}</p>
+                  <span className="inline-block mt-1 text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-600">Kategoria: {tool.category}</span>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {selectedTools.length > 0 && (

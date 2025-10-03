@@ -54,7 +54,9 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'SYSTEM_SETTINGS': 'Ustawienia systemowe',
     'VIEW_ADMIN': 'Panel administracyjny',
     'MANAGE_USERS': 'Zarządzanie użytkownikami',
-    'VIEW_AUDIT_LOG': 'Dziennik audytu'
+    'VIEW_AUDIT_LOG': 'Dziennik audytu',
+    'VIEW_BHP': 'BHP – przeglądanie',
+    'MANAGE_BHP': 'BHP – zarządzanie'
   };
 
   useEffect(() => {

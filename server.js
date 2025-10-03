@@ -320,6 +320,87 @@ function initializeDatabase() {
     }
   });
 
+  // Tabela BHP (sprzęt BHP)
+  db.run(`CREATE TABLE IF NOT EXISTS bhp (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    inventory_number TEXT UNIQUE NOT NULL,
+    manufacturer TEXT,
+    model TEXT,
+    serial_number TEXT,
+    catalog_number TEXT,
+    inspection_date DATETIME,
+    is_set INTEGER DEFAULT 0,
+    harness_serial TEXT,
+    shock_absorber_serial TEXT,
+    shock_absorber_name TEXT,
+    shock_absorber_model TEXT,
+    status TEXT DEFAULT 'dostępne',
+    created_at DATETIME DEFAULT (datetime('now')),
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli bhp:', err.message);
+    } else {
+      // Sprawdź i dodaj brakujące kolumny
+      db.all("PRAGMA table_info(bhp)", (err, columns) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania struktury tabeli bhp:', err.message);
+        } else {
+          const columnNames = columns.map(col => col.name);
+          const ensureColumn = (name, ddl) => {
+            if (!columnNames.includes(name)) {
+              db.run(`ALTER TABLE bhp ADD COLUMN ${ddl}`, (err) => {
+                if (err) console.error(`Błąd dodawania kolumny ${name}:`, err.message);
+              });
+            }
+          };
+          ensureColumn('inventory_number', 'inventory_number TEXT UNIQUE');
+          ensureColumn('manufacturer', 'manufacturer TEXT');
+          ensureColumn('model', 'model TEXT');
+          ensureColumn('serial_number', 'serial_number TEXT');
+          ensureColumn('catalog_number', 'catalog_number TEXT');
+          ensureColumn('inspection_date', 'inspection_date DATETIME');
+          ensureColumn('is_set', 'is_set INTEGER DEFAULT 0');
+          ensureColumn('harness_serial', 'harness_serial TEXT');
+          ensureColumn('shock_absorber_serial', 'shock_absorber_serial TEXT');
+          ensureColumn('shock_absorber_name', 'shock_absorber_name TEXT');
+          ensureColumn('shock_absorber_model', 'shock_absorber_model TEXT');
+          ensureColumn('shock_absorber_catalog_number', 'shock_absorber_catalog_number TEXT');
+          ensureColumn('harness_start_date', 'harness_start_date DATETIME');
+          ensureColumn('shock_absorber_start_date', 'shock_absorber_start_date DATETIME');
+          ensureColumn('shock_absorber_production_date', 'shock_absorber_production_date DATETIME');
+          ensureColumn('production_date', 'production_date DATETIME');
+          // Urządzenie samohamowne (SRD) dodatkowe pola
+          ensureColumn('srd_manufacturer', 'srd_manufacturer TEXT');
+          ensureColumn('srd_model', 'srd_model TEXT');
+          ensureColumn('srd_serial_number', 'srd_serial_number TEXT');
+          ensureColumn('srd_catalog_number', 'srd_catalog_number TEXT');
+          ensureColumn('srd_production_date', 'srd_production_date DATETIME');
+          ensureColumn('status', 'status TEXT DEFAULT "dostępne"');
+        }
+      });
+    }
+  });
+
+  // Tabela wydań/zwrotów BHP
+  db.run(`CREATE TABLE IF NOT EXISTS bhp_issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bhp_id INTEGER NOT NULL,
+    employee_id INTEGER NOT NULL,
+    issued_by_user_id INTEGER NOT NULL,
+    issued_at DATETIME DEFAULT (datetime('now', 'localtime')),
+    returned_at DATETIME NULL,
+    status TEXT DEFAULT 'wydane',
+    FOREIGN KEY (bhp_id) REFERENCES bhp (id),
+    FOREIGN KEY (employee_id) REFERENCES employees (id),
+    FOREIGN KEY (issued_by_user_id) REFERENCES users (id)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli bhp_issues:', err.message);
+    } else {
+      console.log('Tabela bhp_issues została utworzona lub już istnieje');
+    }
+  });
   // Tabela pracowników
   db.run(`CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -523,11 +604,11 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS'],
-        'employee': ['ACCESS_TOOLS', 'VIEW_USERS'],
-        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG'],
-        'viewer': ['VIEW_USERS']
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP'],
+        'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP'],
+        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP'],
+        'viewer': ['VIEW_USERS', 'VIEW_BHP']
       };
 
       // Sprawdź czy uprawnienia już istnieją
@@ -548,6 +629,26 @@ function initializeDatabase() {
           });
           console.log('Domyślne uprawnienia ról zostały dodane');
         }
+
+        // Automatyczna migracja: wstaw brakujące BHP-permissions dla istniejących ról
+        const bhpPermissionsInit = {
+          'administrator': ['VIEW_BHP', 'MANAGE_BHP'],
+          'manager': ['VIEW_BHP', 'MANAGE_BHP'],
+          'employee': ['VIEW_BHP'],
+          'user': ['VIEW_BHP'],
+          'viewer': ['VIEW_BHP']
+        };
+        Object.entries(bhpPermissionsInit).forEach(([role, permissions]) => {
+          permissions.forEach(permission => {
+            db.run('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)', 
+              [role, permission], (err) => {
+                if (err) {
+                  console.error(`Błąd migracji: nie udało się dodać ${permission} dla roli ${role}:`, err.message);
+                }
+              });
+          });
+        });
+        console.log('Automatyczna migracja BHP-permissions zakończona');
       });
     }
   });
@@ -873,6 +974,313 @@ app.delete('/api/tools/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
     }
     res.status(200).json({ message: 'Narzędzie zostało usunięte' });
+  });
+});
+
+// ====== BHP Endpoints ======
+// Pobieranie sprzętu BHP
+app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res) => {
+  const query = `
+    SELECT 
+      b.*, 
+      (
+        SELECT e.id 
+        FROM bhp_issues bi 
+        LEFT JOIN employees e ON e.id = bi.employee_id 
+        WHERE bi.bhp_id = b.id AND bi.status = 'wydane' 
+        ORDER BY bi.issued_at DESC 
+        LIMIT 1
+      ) AS assigned_employee_id,
+      (
+        SELECT e.first_name 
+        FROM bhp_issues bi 
+        LEFT JOIN employees e ON e.id = bi.employee_id 
+        WHERE bi.bhp_id = b.id AND bi.status = 'wydane' 
+        ORDER BY bi.issued_at DESC 
+        LIMIT 1
+      ) AS assigned_employee_first_name,
+      (
+        SELECT e.last_name 
+        FROM bhp_issues bi 
+        LEFT JOIN employees e ON e.id = bi.employee_id 
+        WHERE bi.bhp_id = b.id AND bi.status = 'wydane' 
+        ORDER BY bi.issued_at DESC 
+        LIMIT 1
+      ) AS assigned_employee_last_name
+    FROM bhp b
+    ORDER BY b.inventory_number
+  `;
+  db.all(query, [], (err, items) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    res.status(200).json(items);
+  });
+});
+
+// Dodawanie sprzętu BHP
+app.post('/api/bhp', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const { inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status } = req.body;
+
+  if (!inventory_number) {
+    return res.status(400).json({ message: 'Wymagany numer ewidencyjny' });
+  }
+
+  const query = `INSERT INTO bhp (inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const params = [inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set ? 1 : 0, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status || 'dostępne'];
+
+  db.run(query, params, function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        return res.status(400).json({ message: 'Pozycja o tym numerze ewidencyjnym już istnieje' });
+      }
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    db.get('SELECT * FROM bhp WHERE id = ?', [this.lastID], (err, item) => {
+      if (err) return res.status(500).json({ message: 'Błąd podczas pobierania nowej pozycji' });
+      res.status(201).json(item);
+    });
+  });
+});
+
+// Aktualizacja sprzętu BHP
+app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const id = req.params.id;
+  const {
+    inventory_number,
+    manufacturer,
+    model,
+    serial_number,
+    catalog_number,
+    production_date,
+    inspection_date,
+    is_set,
+    harness_serial,
+    shock_absorber_serial,
+    shock_absorber_name,
+    shock_absorber_model,
+    shock_absorber_catalog_number,
+    harness_start_date,
+    shock_absorber_start_date,
+    shock_absorber_production_date,
+    srd_manufacturer,
+    srd_model,
+    srd_serial_number,
+    srd_catalog_number,
+    srd_production_date,
+    status
+  } = req.body;
+
+  if (!inventory_number) {
+    return res.status(400).json({ message: 'Wymagany numer ewidencyjny' });
+  }
+
+  // Nie nadpisuj istniejących wartości NULL-em/"" jeśli pole nie zostało podane.
+  // Dla pól tekstowych traktuj pusty string jak brak zmiany.
+  const query = `
+    UPDATE bhp SET
+      inventory_number = COALESCE(NULLIF(?, ''), inventory_number),
+      manufacturer = COALESCE(NULLIF(?, ''), manufacturer),
+      model = COALESCE(NULLIF(?, ''), model),
+      serial_number = COALESCE(NULLIF(?, ''), serial_number),
+      catalog_number = COALESCE(NULLIF(?, ''), catalog_number),
+      production_date = COALESCE(?, production_date),
+      inspection_date = COALESCE(?, inspection_date),
+      is_set = COALESCE(?, is_set),
+      harness_serial = COALESCE(NULLIF(?, ''), harness_serial),
+      shock_absorber_serial = COALESCE(NULLIF(?, ''), shock_absorber_serial),
+      shock_absorber_name = COALESCE(NULLIF(?, ''), shock_absorber_name),
+      shock_absorber_model = COALESCE(NULLIF(?, ''), shock_absorber_model),
+      shock_absorber_catalog_number = COALESCE(NULLIF(?, ''), shock_absorber_catalog_number),
+      harness_start_date = COALESCE(?, harness_start_date),
+      shock_absorber_start_date = COALESCE(?, shock_absorber_start_date),
+      shock_absorber_production_date = COALESCE(?, shock_absorber_production_date),
+      srd_manufacturer = COALESCE(NULLIF(?, ''), srd_manufacturer),
+      srd_model = COALESCE(NULLIF(?, ''), srd_model),
+      srd_serial_number = COALESCE(NULLIF(?, ''), srd_serial_number),
+      srd_catalog_number = COALESCE(NULLIF(?, ''), srd_catalog_number),
+      srd_production_date = COALESCE(?, srd_production_date),
+      status = COALESCE(NULLIF(?, ''), status),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `;
+  const params = [
+    inventory_number,
+    manufacturer,
+    model,
+    serial_number,
+    catalog_number,
+    production_date,
+    inspection_date,
+    typeof is_set === 'number' ? is_set : (is_set ? 1 : 0),
+    harness_serial,
+    shock_absorber_serial,
+    shock_absorber_name,
+    shock_absorber_model,
+    shock_absorber_catalog_number,
+    harness_start_date,
+    shock_absorber_start_date,
+    shock_absorber_production_date,
+    srd_manufacturer,
+    srd_model,
+    srd_serial_number,
+    srd_catalog_number,
+    srd_production_date,
+    status || 'dostępne',
+    id
+  ];
+
+  db.run(query, params, function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        return res.status(400).json({ message: 'Pozycja o tym numerze ewidencyjnym już istnieje' });
+      }
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+    }
+    // Zwróć zaktualizowany rekord, aby łatwiej zweryfikować zapis
+    db.get('SELECT * FROM bhp WHERE id = ?', [id], (getErr, row) => {
+      if (getErr) {
+        return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanej pozycji' });
+      }
+      res.status(200).json({ message: 'Pozycja BHP została zaktualizowana', item: row });
+    });
+  });
+});
+
+// Usunięcie sprzętu BHP
+app.delete('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const id = req.params.id;
+  db.run('DELETE FROM bhp WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+    }
+    res.status(200).json({ message: 'Pozycja BHP została usunięta' });
+  });
+});
+
+// Wydanie sprzętu BHP pracownikowi (pojedyncza sztuka)
+app.post('/api/bhp/:id/issue', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const bhpId = req.params.id;
+  const { employee_id } = req.body;
+  const userId = req.user.id;
+
+  if (!employee_id) {
+    return res.status(400).json({ message: 'ID pracownika jest wymagane' });
+  }
+
+  db.get('SELECT * FROM bhp WHERE id = ?', [bhpId], (err, item) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+    if (item.status === 'wydane') return res.status(400).json({ message: 'Pozycja BHP jest już wydana' });
+
+    db.get('SELECT * FROM employees WHERE id = ?', [employee_id], (err, employee) => {
+      if (err) return res.status(500).json({ message: 'Błąd serwera' });
+      if (!employee) return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+
+      db.run(
+        'INSERT INTO bhp_issues (bhp_id, employee_id, issued_by_user_id) VALUES (?, ?, ?)',
+        [bhpId, employee_id, userId],
+        function(err) {
+          if (err) return res.status(500).json({ message: 'Błąd serwera' });
+          db.run('UPDATE bhp SET status = ? WHERE id = ?', ['wydane', bhpId], function(err) {
+            if (err) return res.status(500).json({ message: 'Błąd serwera' });
+            res.status(200).json({ message: 'Sprzęt BHP wydany', issue_id: this.lastID });
+          });
+        }
+      );
+    });
+  });
+});
+
+// Zwrot sprzętu BHP
+app.post('/api/bhp/:id/return', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const bhpId = req.params.id;
+  const { issue_id } = req.body;
+
+  if (!issue_id) {
+    return res.status(400).json({ message: 'ID wydania jest wymagane' });
+  }
+
+  db.get('SELECT * FROM bhp_issues WHERE id = ? AND bhp_id = ? AND status = "wydane"', [issue_id, bhpId], (err, issue) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!issue) return res.status(404).json({ message: 'Wydanie nie zostało znalezione lub już zwrócone' });
+
+    db.run('UPDATE bhp_issues SET status = "zwrócone", returned_at = datetime("now") WHERE id = ?', [issue_id], function(err) {
+      if (err) return res.status(500).json({ message: 'Błąd serwera' });
+      db.run('UPDATE bhp SET status = ? WHERE id = ?', ['dostępne', bhpId], function(err) {
+        if (err) return res.status(500).json({ message: 'Błąd serwera' });
+        res.status(200).json({ message: 'Sprzęt BHP zwrócony' });
+      });
+    });
+  });
+});
+
+// Szczegóły BHP + aktywne wydania i status przypomnienia przeglądu
+app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
+  const bhpId = req.params.id;
+
+  db.get('SELECT * FROM bhp WHERE id = ?', [bhpId], (err, item) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+
+    const issuesQuery = `
+      SELECT 
+        bi.*, 
+        e.first_name as employee_first_name, 
+        e.last_name as employee_last_name, 
+        u.full_name as issued_by_user_name
+      FROM bhp_issues bi
+      LEFT JOIN employees e ON bi.employee_id = e.id
+      LEFT JOIN users u ON bi.issued_by_user_id = u.id
+      WHERE bi.bhp_id = ?
+      ORDER BY bi.issued_at DESC
+    `;
+
+    db.all(issuesQuery, [bhpId], (err, issues) => {
+      if (err) return res.status(500).json({ message: 'Błąd serwera' });
+
+      // Obliczenie dni do przeglądu
+      let reviewReminder = null;
+      if (item.inspection_date) {
+        const now = new Date();
+        const insp = new Date(item.inspection_date);
+        const diffDays = Math.ceil((insp - now) / (1000 * 60 * 60 * 24));
+        reviewReminder = {
+          days_to_review: diffDays,
+          status: diffDays < 0 ? 'po_terminie' : (diffDays <= 30 ? 'zbliża_się' : 'ok')
+        };
+      }
+
+      res.json({ ...item, issues, reviewReminder });
+    });
+  });
+});
+
+// Historia wydań/zwrotów BHP (wszystkie wpisy)
+app.get('/api/bhp/:id/history', authenticateToken, (req, res) => {
+  const bhpId = req.params.id;
+  const query = `
+    SELECT 
+      bi.*, 
+      e.first_name as employee_first_name, 
+      e.last_name as employee_last_name, 
+      u.full_name as issued_by_user_name
+    FROM bhp_issues bi
+    LEFT JOIN employees e ON bi.employee_id = e.id
+    LEFT JOIN users u ON bi.issued_by_user_id = u.id
+    WHERE bi.bhp_id = ?
+    ORDER BY bi.issued_at DESC
+  `;
+  db.all(query, [bhpId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    res.json(rows);
   });
 });
 
@@ -1768,6 +2176,77 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
 });
 
 // ===== ENDPOINTY KONFIGURACJI APLIKACJI =====
+// Upload logo (PNG) do katalogu public/logos z wersjonowaniem
+let multer;
+try {
+  multer = require('multer');
+} catch (_) {
+  // multer jest opcjonalny w zależnościach backendu; w root jest dostępny
+}
+
+// Konfiguracja uploadu tylko jeśli multer jest dostępny
+const LOGO_DIR = path.join(__dirname, 'public', 'logos');
+const CURRENT_LOGO_PATH = path.join(__dirname, 'public', 'logo.png');
+
+function ensureLogoDir() {
+  try {
+    if (!fs.existsSync(LOGO_DIR)) {
+      fs.mkdirSync(LOGO_DIR, { recursive: true });
+      console.log('Utworzono katalog wersji logo:', LOGO_DIR);
+    }
+  } catch (err) {
+    console.error('Nie udało się utworzyć katalogu logo:', err.message);
+  }
+}
+
+function getPngSize(filePath) {
+  try {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 24) return null;
+    const sig = buf.slice(0, 8);
+    const pngSig = Buffer.from([137,80,78,71,13,10,26,10]);
+    if (!sig.equals(pngSig)) return null;
+    const chunkType = buf.slice(12, 16).toString('ascii');
+    if (chunkType !== 'IHDR') return null;
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    return { width, height };
+  } catch (err) {
+    return null;
+  }
+}
+
+const MIN_LOGO_WIDTH = 64;
+const MIN_LOGO_HEIGHT = 64;
+const MAX_LOGO_WIDTH = 1024;
+const MAX_LOGO_HEIGHT = 1024;
+let upload;
+if (multer) {
+  ensureLogoDir();
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, LOGO_DIR);
+    },
+    filename: (req, file, cb) => {
+      const ts = Date.now();
+      cb(null, `logo-${ts}.png`);
+    }
+  });
+
+  const fileFilter = (req, file, cb) => {
+    if (file.mimetype === 'image/png') {
+      cb(null, true);
+    } else {
+      cb(new Error('ONLY_PNG'));
+    }
+  };
+
+  upload = multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+  });
+}
 
 // Pobieranie ustawień ogólnych (publiczne)
 app.get('/api/config/general', (req, res) => {
@@ -1789,6 +2268,127 @@ app.get('/api/config/general', (req, res) => {
       lastBackupAt: row.last_backup_at || null
     });
   });
+});
+
+// Upload logo aplikacji (tylko administrator)
+app.post('/api/config/logo', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji logo' });
+  }
+
+  if (!upload) {
+    return res.status(500).json({ message: 'Upload nie jest dostępny (brak konfiguracji multer)' });
+  }
+
+  upload.single('logo')(req, res, (err) => {
+    if (err) {
+      if (err.message === 'ONLY_PNG') {
+        return res.status(400).json({ message: 'Dozwolone są tylko pliki PNG' });
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Plik jest za duży (maks. 2MB)' });
+      }
+      return res.status(500).json({ message: 'Błąd uploadu', error: err.message });
+    }
+
+    // Jeżeli nie ma pliku
+    if (!req.file) {
+      return res.status(400).json({ message: 'Nie przesłano pliku logo' });
+    }
+
+    // Walidacja wymiarów PNG na backendzie
+    const size = getPngSize(req.file.path);
+    if (!size) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({ message: 'Nieprawidłowy plik PNG' });
+    }
+    const { width, height } = size;
+    if (
+      width < MIN_LOGO_WIDTH || height < MIN_LOGO_HEIGHT ||
+      width > MAX_LOGO_WIDTH || height > MAX_LOGO_HEIGHT
+    ) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({
+        message: `Wymiary logo poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${width}x${height}`
+      });
+    }
+
+    // Ustaw aktualne logo
+    try {
+      fs.copyFileSync(req.file.path, CURRENT_LOGO_PATH);
+    } catch (copyErr) {
+      return res.status(500).json({ message: 'Nie udało się zapisać aktualnego logo', error: copyErr.message });
+    }
+
+    const timestamp = Date.now();
+    return res.json({
+      message: 'Logo zostało zaktualizowane',
+      url: '/logo.png',
+      timestamp,
+      version: path.basename(req.file.path),
+      size: { width, height }
+    });
+  });
+});
+
+// Lista historii wersji logo (tylko administrator)
+app.get('/api/config/logo/history', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  try {
+    ensureLogoDir();
+    const files = fs.readdirSync(LOGO_DIR)
+      .filter(name => name.startsWith('logo-') && name.endsWith('.png'))
+      .map(name => {
+        const full = path.join(LOGO_DIR, name);
+        const stat = fs.statSync(full);
+        return {
+          filename: name,
+          url: `/logos/${name}`,
+          uploadedAt: stat.mtimeMs
+        };
+      })
+      .sort((a, b) => b.uploadedAt - a.uploadedAt);
+    res.json({ currentUrl: '/logo.png', versions: files });
+  } catch (err) {
+    res.status(500).json({ message: 'Błąd pobierania historii logo', error: err.message });
+  }
+});
+
+// Przywrócenie wybranej wersji logo (tylko administrator)
+app.post('/api/config/logo/rollback', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  const { filename } = req.body || {};
+  if (!filename || typeof filename !== 'string') {
+    return res.status(400).json({ message: 'Brak poprawnej nazwy pliku wersji' });
+  }
+  const target = path.join(LOGO_DIR, filename);
+  try {
+    if (!fs.existsSync(target)) {
+      return res.status(404).json({ message: 'Wybrana wersja nie istnieje' });
+    }
+    const size = getPngSize(target);
+    if (!size) {
+      return res.status(400).json({ message: 'Wybrana wersja ma nieprawidłowy plik PNG' });
+    }
+    const { width, height } = size;
+    if (
+      width < MIN_LOGO_WIDTH || height < MIN_LOGO_HEIGHT ||
+      width > MAX_LOGO_WIDTH || height > MAX_LOGO_HEIGHT
+    ) {
+      return res.status(400).json({
+        message: `Wymiary wersji poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${width}x${height}`
+      });
+    }
+    fs.copyFileSync(target, CURRENT_LOGO_PATH);
+    const timestamp = Date.now();
+    res.json({ message: 'Przywrócono wybraną wersję logo', url: '/logo.png', timestamp, size });
+  } catch (err) {
+    res.status(500).json({ message: 'Błąd przywracania wersji', error: err.message });
+  }
 });
 
 // Aktualizacja ustawień ogólnych (tylko administrator)
@@ -2347,8 +2947,35 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'SYSTEM_SETTINGS',
     'VIEW_ADMIN',
     'MANAGE_USERS',
-    'VIEW_AUDIT_LOG'
+    'VIEW_AUDIT_LOG',
+    'VIEW_BHP',
+    'MANAGE_BHP'
   ];
 
   res.json(availablePermissions);
 });
+
+// Middleware: wymagane uprawnienie z role_permissions (administrator ma pełny dostęp)
+function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Nieautoryzowany' });
+    }
+    if (req.user.role === 'administrator') {
+      return next();
+    }
+    db.get('SELECT 1 as ok FROM role_permissions WHERE role = ? AND permission = ?',
+      [req.user.role, permission],
+      (err, row) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania uprawnień:', err.message);
+          return res.status(500).json({ message: 'Błąd serwera' });
+        }
+        if (row && row.ok) {
+          return next();
+        }
+        return res.status(403).json({ message: 'Brak uprawnień' });
+      }
+    );
+  };
+}

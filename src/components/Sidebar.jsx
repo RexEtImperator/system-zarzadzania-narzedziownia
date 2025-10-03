@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PERMISSIONS, hasPermission } from '../constants';
 
 const Sidebar = ({ 
@@ -8,6 +8,12 @@ const Sidebar = ({
   isMobileOpen, 
   onMobileClose 
 }) => {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const i = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(i);
+  }, []);
+  const formattedDateTime = now.toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'medium' });
   const menuItems = [
     {
       id: 'dashboard',
@@ -123,9 +129,11 @@ const Sidebar = ({
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 bg-indigo-600">
-            <h2 className="text-white text-lg font-semibold">
-              Zarządzanie
-            </h2>
+            <img src="/logo.png" alt="Logo" className="h-10 object-contain" />
+          </div>
+          {/* Date & time under logo */}
+          <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200 bg-gray-50">
+            {formattedDateTime}
           </div>
 
           {/* Navigation */}

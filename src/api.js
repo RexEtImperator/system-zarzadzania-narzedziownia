@@ -131,6 +131,38 @@ class ApiClient {
     
     return this.get(endpoint);
   }
+
+  // Wsparcie dla multipart/form-data (FormData) bez ustawiania Content-Type
+  async postForm(endpoint, formData) {
+    const fullUrl = `${this.baseURL}${endpoint}`;
+    const headers = {};
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    try {
+      console.log('[API DEBUG] Multipart Request:', { url: fullUrl, method: 'POST' });
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+
+      try {
+        return await response.json();
+      } catch (_) {
+        return {};
+      }
+    } catch (error) {
+      console.error('API multipart request failed:', error);
+      throw error;
+    }
+  }
 }
 
 const api = new ApiClient();

@@ -23,7 +23,9 @@ const PERMISSIONS = {
   SYSTEM_SETTINGS: 'system_settings',
   VIEW_USERS: 'view_users',
   VIEW_AUDIT_LOG: 'view_audit_log',
-  ACCESS_TOOLS: 'access_tools'
+  ACCESS_TOOLS: 'access_tools',
+  VIEW_BHP: 'view_bhp',
+  MANAGE_BHP: 'manage_bhp'
 };
 
 // Stałe akcji audytu
@@ -81,22 +83,27 @@ const hasPermission = (user, permission) => {
       PERMISSIONS.MANAGE_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
       PERMISSIONS.MANAGE_EMPLOYEES,
-      PERMISSIONS.VIEW_ANALYTICS
+      PERMISSIONS.VIEW_ANALYTICS,
+      PERMISSIONS.VIEW_BHP,
+      PERMISSIONS.MANAGE_BHP
     ],
     employee: [
       PERMISSIONS.VIEW_TOOLS,
-      PERMISSIONS.VIEW_EMPLOYEES
+      PERMISSIONS.VIEW_EMPLOYEES,
+      PERMISSIONS.VIEW_BHP
     ],
     viewer: [
       PERMISSIONS.VIEW_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
-      PERMISSIONS.VIEW_ANALYTICS
+      PERMISSIONS.VIEW_ANALYTICS,
+      PERMISSIONS.VIEW_BHP
     ],
     user: [
       PERMISSIONS.ACCESS_TOOLS,
       PERMISSIONS.VIEW_USERS,
       PERMISSIONS.VIEW_ANALYTICS,
-      PERMISSIONS.VIEW_AUDIT_LOG
+      PERMISSIONS.VIEW_AUDIT_LOG,
+      PERMISSIONS.VIEW_BHP
     ]
   };
   
@@ -186,9 +193,16 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
 
 // Komponenty interfejsu
 function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const i = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(i);
+  }, []);
+  const formattedDateTime = now.toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'medium' });
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
+    { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'labels', label: 'Etykiety', icon: '🏷️', permission: PERMISSIONS.VIEW_TOOLS },
@@ -218,6 +232,9 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
           <div className="p-6 border-b border-slate-200 dark:border-gray-700">
             <img src="/logo.png" alt="Logo systemu" className="w-48 object-contain drop-shadow-lg" />
           </div>
+          <div className="px-6 py-3 text-xs text-center text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
+            {formattedDateTime}
+          </div>
           
           <nav className="flex-1 p-4 space-y-2">
             {filteredItems.map(item => (
@@ -246,6 +263,7 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
     const titles = {
       dashboard: 'Dashboard',
       tools: 'Narzędzia',
+      bhp: 'BHP',
       employees: 'Pracownicy',
       analytics: 'Analityka',
       labels: 'Etykiety',
@@ -279,6 +297,7 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
 import LoginScreen from './components/LoginScreen';
 import DashboardScreen from './components/DashboardScreen';
 import ToolsScreen from './components/ToolsScreen';
+import BhpScreen from './components/BhpScreen';
 import EmployeesScreen from './components/EmployeesScreen';
 import AnalyticsScreen from './components/AnalyticsScreen';
 import LabelsManager from './components/LabelsManager';
@@ -1019,6 +1038,7 @@ function App() {
           <div className="flex-1 overflow-auto">
             {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} />}
+            {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
             {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} />}
             {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}

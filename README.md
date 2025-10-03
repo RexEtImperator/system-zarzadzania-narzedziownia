@@ -65,6 +65,17 @@ npm start
 └── package.json           # Zależności projektu
 ```
 
+## Jak uruchomić
+
+- Dev (backend + frontend):
+  - `npm run dev`
+  - Backend: `http://localhost:3000`
+  - Frontend: `http://localhost:3001`
+- Tylko backend: `npm run server`
+- Tylko frontend: `npm start`
+- Build produkcyjny: `npm run build` (wynik w katalogu `build/`)
+- Uwaga: frontend korzysta z portu `3001` (ustawiony w skrypcie `start`). Jeśli port jest zajęty, zwolnij go lub zmień port.
+
 ## Funkcjonalności
 
 ### Konfiguracja aplikacji

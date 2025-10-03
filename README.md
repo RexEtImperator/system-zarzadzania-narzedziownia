@@ -1,5 +1,7 @@
 # System Zarządzania Narzędziownią
 
+[![Wersja](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.0)
+
 System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
 
 ## Opis projektu

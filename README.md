@@ -1,4 +1,4 @@
-# Zarzadzanie Tools
+# System Zarządzania Narzędziownią
 
 System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
 
@@ -28,8 +28,8 @@ Aplikacja umożliwia:
 
 1. Sklonuj repozytorium:
 ```bash
-git clone https://github.com/[username]/zarzadzanie-tools.git
-cd zarzadzanie-tools
+git clone https://github.com/[username]/system-zarzadzania-narzedziownia.git
+cd system-zarzadzania-narzedziownia
 ```
 
 2. Zainstaluj zależności:
@@ -87,8 +87,10 @@ npm start
 
 ## Licencja
 
-Ten projekt jest własnością prywatną i nie jest dostępny na licencji open source.
+Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w pliku [license.md](license.md).
 
 ## Autor
+dbrzezinsky
 
-System Zarzadzanie Tools - wersja 1.0
+## Wersja
+System Zarządzania Narzędziownią - wersja 1.0

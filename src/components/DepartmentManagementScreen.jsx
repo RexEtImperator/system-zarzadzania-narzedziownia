@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import ConfirmationModal from './ConfirmationModal';
 
 const DepartmentManagementScreen = ({ apiClient }) => {
   const [departments, setDepartments] = useState([]);
+  const [dbDepartments, setDbDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,6 +16,9 @@ const DepartmentManagementScreen = ({ apiClient }) => {
     status: 'active'
   });
   const [errors, setErrors] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchDepartments();
@@ -23,7 +29,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
     try {
       setLoading(true);
       const data = await apiClient.get('/api/departments');
-      setDepartments(data);
+      setDbDepartments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Błąd podczas pobierania departamentów:', error);
       // Fallback: użyj domyślnych nazw działów z wymagań
@@ -38,7 +44,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         'Zewnętrzny',
         'Ślusarko-spawalniczy'
       ];
-      setDepartments(fallbackNames.map((name, idx) => ({
+      const fallback = fallbackNames.map((name, idx) => ({
         id: idx + 1,
         name,
         description: '',
@@ -46,7 +52,8 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         managerName: 'Nie przypisano',
         employeeCount: 0,
         status: 'active'
-      })));
+      }));
+      setDbDepartments(fallback);
     } finally {
       setLoading(false);
     }
@@ -55,19 +62,70 @@ const DepartmentManagementScreen = ({ apiClient }) => {
   const fetchEmployees = async () => {
     try {
       const data = await apiClient.get('/api/employees');
-      // Normalizuj do { id, name }
-      const normalized = data.map(e => ({ id: e.id || e.employee_id || e.brand_number, name: `${e.first_name} ${e.last_name}` }));
+      // Normalizuj do { id, name, department }
+      const normalized = (Array.isArray(data) ? data : []).map(e => ({ 
+        id: e.id || e.employee_id || e.brand_number, 
+        name: `${e.first_name} ${e.last_name}`,
+        department: e.department || e.department_name || ''
+      }));
       setEmployees(normalized);
     } catch (error) {
       console.error('Błąd podczas pobierania pracowników:', error);
       // Fallback minimalny
       setEmployees([
-        { id: 1, name: 'Jan Kowalski' },
-        { id: 2, name: 'Anna Nowak' },
-        { id: 3, name: 'Piotr Wiśniewski' }
+        { id: 1, name: 'Jan Kowalski', department: '' },
+        { id: 2, name: 'Anna Nowak', department: '' },
+        { id: 3, name: 'Piotr Wiśniewski', department: '' }
       ]);
     }
   };
+
+  // Po pobraniu danych z DB i pracowników, przygotuj listę do wyświetlenia z brakującymi działami
+  useEffect(() => {
+    const dbList = Array.isArray(dbDepartments) ? dbDepartments : [];
+    const dbNames = new Set(dbList.map(d => (d.name || '').trim()).filter(Boolean));
+    const employeeDeptNames = new Set((Array.isArray(employees) ? employees : [])
+      .map(e => (e.department || '').trim())
+      .filter(Boolean));
+
+    const computeCount = (name) => {
+      const n = (name || '').trim().toLowerCase();
+      return (Array.isArray(employees) ? employees : []).filter(e => (e.department || '').trim().toLowerCase() === n).length;
+    };
+
+    const merged = dbList.map(d => {
+      const managerIdRaw = d.managerId ?? d.manager_id ?? '';
+      const managerId = managerIdRaw ? String(managerIdRaw) : '';
+      const managerName = (Array.isArray(employees) ? employees : []).find(e => String(e.id) === managerId)?.name || 'Nie przypisano';
+      return {
+        id: d.id,
+        name: d.name,
+        description: d.description || '',
+        managerId,
+        managerName,
+        employeeCount: computeCount(d.name),
+        status: d.status || 'active',
+        isMissing: false
+      };
+    });
+
+    employeeDeptNames.forEach(name => {
+      if (!dbNames.has(name)) {
+        merged.push({
+          id: null,
+          name,
+          description: '',
+          managerId: '',
+          managerName: 'Nie przypisano',
+          employeeCount: computeCount(name),
+          status: 'active',
+          isMissing: true
+        });
+      }
+    });
+
+    setDepartments(merged);
+  }, [dbDepartments, employees]);
 
   const handleAdd = () => {
     setEditingDepartment(null);
@@ -85,22 +143,43 @@ const DepartmentManagementScreen = ({ apiClient }) => {
     setEditingDepartment(department);
     setFormData({
       name: department.name,
-      description: department.description,
+      description: department.description ?? '',
       managerId: department.managerId || '',
-      status: department.status
+      status: department.status || 'active'
     });
     setErrors({});
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Czy na pewno chcesz usunąć ten departament?')) {
-      try {
-        // Tutaj byłoby wywołanie API
-        setDepartments(prev => prev.filter(dept => dept.id !== id));
-      } catch (error) {
-        console.error('Błąd podczas usuwania departamentu:', error);
+  const promptDelete = (department) => {
+    setDeleteTarget(department);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      if (deleteTarget.id) {
+        await apiClient.delete(`/api/departments/${deleteTarget.id}`);
+        setDbDepartments(prev => prev.filter(dept => dept.id !== deleteTarget.id));
+        setDepartments(prev => prev.filter(dept => dept.id !== deleteTarget.id));
+      } else {
+        // Element bez ID (brak w bazie): odczep pracowników po nazwie i usuń z listy
+        const name = (deleteTarget.name || '').trim();
+        if (name) {
+          await apiClient.delete(`/api/departments/by-name/${encodeURIComponent(name)}`);
+        }
+        setDepartments(prev => prev.filter(dept => (dept.name || '').trim() !== name));
       }
+      toast.success('Dział został usunięty');
+    } catch (error) {
+      console.error('Błąd podczas usuwania działu:', error);
+      toast.error('Nie udało się usunąć działu');
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -118,36 +197,80 @@ const DepartmentManagementScreen = ({ apiClient }) => {
     }
 
     try {
-      const managerName = employees.find(e => String(e.id) === String(formData.managerId))?.name || 'Nie przypisano';
-      if (editingDepartment) {
-        // Aktualizacja
+      const managerNameFromForm = employees.find(e => String(e.id) === String(formData.managerId))?.name || 'Nie przypisano';
+      const isExisting = !!(editingDepartment && editingDepartment.id != null);
+
+      if (isExisting) {
+        // Aktualizacja pełnych szczegółów w DB (PUT)
+        const updated = await apiClient.put(`/api/departments/${editingDepartment.id}`, {
+          name: formData.name,
+          description: formData.description,
+          manager_id: formData.managerId || null,
+          status: formData.status
+        });
+        const managerName = employees.find(e => String(e.id) === String(updated.manager_id ?? formData.managerId))?.name || managerNameFromForm;
+        setDbDepartments(prev => prev.map(dept => 
+          dept.id === editingDepartment.id ? { ...dept, ...updated } : dept
+        ));
         setDepartments(prev => prev.map(dept => 
           dept.id === editingDepartment.id 
-            ? { ...dept, ...formData, managerName }
+            ? { ...dept, ...formData, managerName, isMissing: false }
             : dept
         ));
-        // TODO: wywołanie API: await apiClient.put(`/api/departments/${editingDepartment.id}`, { ...formData })
       } else {
-        // Dodawanie
+        // Dodawanie pełnych szczegółów do DB (POST)
+        const created = await apiClient.post('/api/departments', {
+          name: formData.name,
+          description: formData.description,
+          manager_id: formData.managerId || null,
+          status: formData.status
+        });
+        const managerName = employees.find(e => String(e.id) === String(created.manager_id ?? formData.managerId))?.name || managerNameFromForm;
         const newDepartment = {
-          id: Date.now(),
-          ...formData,
+          id: created.id,
+          name: created.name,
+          description: created.description || formData.description,
+          managerId: created.manager_id ?? formData.managerId,
           managerName,
-          employeeCount: 0
+          employeeCount: 0,
+          status: created.status || formData.status
         };
-        setDepartments(prev => [...prev, newDepartment]);
-        // TODO: wywołanie API: await apiClient.post('/api/departments', newDepartment)
+        // Zachowaj pełny rekord z API w dbDepartments, aby kolejne normalizacje miały właściwe pola
+        setDbDepartments(prev => [...prev, created]);
+        setDepartments(prev => {
+          // Jeśli edytujemy brakujący rekord (isMissing), zastąp wpis po nazwie
+          if (editingDepartment && editingDepartment.isMissing) {
+            const nameKey = (editingDepartment.name || '').trim().toLowerCase();
+            return prev.map(dept => (
+              (dept.id == null && (dept.name || '').trim().toLowerCase() === nameKey)
+                ? { ...dept, ...newDepartment, isMissing: false }
+                : dept
+            ));
+          }
+          // W przeciwnym razie dodaj nowy rekord
+          return [...prev, { ...newDepartment, isMissing: false }];
+        });
+      }
+      toast.success('Dział zapisany pomyślnie');
+      // Odśwież listę z API, aby UI na pewno pokazywał najnowsze dane
+      try {
+        await fetchDepartments();
+      } catch (_) {
+        // jeśli odświeżenie się nie powiedzie, pozostaw lokalne zmiany
       }
       setShowModal(false);
     } catch (error) {
       console.error('Błąd podczas zapisywania departamentu:', error);
+      const apiMsg = (error && error.message) ? error.message : (error?.response?.data?.error || 'Nie udało się zapisać departamentu');
+      setErrors(prev => ({ ...prev, submit: apiMsg }));
+      toast.error(apiMsg);
     }
   };
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { label: 'Aktywny', className: 'bg-green-100 text-green-800' },
-      inactive: { label: 'Nieaktywny', className: 'bg-red-100 text-red-800' }
+      active: { label: 'Aktywny', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+      inactive: { label: 'Nieaktywny', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' }
     };
     
     const config = statusConfig[status] || statusConfig.active;
@@ -164,9 +287,9 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Zarządzanie departamentami</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Zarządzaj departamentami w organizacji
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Zarządzanie działami</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Zarządzaj działami w organizacji
           </p>
         </div>
         <button
@@ -176,21 +299,21 @@ const DepartmentManagementScreen = ({ apiClient }) => {
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Dodaj departament
+          Dodaj dział
         </button>
       </div>
 
       {/* Departments Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden sm:rounded-xl">
         {loading ? (
           <div className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500">Ładowanie departamentów...</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Ładowanie działów...</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-slate-200 dark:divide-slate-700">
             {departments.map((department) => (
-              <li key={department.id}>
+              <li key={department.id != null ? `dept-${department.id}` : `missing-${(department.name || '').trim().toLowerCase()}` }>
                 <div className="px-4 py-4 flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -202,31 +325,36 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                     </div>
                     <div className="ml-4">
                       <div className="flex items-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {department.name}
+                        <div className={`text-sm font-medium ${department.isMissing ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                          {department.name}{typeof department.employeeCount === 'number' ? ` (${department.employeeCount})` : ''}
                         </div>
+                        {department.isMissing && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                            Brak w bazie
+                          </span>
+                        )}
                         <div className="ml-2">
                           {getStatusBadge(department.status)}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
                         {department.description}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Kierownik: {department.managerName} • {department.employeeCount} pracowników
+                      <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        Kierownik: {department.managerName}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEdit(department)}
-                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
                     >
                       Edytuj
                     </button>
                     <button
-                      onClick={() => handleDelete(department.id)}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                      onClick={() => promptDelete(department)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
                     >
                       Usuń
                     </button>
@@ -246,16 +374,34 @@ const DepartmentManagementScreen = ({ apiClient }) => {
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-xl text-left overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700 transform transition-all sm:my-12 sm:align-middle sm:max-w-xl sm:w-full">
               <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                    {editingDepartment ? 'Edytuj departament' : 'Dodaj nowy departament'}
-                  </h3>
+                <div className="bg-white dark:bg-slate-800">
+                  <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {editingDepartment ? 'Edytuj dział' : 'Dodaj nowy dział'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      aria-label="Zamknij"
+                      className="inline-flex items-center justify-center rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="px-6 pt-4 pb-6">
+                  {errors.submit && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                      <p className="text-sm text-red-700 dark:text-red-300">{errors.submit}</p>
+                    </div>
+                  )}
 
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Nazwa *
                       </label>
                       <input
@@ -264,31 +410,33 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.name ? 'border-red-300' : ''
+                        placeholder="np. Sprzedaż"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 ${
+                          errors.name ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       />
                       {errors.name && (
-                        <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Opis
                       </label>
                       <textarea
                         name="description"
                         id="description"
                         rows={3}
-                        value={formData.description}
+                        value={formData.description ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="Krótki opis działu"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="managerId" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="managerId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Kierownik działu
                       </label>
                       <select
@@ -296,7 +444,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         id="managerId"
                         value={formData.managerId}
                         onChange={(e) => setFormData(prev => ({ ...prev, managerId: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       >
                         <option value="">Nie przypisano</option>
                         {employees.map(emp => (
@@ -306,7 +454,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                     </div>
 
                     <div>
-                      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Status
                       </label>
                       <select
@@ -314,16 +462,17 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         id="status"
                         value={formData.status}
                         onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       >
                         <option value="active">Aktywny</option>
                         <option value="inactive">Nieaktywny</option>
                       </select>
                     </div>
                   </div>
+                  </div>
                 </div>
 
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <div className="bg-gray-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                   <button
                     type="submit"
                     className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
@@ -333,7 +482,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
                     Anuluj
                   </button>
@@ -343,6 +492,19 @@ const DepartmentManagementScreen = ({ apiClient }) => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => { if (!deleteLoading) { setShowDeleteModal(false); setDeleteTarget(null); } }}
+        onConfirm={handleConfirmDelete}
+        title="Usuń dział"
+        message={`Czy na pewno chcesz usunąć dział "${deleteTarget?.name || ''}"?`}
+        confirmText="Usuń"
+        cancelText="Anuluj"
+        type="danger"
+        loading={deleteLoading}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
-const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen }) => {
+const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { isDarkMode, toggleTheme } = useTheme();
@@ -57,7 +57,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen }) => {
           </svg>
         </button>
         <h1 className="ml-3 text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-          SZN - System Zarządzania Narzędziownią
+          {appName || 'SZN - System Zarządzania Narzędziownią'}
         </h1>
       </div>
 

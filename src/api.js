@@ -3,9 +3,14 @@ const API_BASE_URL = '';
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL;
-    // Pobierz token z obiektu user w localStorage
-    const user = localStorage.getItem('user');
-    this.token = user ? JSON.parse(user).token : null;
+    // Preferuj token z localStorage ('token'); fallback do tokenu z obiektu 'user'
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      this.token = storedToken;
+    } else {
+      const user = localStorage.getItem('user');
+      this.token = user ? JSON.parse(user).token : null;
+    }
   }
 
   setToken(token) {
@@ -59,6 +64,12 @@ class ApiClient {
     };
 
     try {
+      // Debug: pokaż szczegóły żądania w konsoli
+      const method = requestConfig.method || 'GET';
+      const authHeader = requestConfig.headers?.Authorization || requestConfig.headers?.authorization;
+      const tokenSnippet = this.token ? String(this.token).substring(0, 20) + '...' : null;
+      console.log('[API DEBUG] Request:', { url: fullUrl, method, authHeader, tokenSnippet });
+
       const response = await fetch(fullUrl, requestConfig);
       
       if (!response.ok) {
@@ -98,6 +109,11 @@ class ApiClient {
     return this.request(endpoint, {
       method: 'DELETE',
     });
+  }
+
+  // Alias dla zgodności ze starym wywołaniem
+  async del(endpoint) {
+    return this.delete(endpoint);
   }
 
   // Metody specyficzne dla API

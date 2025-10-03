@@ -35,6 +35,17 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Zbiór nazw działów i stanowisk do filtrowania: UNION danych z bazy i istniejących w pracownikach
+  const departmentNames = Array.from(new Set([
+    ...departments.map(d => d.name).filter(Boolean),
+    ...employees.map(e => e.department).filter(Boolean)
+  ])).sort((a, b) => a.localeCompare(b));
+
+  const positionNames = Array.from(new Set([
+    ...positions.map(p => p.name).filter(Boolean),
+    ...employees.map(e => e.position).filter(Boolean)
+  ])).sort((a, b) => a.localeCompare(b));
+
   useEffect(() => {
     fetchDepartments();
     fetchPositions();
@@ -159,9 +170,9 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       employee.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.brand_number?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDepartment = filterDepartment === 'all' || employee.department?.toLowerCase() === departments.find(d => d.id.toString() === filterDepartment)?.name?.toLowerCase();
-    const matchesPosition = filterPosition === 'all' || employee.position?.toLowerCase() === positions.find(p => p.id.toString() === filterPosition)?.name?.toLowerCase();
+
+    const matchesDepartment = filterDepartment === 'all' || (employee.department && filterDepartment && employee.department.toLowerCase() === filterDepartment.toLowerCase());
+    const matchesPosition = filterPosition === 'all' || (employee.position && filterPosition && employee.position.toLowerCase() === filterPosition.toLowerCase());
     
     return matchesSearch && matchesDepartment && matchesPosition;
   }).sort((a, b) => {
@@ -235,8 +246,8 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
               <option value="all">Wszystkie działy</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id.toString()}>{dept.name}</option>
+              {departmentNames.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>
@@ -248,8 +259,8 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
               <option value="all">Wszystkie stanowiska</option>
-              {positions.map(pos => (
-                <option key={pos.id} value={pos.id.toString()}>{pos.name}</option>
+              {positionNames.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

@@ -843,6 +843,7 @@ function App() {
   const [tools, setTools] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [appName, setAppName] = useState('SZN - System Zarządzania Narzędziownią');
 
   // Sprawdź czy użytkownik jest już zalogowany przy starcie aplikacji
   useEffect(() => {
@@ -874,6 +875,7 @@ function App() {
     if (user) {
       fetchTools();
       fetchEmployees();
+      fetchAppConfig();
     }
   }, [user]);
 
@@ -894,6 +896,17 @@ function App() {
     } catch (error) {
       console.error('Error fetching employees:', error);
       setEmployees([]);
+    }
+  };
+
+  const fetchAppConfig = async () => {
+    try {
+      const general = await api.get('/api/config/general');
+      if (general?.appName) {
+        setAppName(general.appName);
+      }
+    } catch (error) {
+      console.error('Błąd pobierania ustawień ogólnych:', error);
     }
   };
 
@@ -937,8 +950,8 @@ function App() {
         // Ustaw token w API client PRZED wywołaniem addAuditLog
         api.setToken(response.token);
         
-        // Dodaj wpis do dziennika audytu
-        await addAuditLog(AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
+        // Dodaj wpis do dziennika audytu (poprawne argumenty: user, action, details)
+        await addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
         
         toast.success(`Witaj, ${response.full_name}!`);
       } else {
@@ -994,6 +1007,7 @@ function App() {
             onLogout={handleLogout} 
             onToggleSidebar={toggleMobileMenu}
             isSidebarOpen={isMobileMenuOpen}
+            appName={appName}
           />
           
           <MobileHeader 

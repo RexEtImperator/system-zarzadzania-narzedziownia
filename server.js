@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 // Inicjalizacja aplikacji Express
 const app = express();
@@ -12,7 +13,7 @@ const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  origin: ['http://localhost:3001', 'http://localhost:3000', 'https://localhost:3001', 'https://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -31,6 +32,92 @@ const db = new sqlite3.Database(path.join(__dirname, 'database.db'), (err) => {
 
 // Inicjalizacja bazy danych
 function initializeDatabase() {
+  // Tabela konfiguracji aplikacji (ustawienia ogólne)
+  db.run(`CREATE TABLE IF NOT EXISTS app_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    app_name TEXT NOT NULL,
+    company_name TEXT,
+    timezone TEXT,
+    language TEXT,
+    date_format TEXT,
+    backup_frequency TEXT,
+    last_backup_at DATETIME,
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli app_config:', err.message);
+    } else {
+      // Dodaj brakujące kolumny jeśli nie istnieją
+      db.all("PRAGMA table_info(app_config)", (err, columns) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania struktury tabeli app_config:', err.message);
+        } else {
+          const columnNames = columns.map(col => col.name);
+          if (!columnNames.includes('backup_frequency')) {
+            db.run('ALTER TABLE app_config ADD COLUMN backup_frequency TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny backup_frequency:', err.message);
+            });
+          }
+          if (!columnNames.includes('last_backup_at')) {
+            db.run('ALTER TABLE app_config ADD COLUMN last_backup_at DATETIME', (err) => {
+              if (err) console.error('Błąd dodawania kolumny last_backup_at:', err.message);
+            });
+          }
+          // Usuń kolumnę currency jeśli istnieje (SQLite wymaga przebudowy tabeli)
+          if (columnNames.includes('currency')) {
+            db.serialize(() => {
+              db.run('BEGIN TRANSACTION');
+              db.run(`CREATE TABLE IF NOT EXISTS app_config_new (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                app_name TEXT NOT NULL,
+                company_name TEXT,
+                timezone TEXT,
+                language TEXT,
+                date_format TEXT,
+                backup_frequency TEXT,
+                last_backup_at DATETIME,
+                updated_at DATETIME DEFAULT (datetime('now'))
+              )`);
+              db.run(`INSERT INTO app_config_new (id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, updated_at)
+                      SELECT id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, updated_at FROM app_config WHERE id = 1`);
+              db.run('DROP TABLE app_config');
+              db.run('ALTER TABLE app_config_new RENAME TO app_config');
+              db.run('COMMIT');
+              console.log('Usunięto kolumnę currency z app_config');
+            });
+          }
+        }
+      });
+      // Upewnij się, że istnieje rekord z domyślnymi ustawieniami
+      db.get('SELECT COUNT(*) as count FROM app_config WHERE id = 1', [], (err, row) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania app_config:', err.message);
+        } else if (row.count === 0) {
+          db.run(
+            `INSERT INTO app_config (id, app_name, company_name, timezone, language, date_format, backup_frequency) 
+             VALUES (1, ?, ?, ?, ?, ?, ?)`,
+            [
+              'SZN - System Zarządzania Narzędziownią',
+              'Moja Firma',
+              'Europe/Warsaw',
+              'pl',
+              'DD/MM/YYYY',
+              'daily'
+            ],
+            (err) => {
+              if (err) {
+                console.error('Błąd podczas inicjalizacji app_config:', err.message);
+              } else {
+                console.log('Zainicjalizowano domyślną konfigurację aplikacji (app_config)');
+              }
+            }
+          );
+        }
+      });
+    }
+  });
+  // Inicjuj harmonogram kopii zapasowych
+  initBackupScheduler();
   // Tabela użytkowników
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -338,6 +425,34 @@ function initializeDatabase() {
       console.error('Błąd podczas tworzenia tabeli departments:', err.message);
     } else {
       console.log('Tabela departments została utworzona lub już istnieje');
+      // Dodaj brakujące kolumny jeśli nie istnieją
+      db.all("PRAGMA table_info(departments)", (err, columns) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania struktury tabeli departments:', err.message);
+        } else {
+          const columnNames = columns.map(col => col.name);
+          if (!columnNames.includes('manager_id')) {
+            db.run('ALTER TABLE departments ADD COLUMN manager_id INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny manager_id:', err.message);
+            });
+          }
+          if (!columnNames.includes('status')) {
+            db.run('ALTER TABLE departments ADD COLUMN status TEXT DEFAULT "active"', (err) => {
+              if (err) console.error('Błąd dodawania kolumny status:', err.message);
+            });
+          }
+          if (!columnNames.includes('updated_at')) {
+            db.run('ALTER TABLE departments ADD COLUMN updated_at DATETIME', (err) => {
+              if (err) console.error('Błąd dodawania kolumny updated_at:', err.message);
+            });
+          }
+
+          // Migracja: ustaw status='active' dla istniejących rekordów bez statusu
+          db.run('UPDATE departments SET status = COALESCE(NULLIF(status, ""), "active") WHERE status IS NULL OR TRIM(status) = ""', (err) => {
+            if (err) console.error('Błąd migracji status w departments:', err.message);
+          });
+        }
+      });
     }
   });
 
@@ -352,6 +467,44 @@ function initializeDatabase() {
       console.error('Błąd podczas tworzenia tabeli positions:', err.message);
     } else {
       console.log('Tabela positions została utworzona lub już istnieje');
+      // Dodaj brakujące kolumny jeśli nie istnieją
+      db.all("PRAGMA table_info(positions)", (err, columns) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania struktury tabeli positions:', err.message);
+        } else {
+          const columnNames = columns.map(col => col.name);
+          if (!columnNames.includes('description')) {
+            db.run('ALTER TABLE positions ADD COLUMN description TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny description:', err.message);
+            });
+          }
+          if (!columnNames.includes('department_id')) {
+            db.run('ALTER TABLE positions ADD COLUMN department_id INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny department_id:', err.message);
+            });
+          }
+          if (!columnNames.includes('requirements')) {
+            db.run('ALTER TABLE positions ADD COLUMN requirements TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny requirements:', err.message);
+            });
+          }
+          if (!columnNames.includes('status')) {
+            db.run('ALTER TABLE positions ADD COLUMN status TEXT DEFAULT "active"', (err) => {
+              if (err) console.error('Błąd dodawania kolumny status:', err.message);
+            });
+          }
+          if (!columnNames.includes('updated_at')) {
+            db.run('ALTER TABLE positions ADD COLUMN updated_at DATETIME', (err) => {
+              if (err) console.error('Błąd dodawania kolumny updated_at:', err.message);
+            });
+          }
+
+          // Migracja: ustaw status='active' dla istniejących rekordów bez statusu
+          db.run('UPDATE positions SET status = COALESCE(NULLIF(status, ""), "active") WHERE status IS NULL OR TRIM(status) = ""', (err) => {
+            if (err) console.error('Błąd migracji status w positions:', err.message);
+          });
+        }
+      });
     }
   });
 
@@ -411,10 +564,54 @@ function authenticateToken(req, res, next) {
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.warn('JWT verification failed:', {
+        error: err.message,
+        name: err.name,
+        authHeader,
+        tokenSnippet: token ? token.substring(0, 20) + '...' : null
+      });
       return res.status(403).json({ message: 'Nieprawidłowy token' });
     }
     req.user = user;
     next();
+  });
+}
+
+// Pomocnicza funkcja: upewnij się, że tabela departments ma wymagane kolumny
+function ensureDepartmentColumns(callback) {
+  db.all("PRAGMA table_info(departments)", (err, columns) => {
+    if (err) {
+      console.error('Błąd podczas sprawdzania struktury tabeli departments:', err.message);
+      return callback && callback(err);
+    }
+    const columnNames = columns.map(col => col.name);
+    const tasks = [];
+    if (!columnNames.includes('manager_id')) {
+      tasks.push({ sql: 'ALTER TABLE departments ADD COLUMN manager_id INTEGER', name: 'manager_id' });
+    }
+    if (!columnNames.includes('description')) {
+      tasks.push({ sql: 'ALTER TABLE departments ADD COLUMN description TEXT', name: 'description' });
+    }
+    if (!columnNames.includes('status')) {
+      tasks.push({ sql: 'ALTER TABLE departments ADD COLUMN status TEXT DEFAULT "active"', name: 'status' });
+    }
+    if (!columnNames.includes('updated_at')) {
+      tasks.push({ sql: 'ALTER TABLE departments ADD COLUMN updated_at DATETIME', name: 'updated_at' });
+    }
+
+    const runNext = () => {
+      if (tasks.length === 0) {
+        return callback && callback();
+      }
+      const task = tasks.shift();
+      db.run(task.sql, (alterErr) => {
+        if (alterErr && !String(alterErr.message).toLowerCase().includes('duplicate column')) {
+          console.error(`Błąd dodawania kolumny ${task.name}:`, alterErr.message);
+        }
+        runNext();
+      });
+    };
+    runNext();
   });
 }
 
@@ -997,67 +1194,170 @@ app.get('/api/departments', authenticateToken, (req, res) => {
 });
 
 app.post('/api/departments', authenticateToken, (req, res) => {
-  const { name } = req.body;
+  const { name, description, manager_id, status } = req.body;
   
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
   }
-
-  db.run('INSERT INTO departments (name) VALUES (?)', [name.trim()], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
-      } else {
-        console.error('Błąd podczas dodawania działu:', err.message);
-        res.status(500).json({ error: 'Błąd serwera' });
+  // Walidacja: jeśli podano manager_id, sprawdź czy istnieje pracownik o tym ID
+  const insertDepartment = () => {
+    db.run(
+      'INSERT INTO departments (name, description, manager_id, status) VALUES (?, ?, ?, COALESCE(?, "active"))',
+      [name.trim(), description || null, manager_id || null, status || null],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
+          } else {
+            console.error('Błąd podczas dodawania działu:', err.message);
+            res.status(500).json({ error: 'Błąd serwera' });
+          }
+        } else {
+          db.get('SELECT * FROM departments WHERE id = ?', [this.lastID], (err, row) => {
+            if (err) {
+              return res.status(500).json({ error: 'Błąd podczas pobierania danych działu' });
+            }
+            res.status(201).json(row);
+          });
+        }
       }
-    } else {
-      res.status(201).json({ 
-        id: this.lastID, 
-        name: name.trim(),
-        message: 'Dział został dodany pomyślnie' 
+    );
+  };
+  ensureDepartmentColumns(() => {
+    if (manager_id) {
+      db.get('SELECT id FROM employees WHERE id = ?', [manager_id], (err, emp) => {
+        if (err) {
+          console.error('Błąd podczas weryfikacji manager_id:', err.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        if (!emp) {
+          return res.status(400).json({ error: 'Nieprawidłowy manager_id: pracownik nie istnieje' });
+        }
+        insertDepartment();
       });
+    } else {
+      insertDepartment();
     }
   });
 });
 
 app.put('/api/departments/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, description, manager_id, status } = req.body;
   
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
   }
-
-  db.run('UPDATE departments SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-    [name.trim(), id], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
-      } else {
-        console.error('Błąd podczas aktualizacji działu:', err.message);
-        res.status(500).json({ error: 'Błąd serwera' });
+  const updateDepartment = () => {
+    db.run(
+      'UPDATE departments SET name = ?, description = ?, manager_id = ?, status = COALESCE(?, status), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name.trim(), description || null, manager_id || null, status || null, id],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
+          } else {
+            console.error('Błąd podczas aktualizacji działu:', err.message);
+            res.status(500).json({ error: 'Błąd serwera' });
+          }
+        } else if (this.changes === 0) {
+          res.status(404).json({ error: 'Dział nie został znaleziony' });
+        } else {
+          db.get('SELECT * FROM departments WHERE id = ?', [id], (err, row) => {
+            if (err) {
+              return res.status(500).json({ error: 'Błąd podczas pobierania danych działu' });
+            }
+            res.json(row);
+          });
+        }
       }
-    } else if (this.changes === 0) {
-      res.status(404).json({ error: 'Dział nie został znaleziony' });
+    );
+  };
+  ensureDepartmentColumns(() => {
+    if (manager_id) {
+      db.get('SELECT id FROM employees WHERE id = ?', [manager_id], (err, emp) => {
+        if (err) {
+          console.error('Błąd podczas weryfikacji manager_id:', err.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        if (!emp) {
+          return res.status(400).json({ error: 'Nieprawidłowy manager_id: pracownik nie istnieje' });
+        }
+        updateDepartment();
+      });
     } else {
-      res.json({ message: 'Dział został zaktualizowany pomyślnie' });
+      updateDepartment();
     }
   });
 });
 
 app.delete('/api/departments/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  
-  db.run('DELETE FROM departments WHERE id = ?', [id], function(err) {
+  // Najpierw pobierz nazwę działu, aby odczepić pracowników
+  db.get('SELECT id, name FROM departments WHERE id = ?', [id], (err, dept) => {
     if (err) {
-      console.error('Błąd podczas usuwania działu:', err.message);
-      res.status(500).json({ error: 'Błąd serwera' });
-    } else if (this.changes === 0) {
-      res.status(404).json({ error: 'Dział nie został znaleziony' });
-    } else {
-      res.json({ message: 'Dział został usunięty pomyślnie' });
+      console.error('Błąd podczas wyszukiwania działu:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
     }
+    if (!dept) {
+      return res.status(404).json({ error: 'Dział nie został znaleziony' });
+    }
+
+    // Ustaw dział pracowników na '-' dla przypisanych do usuwanego działu
+    db.run('UPDATE employees SET department = ? WHERE department = ?', ['-', dept.name], function(updateErr) {
+      if (updateErr) {
+        console.error('Błąd podczas odczepiania pracowników od działu:', updateErr.message);
+        return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+      }
+
+      const detachedCount = this.changes || 0;
+
+      // Następnie usuń dział
+      db.run('DELETE FROM departments WHERE id = ?', [id], function(deleteErr) {
+        if (deleteErr) {
+          console.error('Błąd podczas usuwania działu:', deleteErr.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        res.json({ message: 'Dział został usunięty pomyślnie', detachedEmployees: detachedCount });
+      });
+    });
+  });
+});
+
+// Usunięcie działu po nazwie (obsługa elementów "brak w bazie")
+app.delete('/api/departments/by-name/:name', authenticateToken, (req, res) => {
+  const { name } = req.params;
+  const normalized = (name || '').trim();
+  if (!normalized) {
+    return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
+  }
+
+  // Odczep pracowników przypisanych do tego działu (case-insensitive)
+  db.run('UPDATE employees SET department = ? WHERE LOWER(department) = LOWER(?)', ['-', normalized], function(updateErr) {
+    if (updateErr) {
+      console.error('Błąd podczas odczepiania pracowników od działu (by-name):', updateErr.message);
+      return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+    }
+
+    const detachedCount = this.changes || 0;
+
+    // Jeśli istnieje rekord działu o tej nazwie, usuń go również
+    db.get('SELECT id FROM departments WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, dept) => {
+      if (findErr) {
+        console.error('Błąd podczas wyszukiwania działu po nazwie:', findErr.message);
+        return res.status(500).json({ error: 'Błąd serwera' });
+      }
+      if (!dept) {
+        return res.json({ message: 'Odczepiono pracowników od działu (rekord nie istnieje)', detachedEmployees: detachedCount, deleted: false });
+      }
+      db.run('DELETE FROM departments WHERE id = ?', [dept.id], function(deleteErr) {
+        if (deleteErr) {
+          console.error('Błąd podczas usuwania działu po nazwie:', deleteErr.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        res.json({ message: 'Dział został usunięty pomyślnie (by-name)', detachedEmployees: detachedCount, deleted: true });
+      });
+    });
   });
 });
 
@@ -1074,67 +1374,167 @@ app.get('/api/positions', authenticateToken, (req, res) => {
 });
 
 app.post('/api/positions', authenticateToken, (req, res) => {
-  const { name } = req.body;
+  const { name, description, department_id, requirements, status } = req.body;
   
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Nazwa pozycji jest wymagana' });
   }
-
-  db.run('INSERT INTO positions (name) VALUES (?)', [name.trim()], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
-      } else {
-        console.error('Błąd podczas dodawania pozycji:', err.message);
-        res.status(500).json({ error: 'Błąd serwera' });
+  const insertPosition = () => {
+    db.run(
+      'INSERT INTO positions (name, description, department_id, requirements, status) VALUES (?, ?, ?, ?, COALESCE(?, "active"))',
+      [name.trim(), description || null, department_id || null, requirements || null, status || null],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
+          } else {
+            console.error('Błąd podczas dodawania pozycji:', err.message);
+            res.status(500).json({ error: 'Błąd serwera' });
+          }
+        } else {
+          db.get('SELECT * FROM positions WHERE id = ?', [this.lastID], (err, row) => {
+            if (err) {
+              return res.status(500).json({ error: 'Błąd podczas pobierania danych pozycji' });
+            }
+            res.status(201).json(row);
+          });
+        }
       }
-    } else {
-      res.status(201).json({ 
-        id: this.lastID, 
-        name: name.trim(),
-        message: 'Pozycja została dodana pomyślnie' 
-      });
-    }
-  });
+    );
+  };
+
+  if (department_id) {
+    db.get('SELECT id FROM departments WHERE id = ?', [department_id], (err, dept) => {
+      if (err) {
+        console.error('Błąd podczas weryfikacji department_id:', err.message);
+        return res.status(500).json({ error: 'Błąd serwera' });
+      }
+      if (!dept) {
+        return res.status(400).json({ error: 'Nieprawidłowy department_id: dział nie istnieje' });
+      }
+      insertPosition();
+    });
+  } else {
+    insertPosition();
+  }
 });
 
 app.put('/api/positions/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, description, department_id, requirements, status } = req.body;
   
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Nazwa pozycji jest wymagana' });
   }
-
-  db.run('UPDATE positions SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-    [name.trim(), id], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
-      } else {
-        console.error('Błąd podczas aktualizacji pozycji:', err.message);
-        res.status(500).json({ error: 'Błąd serwera' });
+  const updatePosition = () => {
+    db.run(
+      'UPDATE positions SET name = ?, description = ?, department_id = ?, requirements = ?, status = COALESCE(?, status), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name.trim(), description || null, department_id || null, requirements || null, status || null, id],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
+          } else {
+            console.error('Błąd podczas aktualizacji pozycji:', err.message);
+            res.status(500).json({ error: 'Błąd serwera' });
+          }
+        } else if (this.changes === 0) {
+          res.status(404).json({ error: 'Pozycja nie została znaleziona' });
+        } else {
+          db.get('SELECT * FROM positions WHERE id = ?', [id], (err, row) => {
+            if (err) {
+              return res.status(500).json({ error: 'Błąd podczas pobierania danych pozycji' });
+            }
+            res.json(row);
+          });
+        }
       }
-    } else if (this.changes === 0) {
-      res.status(404).json({ error: 'Pozycja nie została znaleziona' });
-    } else {
-      res.json({ message: 'Pozycja została zaktualizowana pomyślnie' });
-    }
-  });
+    );
+  };
+
+  if (department_id) {
+    db.get('SELECT id FROM departments WHERE id = ?', [department_id], (err, dept) => {
+      if (err) {
+        console.error('Błąd podczas weryfikacji department_id:', err.message);
+        return res.status(500).json({ error: 'Błąd serwera' });
+      }
+      if (!dept) {
+        return res.status(400).json({ error: 'Nieprawidłowy department_id: dział nie istnieje' });
+      }
+      updatePosition();
+    });
+  } else {
+    updatePosition();
+  }
 });
 
 app.delete('/api/positions/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  
-  db.run('DELETE FROM positions WHERE id = ?', [id], function(err) {
+  // Najpierw pobierz nazwę stanowiska, aby odczepić pracowników
+  db.get('SELECT id, name FROM positions WHERE id = ?', [id], (err, pos) => {
     if (err) {
-      console.error('Błąd podczas usuwania pozycji:', err.message);
-      res.status(500).json({ error: 'Błąd serwera' });
-    } else if (this.changes === 0) {
-      res.status(404).json({ error: 'Pozycja nie została znaleziona' });
-    } else {
-      res.json({ message: 'Pozycja została usunięta pomyślnie' });
+      console.error('Błąd podczas wyszukiwania stanowiska:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
     }
+    if (!pos) {
+      return res.status(404).json({ error: 'Pozycja nie została znaleziona' });
+    }
+
+    // Ustaw stanowisko pracowników na '-' dla przypisanych do usuwanego stanowiska
+    db.run('UPDATE employees SET position = ? WHERE position = ?', ['-', pos.name], function(updateErr) {
+      if (updateErr) {
+        console.error('Błąd podczas odczepiania pracowników od stanowiska:', updateErr.message);
+        return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+      }
+
+      const detachedCount = this.changes || 0;
+
+      // Następnie usuń stanowisko
+      db.run('DELETE FROM positions WHERE id = ?', [id], function(deleteErr) {
+        if (deleteErr) {
+          console.error('Błąd podczas usuwania pozycji:', deleteErr.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        res.json({ message: 'Pozycja została usunięta pomyślnie', detachedEmployees: detachedCount });
+      });
+    });
+  });
+});
+
+// Usunięcie stanowiska po nazwie (obsługa elementów "brak w bazie")
+app.delete('/api/positions/by-name/:name', authenticateToken, (req, res) => {
+  const { name } = req.params;
+  const normalized = (name || '').trim();
+  if (!normalized) {
+    return res.status(400).json({ error: 'Nazwa stanowiska jest wymagana' });
+  }
+
+  // Odczep pracowników przypisanych do tego stanowiska (case-insensitive)
+  db.run('UPDATE employees SET position = ? WHERE LOWER(position) = LOWER(?)', ['-', normalized], function(updateErr) {
+    if (updateErr) {
+      console.error('Błąd podczas odczepiania pracowników od stanowiska (by-name):', updateErr.message);
+      return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+    }
+
+    const detachedCount = this.changes || 0;
+
+    // Jeśli istnieje rekord pozycji o tej nazwie, usuń go również
+    db.get('SELECT id FROM positions WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, pos) => {
+      if (findErr) {
+        console.error('Błąd podczas wyszukiwania stanowiska po nazwie:', findErr.message);
+        return res.status(500).json({ error: 'Błąd serwera' });
+      }
+      if (!pos) {
+        return res.json({ message: 'Odczepiono pracowników od stanowiska (rekord nie istnieje)', detachedEmployees: detachedCount, deleted: false });
+      }
+      db.run('DELETE FROM positions WHERE id = ?', [pos.id], function(deleteErr) {
+        if (deleteErr) {
+          console.error('Błąd podczas usuwania stanowiska po nazwie:', deleteErr.message);
+          return res.status(500).json({ error: 'Błąd serwera' });
+        }
+        res.json({ message: 'Stanowisko zostało usunięte pomyślnie (by-name)', detachedEmployees: detachedCount, deleted: true });
+      });
+    });
   });
 });
 
@@ -1367,11 +1767,186 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
   });
 });
 
+// ===== ENDPOINTY KONFIGURACJI APLIKACJI =====
+
+// Pobieranie ustawień ogólnych (publiczne)
+app.get('/api/config/general', (req, res) => {
+  db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
+    if (err) {
+      console.error('Błąd podczas pobierania ustawień ogólnych:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Ustawienia nie zostały znalezione' });
+    }
+    res.json({
+      appName: row.app_name,
+      companyName: row.company_name,
+      timezone: row.timezone,
+      language: row.language,
+      dateFormat: row.date_format,
+      backupFrequency: row.backup_frequency || 'daily',
+      lastBackupAt: row.last_backup_at || null
+    });
+  });
+});
+
+// Aktualizacja ustawień ogólnych (tylko administrator)
+app.put('/api/config/general', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji ustawień' });
+  }
+
+  const { appName, companyName, timezone, language, dateFormat, backupFrequency } = req.body || {};
+
+  if (!appName || !timezone || !language || !dateFormat) {
+    return res.status(400).json({ message: 'Brak wymaganych pól: appName, timezone, language, dateFormat' });
+  }
+
+  const query = `
+    UPDATE app_config 
+    SET app_name = ?, company_name = ?, timezone = ?, language = ?, date_format = ?, backup_frequency = COALESCE(?, backup_frequency), updated_at = datetime('now')
+    WHERE id = 1
+  `;
+ 
+  db.run(query, [appName, companyName || null, timezone, language, dateFormat, backupFrequency || null], function(err) {
+    if (err) {
+      console.error('Błąd podczas aktualizacji ustawień ogólnych:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    // Zwróć zaktualizowane ustawienia
+    db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
+      if (err) {
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+      res.json({
+        appName: row.app_name,
+        companyName: row.company_name,
+        timezone: row.timezone,
+        language: row.language,
+        dateFormat: row.date_format,
+        backupFrequency: row.backup_frequency || 'daily',
+        lastBackupAt: row.last_backup_at || null
+      });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
 
 // Obsługa zamknięcia aplikacji
+
+// ===== BACKUPY BAZY DANYCH =====
+const BACKUP_DIR = path.join(__dirname, 'backups');
+
+function ensureBackupDir() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) {
+      fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      console.log('Utworzono katalog kopii zapasowych:', BACKUP_DIR);
+    }
+  } catch (err) {
+    console.error('Nie udało się utworzyć katalogu kopii zapasowych:', err.message);
+  }
+}
+
+function formatTimestamp(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mi = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
+}
+
+function performBackup(callback) {
+  ensureBackupDir();
+  const src = path.join(__dirname, 'database.db');
+  const stamp = formatTimestamp(new Date());
+  const dest = path.join(BACKUP_DIR, `database-${stamp}.db`);
+  try {
+    fs.copyFileSync(src, dest);
+    console.log('Wykonano kopię bazy danych:', dest);
+    // Zaktualizuj last_backup_at
+    db.run('UPDATE app_config SET last_backup_at = datetime("now"), updated_at = datetime("now") WHERE id = 1');
+    if (callback) callback(null, dest);
+  } catch (err) {
+    console.error('Błąd podczas wykonywania kopii zapasowej:', err.message);
+    if (callback) callback(err);
+  }
+}
+
+function shouldRunBackup(frequency, lastBackupAt) {
+  const now = new Date();
+  let thresholdMs;
+  switch ((frequency || 'daily')) {
+    case 'weekly':
+      thresholdMs = 7 * 24 * 60 * 60 * 1000; // 7 dni
+      break;
+    case 'monthly':
+      thresholdMs = 30 * 24 * 60 * 60 * 1000; // ~30 dni
+      break;
+    case 'daily':
+    default:
+      thresholdMs = 24 * 60 * 60 * 1000; // 1 dzień
+  }
+  if (!lastBackupAt) return true;
+  const last = new Date(lastBackupAt);
+  return (now - last) >= thresholdMs;
+}
+
+function checkAndRunBackup() {
+  db.get('SELECT backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
+    if (err) {
+      console.error('Błąd odczytu konfiguracji kopii zapasowych:', err.message);
+      return;
+    }
+    const freq = row?.backup_frequency || 'daily';
+    const last = row?.last_backup_at || null;
+    if (shouldRunBackup(freq, last)) {
+      performBackup();
+    }
+  });
+}
+
+function initBackupScheduler() {
+  ensureBackupDir();
+  // Uruchom co godzinę sprawdzanie czy należy wykonać kopię
+  setInterval(checkAndRunBackup, 60 * 60 * 1000);
+  console.log('Uruchomiono harmonogram kopii zapasowych (sprawdzanie co godzinę).');
+}
+
+// Ręczne wywołanie kopii (tylko administrator)
+app.post('/api/backup/run', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do uruchomienia kopii zapasowej' });
+  }
+  performBackup((err, dest) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    return res.json({ message: 'Kopia zapasowa wykonana', file: path.basename(dest) });
+  });
+});
+
+// Lista kopii (tylko administrator)
+app.get('/api/backup/list', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do przeglądania kopii zapasowych' });
+  }
+  ensureBackupDir();
+  try {
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('database-') && f.endsWith('.db'))
+      .map(f => ({ file: f }));
+    res.json({ backups: files });
+  } catch (err) {
+    res.status(500).json({ message: 'Błąd serwera', error: err.message });
+  }
+});
 process.on('SIGINT', () => {
   db.close((err) => {
     if (err) {

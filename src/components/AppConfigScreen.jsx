@@ -9,8 +9,7 @@ const AppConfigScreen = ({ apiClient }) => {
       companyName: 'Moja Firma',
       timezone: 'Europe/Warsaw',
       language: 'pl',
-      dateFormat: 'DD/MM/YYYY',
-      currency: 'PLN'
+      dateFormat: 'DD/MM/YYYY'
     },
     security: {
       sessionTimeout: 30,
@@ -47,9 +46,22 @@ const AppConfigScreen = ({ apiClient }) => {
   const loadConfig = async () => {
     try {
       setLoading(true);
-      // W rzeczywistej aplikacji pobierałbyś konfigurację z API
-      // const response = await apiClient.get('/config');
-      // setConfig(response.data);
+      // Pobierz ustawienia ogólne z API
+      const general = await apiClient.get('/api/config/general');
+      setConfig(prev => ({
+        ...prev,
+        general: {
+          appName: general.appName || prev.general.appName,
+          companyName: general.companyName ?? prev.general.companyName,
+          timezone: general.timezone || prev.general.timezone,
+          language: general.language || prev.general.language,
+          dateFormat: general.dateFormat || prev.general.dateFormat
+        },
+        notifications: {
+          ...prev.notifications,
+          backupFrequency: general.backupFrequency || prev.notifications.backupFrequency
+        }
+      }));
     } catch (error) {
       console.error('Błąd podczas ładowania konfiguracji:', error);
     } finally {
@@ -60,8 +72,15 @@ const AppConfigScreen = ({ apiClient }) => {
   const handleSave = async () => {
     try {
       setLoading(true);
-      // W rzeczywistej aplikacji zapisałbyś konfigurację przez API
-      // await apiClient.put('/config', config);
+      // Zapisz ustawienia ogólne przez API
+      await apiClient.put('/api/config/general', {
+        appName: config.general.appName,
+        companyName: config.general.companyName,
+        timezone: config.general.timezone,
+        language: config.general.language,
+        dateFormat: config.general.dateFormat,
+        backupFrequency: config.notifications.backupFrequency
+      });
       
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -85,7 +104,6 @@ const AppConfigScreen = ({ apiClient }) => {
   const tabs = [
     { id: 'general', name: 'Ogólne', icon: '⚙️' },
     { id: 'security', name: 'Bezpieczeństwo', icon: '🔒' },
-    { id: 'notifications', name: 'Powiadomienia', icon: '🔔' },
     { id: 'features', name: 'Funkcje', icon: '🎛️' },
     { id: 'departments', name: 'Działy', icon: '🏢' },
     { id: 'positions', name: 'Stanowiska', icon: '👔' }
@@ -163,22 +181,6 @@ const AppConfigScreen = ({ apiClient }) => {
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>
               <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Waluta
-            </label>
-            <select
-              value={config.general.currency}
-              onChange={(e) => updateConfig('general', 'currency', e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-            >
-              <option value="PLN">PLN</option>
-              <option value="EUR">EUR</option>
-              <option value="USD">USD</option>
-              <option value="GBP">GBP</option>
             </select>
           </div>
         </div>
@@ -316,35 +318,6 @@ const AppConfigScreen = ({ apiClient }) => {
             </label>
           </div>
         </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Przechowywanie logów audytu (dni)
-            </label>
-            <input
-              type="number"
-              value={config.notifications.auditLogRetention}
-              onChange={(e) => updateConfig('notifications', 'auditLogRetention', parseInt(e.target.value))}
-              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Częstotliwość kopii zapasowych
-            </label>
-            <select
-              value={config.notifications.backupFrequency}
-              onChange={(e) => updateConfig('notifications', 'backupFrequency', e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-            >
-              <option value="daily">Codziennie</option>
-              <option value="weekly">Tygodniowo</option>
-              <option value="monthly">Miesięcznie</option>
-            </select>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -434,6 +407,40 @@ const AppConfigScreen = ({ apiClient }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
+
+          {config.features.enableDataExport && (
+            <div className="mt-6">
+              <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">Inne ustawienia</h4>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Przechowywanie logów audytu (dni)
+                  </label>
+                  <input
+                    type="number"
+                    value={config.notifications.auditLogRetention}
+                    onChange={(e) => updateConfig('notifications', 'auditLogRetention', parseInt(e.target.value))}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Częstotliwość kopii zapasowych
+                  </label>
+                  <select
+                    value={config.notifications.backupFrequency}
+                    onChange={(e) => updateConfig('notifications', 'backupFrequency', e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  >
+                    <option value="daily">Codziennie</option>
+                    <option value="weekly">Tygodniowo</option>
+                    <option value="monthly">Miesięcznie</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -445,8 +452,6 @@ const AppConfigScreen = ({ apiClient }) => {
         return renderGeneralTab();
       case 'security':
         return renderSecurityTab();
-      case 'notifications':
-        return renderNotificationsTab();
       case 'features':
         return renderFeaturesTab();
       case 'departments':
@@ -457,6 +462,9 @@ const AppConfigScreen = ({ apiClient }) => {
         return renderGeneralTab();
     }
   };
+
+  // Dane aktywnej zakładki do nagłówka sekcji
+  const activeTabMeta = tabs.find((t) => t.id === activeTab) || tabs[0];
 
   return (
     <div className="space-y-8 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
@@ -507,29 +515,46 @@ const AppConfigScreen = ({ apiClient }) => {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs - vertical left panel (sticky on tall screens), content on the right */}
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`${
-                  activeTab === tab.id
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.name}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-12">
+          {/* Left navigation panel */}
+          <aside className="md:col-span-3 md:sticky md:top-0 md:self-start md:max-h-[80vh] md:overflow-y-auto border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 p-3 md:p-4">
+            <nav
+              className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible"
+              aria-label="Tabs"
+            >
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`${
+                      isActive
+                        ? 'bg-indigo-50 dark:bg-slate-700 text-indigo-700 dark:text-indigo-300'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                    } w-full text-left px-3 py-2 rounded-md transition-colors flex items-center gap-2`}
+                  >
+                    <span aria-hidden="true">{tab.icon}</span>
+                    <span className="text-sm font-medium">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-        <div className="p-6">
-          {renderTabContent()}
+          {/* Right content area */}
+          <main className="md:col-span-9 p-6">
+            {/* Dynamiczny nagłówek sekcji zależny od aktywnej zakładki */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span aria-hidden="true">{activeTabMeta.icon}</span>
+                {activeTabMeta.name}
+              </h2>
+            </div>
+            {renderTabContent()}
+          </main>
         </div>
       </div>
     </div>

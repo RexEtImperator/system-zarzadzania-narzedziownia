@@ -107,22 +107,22 @@ const EmployeeModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-black dark:bg-opacity-60 transition-opacity" onClick={onClose}></div>
 
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <form onSubmit={handleSubmit}>
-            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
               <div className="sm:flex sm:items-start">
                 <div className="w-full">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100 mb-4">
                     {employee ? 'Edytuj pracownika' : 'Dodaj nowego pracownika'}
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Imię *
                       </label>
                       <input
@@ -131,8 +131,9 @@ const EmployeeModal = ({
                         id="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.firstName ? 'border-red-300' : ''
+                        placeholder="np. Jan"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
+                          errors.firstName ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       />
                       {errors.firstName && (
@@ -141,7 +142,7 @@ const EmployeeModal = ({
                     </div>
 
                     <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Nazwisko *
                       </label>
                       <input
@@ -150,8 +151,9 @@ const EmployeeModal = ({
                         id="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.lastName ? 'border-red-300' : ''
+                        placeholder="np. Kowalski"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
+                          errors.lastName ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       />
                       {errors.lastName && (
@@ -160,7 +162,7 @@ const EmployeeModal = ({
                     </div>
 
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Telefon
                       </label>
                       <input
@@ -169,12 +171,13 @@ const EmployeeModal = ({
                         id="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="np. 500 600 700"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="brandNumber" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="brandNumber" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Numer służbowy
                       </label>
                       <input
@@ -183,12 +186,13 @@ const EmployeeModal = ({
                         id="brandNumber"
                         value={formData.brandNumber}
                         onChange={handleChange}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        placeholder="np. ID-1234"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Departament *
                       </label>
                       <select
@@ -196,8 +200,8 @@ const EmployeeModal = ({
                         id="departmentId"
                         value={formData.departmentId}
                         onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.departmentId ? 'border-red-300' : ''
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
+                          errors.departmentId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       >
                         <option value="">Wybierz departament</option>
@@ -213,7 +217,7 @@ const EmployeeModal = ({
                     </div>
 
                     <div>
-                      <label htmlFor="positionId" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="positionId" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Stanowisko *
                       </label>
                       <select
@@ -221,8 +225,8 @@ const EmployeeModal = ({
                         id="positionId"
                         value={formData.positionId}
                         onChange={handleChange}
-                        className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          errors.positionId ? 'border-red-300' : ''
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
+                          errors.positionId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       >
                         <option value="">Wybierz stanowisko</option>
@@ -238,7 +242,7 @@ const EmployeeModal = ({
                     </div>
 
                     <div>
-                      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                         Status
                       </label>
                       <select
@@ -246,7 +250,7 @@ const EmployeeModal = ({
                         id="status"
                         value={formData.status}
                         onChange={handleChange}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       >
                         <option value="active">Aktywny</option>
                         <option value="inactive">Nieaktywny</option>
@@ -256,15 +260,15 @@ const EmployeeModal = ({
                   </div>
 
                   {errors.submit && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-sm text-red-600">{errors.submit}</p>
+                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                      <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <div className="bg-gray-50 dark:bg-slate-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -275,7 +279,7 @@ const EmployeeModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
               >
                 Anuluj
               </button>

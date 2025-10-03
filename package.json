@@ -1,6 +1,6 @@
 {
   "name": "zarzadzanie",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "proxy": "http://localhost:3000",
   "main": "app.js",

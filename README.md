@@ -93,4 +93,4 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.0
+System Zarządzania Narzędziownią - wersja 1.1.0

@@ -1,6 +1,6 @@
 {
   "name": "system-ewidencji-narzedzi-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Backend dla systemu ewidencji narzędzi",
   "main": "server.js",
   "scripts": {

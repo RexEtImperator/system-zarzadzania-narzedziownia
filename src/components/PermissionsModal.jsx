@@ -56,7 +56,9 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'MANAGE_USERS': 'Zarządzanie użytkownikami',
     'VIEW_AUDIT_LOG': 'Dziennik audytu',
     'VIEW_BHP': 'BHP – przeglądanie',
-    'MANAGE_BHP': 'BHP – zarządzanie'
+    'MANAGE_BHP': 'BHP – zarządzanie',
+    'DELETE_ISSUE_HISTORY': 'Usuwanie historii wydań',
+    'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania'
   };
 
   useEffect(() => {

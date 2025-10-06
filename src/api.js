@@ -1,4 +1,6 @@
-const API_BASE_URL = '';
+// Użyj zmiennej środowiskowej dla adresu API w środowisku deweloperskim
+// Jeśli nie ustawiono, korzystaj z relatywnych ścieżek (proxy CRA)
+const API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE_URL) ? process.env.REACT_APP_API_BASE_URL : '';
 
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
@@ -91,6 +93,16 @@ class ApiClient {
           // Wyczyść token z klienta i localStorage
           this.setToken(null);
           localStorage.removeItem('token');
+
+          // Powiadom aplikację o błędzie autoryzacji (automatyczny logout)
+          try {
+            if (typeof window !== 'undefined' && window.dispatchEvent) {
+              const detail = { reason: message || 'Nieprawidłowy lub wygasły token', status: response.status };
+              window.dispatchEvent(new CustomEvent('auth:invalid', { detail }));
+            }
+          } catch (e) {
+            console.warn('[API] Failed to dispatch auth:invalid event:', e);
+          }
         }
 
         const err = new Error(message || `HTTP error! status: ${response.status}`);

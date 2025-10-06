@@ -10,14 +10,13 @@
     "test": "react-scripts test --passWithNoTests",
     "eject": "react-scripts eject",
     "server": "node server.js",
-    "dev": "concurrently \"npm run server\" \"npm start\"",
-    "start2": "set PORT=3002 && react-scripts start",
-    "dev2": "concurrently \"npm run server\" \"npm run start2\""
+    "dev": "concurrently \"npm run server\" \"npm start\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",

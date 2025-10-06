@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
+import { Bars3Icon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
 import api from './api';
 import { 
@@ -25,7 +26,9 @@ const PERMISSIONS = {
   VIEW_AUDIT_LOG: 'view_audit_log',
   ACCESS_TOOLS: 'access_tools',
   VIEW_BHP: 'view_bhp',
-  MANAGE_BHP: 'manage_bhp'
+  MANAGE_BHP: 'manage_bhp',
+  DELETE_ISSUE_HISTORY: 'delete_issue_history',
+  DELETE_SERVICE_HISTORY: 'delete_service_history'
 };
 
 // Stałe akcji audytu
@@ -153,28 +156,28 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
   const getButtonClass = () => {
     switch (type) {
       case 'danger':
-        return 'bg-red-600 hover:bg-red-700 text-white';
+        return 'bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800';
       case 'warning':
-        return 'bg-yellow-600 hover:bg-yellow-700 text-white';
+        return 'bg-yellow-600 hover:bg-yellow-700 text-white dark:bg-yellow-700 dark:hover:bg-yellow-800';
       default:
-        return 'bg-blue-600 hover:bg-blue-700 text-white';
+        return 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-        <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h2>
         </div>
         
         <div className="p-6">
-          <p className="text-slate-600 mb-6">{message}</p>
+          <p className="text-slate-600 dark:text-slate-300 mb-6">{message}</p>
           
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
               {cancelText}
             </button>
@@ -224,10 +227,7 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
       )}
       
       {/* Sidebar */}
-      <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out
-        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-200 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} `}>
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-slate-200 dark:border-gray-700">
             <img src="/logo.png" alt="Logo systemu" className="w-48 object-contain drop-shadow-lg" />
@@ -270,25 +270,16 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
       admin: 'Ustawienia',
       'user-management': 'Zarządzanie użytkownikami',
       config: 'Konfiguracja',
-      audit: 'Dziennik audytu'
+      audit: 'Dziennik audytu',
+      'user-settings': 'Ustawienia użytkownika'
     };
     return titles[screen] || 'Zarządzanie Narzędziami';
   };
 
   return (
-    <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 transition-colors duration-200">
-      <button
-        onClick={onMenuToggle}
-        className="p-2 text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-gray-100 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
+    <div className="lg:hidden hidden flex items-center items-center p-4 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 transition-colors duration-200">
       <h1 className="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-200">{getScreenTitle(currentScreen)}</h1>
-      
-      <div className="w-10" /> {/* Spacer */}
+      <div className="w-10" />
     </div>
   );
 }
@@ -303,329 +294,17 @@ import AnalyticsScreen from './components/AnalyticsScreen';
 import LabelsManager from './components/LabelsManager';
 import AuditLogScreen from './components/AuditLogScreen';
 import TopBar from './components/TopBar';
+import UserSettingsScreen from './components/UserSettingsScreen';
+import UserManagementScreen from './components/UserManagementScreen';
 
-// Komponent zarządzania użytkownikami
-function UserManagementScreen({ user }) {
-  const [users, setUsers] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    full_name: '',
-    role: 'user',
-    password: '',
-    confirmPassword: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await api.get('/api/users');
-      setUsers(data);
-      addAuditLog(user, AUDIT_ACTIONS.VIEW_USERS, 'Przeglądano listę użytkowników');
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Błąd podczas pobierania użytkowników');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddUser = () => {
-    setEditingUser(null);
-    setFormData({
-      username: '',
-      full_name: '',
-      role: 'user',
-      password: '',
-      confirmPassword: ''
-    });
-    setShowModal(true);
-  };
-
-  const handleEditUser = (userToEdit) => {
-    setEditingUser(userToEdit);
-    setFormData({
-      username: userToEdit.username,
-      full_name: userToEdit.full_name,
-      role: userToEdit.role,
-      password: '',
-      confirmPassword: ''
-    });
-    setShowModal(true);
-  };
-
-  const handleDeleteUser = async (userId, username) => {
-    if (!confirm(`Czy na pewno chcesz usunąć użytkownika "${username}"?`)) {
-      return;
-    }
-
-    try {
-      await api.del(`/users/${userId}`);
-      setUsers(users.filter(u => u.id !== userId));
-      addAuditLog(user, AUDIT_ACTIONS.DELETE_USER, `Usunięto użytkownika: ${username}`);
-      toast.success('Użytkownik został usunięty');
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      toast.error('Błąd podczas usuwania użytkownika');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.username || !formData.full_name) {
-      toast.error('Wypełnij wszystkie wymagane pola');
-      return;
-    }
-
-    if (!editingUser && (!formData.password || formData.password !== formData.confirmPassword)) {
-      toast.error('Hasła nie są identyczne');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const userData = {
-        username: formData.username,
-        full_name: formData.full_name,
-        role: formData.role
-      };
-
-      if (formData.password) {
-        userData.password = formData.password;
-      }
-
-      if (editingUser) {
-        await api.put(`/api/users/${editingUser.id}`, userData);
-        setUsers(users.map(u => u.id === editingUser.id ? {...u, ...userData} : u));
-        addAuditLog(user, AUDIT_ACTIONS.UPDATE_USER, `Zaktualizowano użytkownika: ${userData.username}`);
-        toast.success('Użytkownik został zaktualizowany');
-      } else {
-        const newUser = await api.post('/api/users', userData);
-        setUsers([...users, newUser]);
-        addAuditLog(user, AUDIT_ACTIONS.ADD_USER, `Dodano użytkownika: ${userData.username}`);
-        toast.success('Użytkownik został dodany');
-      }
-
-      setShowModal(false);
-      setFormData({
-        username: '',
-        full_name: '',
-        role: 'user',
-        password: '',
-        confirmPassword: ''
-      });
-    } catch (error) {
-      console.error('Error saving user:', error);
-      toast.error('Błąd podczas zapisywania użytkownika');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredUsers = users.filter(u =>
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.full_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Zarządzanie użytkownikami</h1>
-        <button
-          onClick={handleAddUser}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Dodaj użytkownika
-        </button>
-      </div>
-
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Szukaj użytkowników..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Użytkownik
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Rola
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Akcje
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200">
-            {filteredUsers.map((u) => (
-              <tr key={u.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-slate-900">{u.full_name}</div>
-                    <div className="text-sm text-slate-500">@{u.username}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    u.role === 'administrator' ? 'bg-red-100 text-red-800' :
-                    u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                    u.role === 'employee' ? 'bg-green-100 text-green-800' :
-                    u.role === 'user' ? 'bg-purple-100 text-purple-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {u.role === 'administrator' ? 'Administrator' :
-                     u.role === 'manager' ? 'Menedżer' :
-                     u.role === 'employee' ? 'Pracownik' :
-                     u.role === 'user' ? 'Użytkownik' :
-                     'Obserwator'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleEditUser(u)}
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                  >
-                    Edytuj
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(u.id, u.username)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Usuń
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal dodawania/edycji użytkownika */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">
-                {editingUser ? 'Edytuj użytkownika' : 'Dodaj użytkownika'}
-              </h2>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nazwa użytkownika
-                </label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Imię i nazwisko
-                </label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Rola
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="user">Użytkownik</option>
-                  <option value="employee">Pracownik</option>
-                  <option value="manager">Menedżer</option>
-                  <option value="administrator">Administrator</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  {editingUser ? 'Nowe hasło (opcjonalne)' : 'Hasło'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required={!editingUser}
-                />
-              </div>
-
-              {!editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Potwierdź hasło
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                >
-                  Anuluj
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {loading ? 'Zapisywanie...' : (editingUser ? 'Zaktualizuj' : 'Dodaj')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// (UserManagementScreen przeniesiony do src/components/UserManagementScreen.jsx)
 
 // Panel administracyjny
 function AdminPanel({ user, onNavigate }) {
   const [showDeleteHistoryConfirm, setShowDeleteHistoryConfirm] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [showDeleteEmployeesConfirm, setShowDeleteEmployeesConfirm] = useState(false);
+  const [showDeleteServiceHistoryConfirm, setShowDeleteServiceHistoryConfirm] = useState(false);
 
   const handleDeleteHistory = async () => {
     try {
@@ -651,6 +330,18 @@ function AdminPanel({ user, onNavigate }) {
     }
   };
 
+  const handleDeleteServiceHistory = async () => {
+    try {
+      await api.delete('/api/service-history');
+      toast.success('Historia serwisowania została usunięta');
+      setShowDeleteServiceHistoryConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię serwisowania');
+    } catch (error) {
+      console.error('Error deleting service history:', error);
+      toast.error('Błąd podczas usuwania historii serwisowania');
+    }
+  };
+
   return (
     <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="mb-6">
@@ -659,27 +350,6 @@ function AdminPanel({ user, onNavigate }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* User Management */}
-        {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">👥</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Użytkownicy</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzaj kontami użytkowników</p>
-              </div>
-            </div>
-            <div className="flex-1"></div>
-            <button 
-              onClick={() => onNavigate('user-management')}
-              className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-            >
-              Zarządzaj użytkownikami
-            </button>
-          </div>
-        )}
 
         {/* App Configuration */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
@@ -787,12 +457,24 @@ function AdminPanel({ user, onNavigate }) {
                   </div>
                 </div>
                 <div className="flex-1"></div>
-                <button 
-                  onClick={() => setShowDeleteHistoryConfirm(true)}
-                  className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
-                >
-                  Usuń historię wydań
-                </button>
+                <div className="space-y-3">
+                  {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
+                    <button 
+                      onClick={() => setShowDeleteHistoryConfirm(true)}
+                      className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
+                    >
+                      Usuń historię wydań
+                    </button>
+                  )}
+                  {hasPermission(user, PERMISSIONS.DELETE_SERVICE_HISTORY) && (
+                    <button 
+                      onClick={() => setShowDeleteServiceHistoryConfirm(true)}
+                      className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
+                    >
+                      Usuń historię serwisowania
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -833,6 +515,18 @@ function AdminPanel({ user, onNavigate }) {
         type="danger"
       />
 
+      {/* Modal potwierdzenia usunięcia historii serwisowania */}
+      <ConfirmationModal
+        isOpen={showDeleteServiceHistoryConfirm}
+        onClose={() => setShowDeleteServiceHistoryConfirm(false)}
+        onConfirm={handleDeleteServiceHistory}
+        title="Usuń historię serwisowania"
+        message="Czy na pewno chcesz usunąć całą historię serwisowania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie powiązane wpisy."
+        confirmText="Usuń historię serwisowania"
+        cancelText="Anuluj"
+        type="danger"
+      />
+
       {/* Modal potwierdzenia usunięcia pracowników */}
       <ConfirmationModal
         isOpen={showDeleteEmployeesConfirm}
@@ -863,6 +557,7 @@ function App() {
   const [employees, setEmployees] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [appName, setAppName] = useState('SZN - System Zarządzania Narzędziownią');
+  const [initialSearchTerm, setInitialSearchTerm] = useState({ tools: '', bhp: '' });
 
   // Sprawdź czy użytkownik jest już zalogowany przy starcie aplikacji
   useEffect(() => {
@@ -897,6 +592,40 @@ function App() {
       fetchAppConfig();
     }
   }, [user]);
+
+  // Automatyczne wylogowanie przy nieprawidłowym tokenie (zdarzenie z klienta API)
+  useEffect(() => {
+    const onAuthInvalid = (e) => {
+      const reason = e?.detail?.reason || 'Sesja wygasła lub token jest nieprawidłowy';
+      // Pokaż komunikat i wyloguj użytkownika
+      toast.error(`${reason}. Zaloguj się ponownie.`);
+      handleLogout();
+    };
+
+    window.addEventListener('auth:invalid', onAuthInvalid);
+    // Obsługa nawigacji z głębokim linkiem (z Analityki)
+    const onNavigate = (e) => {
+      try {
+        const { screen, q } = e?.detail || {};
+        if (screen === 'bhp' || screen === 'tools') {
+          // Ustaw ekran i przekaż wstępny filtr
+          if (screen === 'bhp') {
+            setInitialSearchTerm(prev => ({ ...prev, bhp: q || '' }));
+          } else {
+            setInitialSearchTerm(prev => ({ ...prev, tools: q || '' }));
+          }
+          handleNavigation(screen);
+        }
+      } catch (err) {
+        console.warn('navigate event error:', err);
+      }
+    };
+    window.addEventListener('navigate', onNavigate);
+    return () => {
+      window.removeEventListener('auth:invalid', onAuthInvalid);
+      window.removeEventListener('navigate', onNavigate);
+    };
+  }, []);
 
   const fetchTools = async () => {
     try {
@@ -1027,6 +756,7 @@ function App() {
             onToggleSidebar={toggleMobileMenu}
             isSidebarOpen={isMobileMenuOpen}
             appName={appName}
+            onNavigate={handleNavigation}
           />
           
           <MobileHeader 
@@ -1037,16 +767,17 @@ function App() {
           
           <div className="flex-1 overflow-auto">
             {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
-            {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} />}
-            {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} />}
+            {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
+            {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
-            {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} />}
+            {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}
             {currentScreen === 'audit' && <AuditLogScreen user={user} />}
             {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
             {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
             {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
             {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
+            {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
           </div>
         </div>
         

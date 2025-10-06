@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import api from '../api';
 import BarcodeScanner from './BarcodeScanner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import * as XLSX from 'xlsx';
 
-function ToolsScreen() {
+function ToolsScreen({ initialSearchTerm = '' }) {
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,11 +14,14 @@ function ToolsScreen() {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
+    serial_number: '',
+    serial_unreadable: false,
     category: '',
     location: '',
     quantity: 1,
     status: 'dostępne',
-    description: ''
+    description: '',
+    inventory_number: ''
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +31,10 @@ function ToolsScreen() {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [serviceTool, setServiceTool] = useState(null);
+  const [serviceQuantity, setServiceQuantity] = useState(1);
+  const [serviceOrderNumber, setServiceOrderNumber] = useState('');
 
   // Get unique categories and statuses for filters
   const categories = [...new Set((tools || []).map(tool => tool.category).filter(Boolean))];
@@ -37,10 +45,12 @@ function ToolsScreen() {
     const matchesSearch = !searchTerm || 
       tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tool.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.category?.toLowerCase().includes(searchTerm.toLowerCase());
+      tool.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.inventory_number?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesCategory = !selectedCategory || tool.category === selectedCategory;
-    const matchesStatus = !selectedStatus || tool.status === selectedStatus;
+    const computedStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'dostępne');
+    const matchesStatus = !selectedStatus || computedStatus === selectedStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -48,6 +58,43 @@ function ToolsScreen() {
   useEffect(() => {
     fetchTools();
   }, []);
+
+  // Ustaw wstępny filtr z deep-linka, jeśli przekazano
+  useEffect(() => {
+    if (initialSearchTerm) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
+
+  // As-you-type walidacja unikalności numeru ewidencyjnego
+  const inventoryCheckTimer = useRef(null);
+  useEffect(() => {
+    if (inventoryCheckTimer.current) {
+      clearTimeout(inventoryCheckTimer.current);
+    }
+    inventoryCheckTimer.current = setTimeout(() => {
+      const inv = (formData.inventory_number || '').trim();
+      if (!inv) {
+        setErrors(prev => ({ ...prev, inventory_number: null }));
+        return;
+      }
+      const conflict = (tools || []).some(t => (
+        t?.inventory_number &&
+        t.inventory_number.toLowerCase() === inv.toLowerCase() &&
+        t.id !== (editingTool?.id)
+      ));
+      setErrors(prev => ({
+        ...prev,
+        inventory_number: conflict ? 'Numer ewidencyjny jest już używany' : null
+      }));
+    }, 300);
+
+    return () => {
+      if (inventoryCheckTimer.current) {
+        clearTimeout(inventoryCheckTimer.current);
+      }
+    };
+  }, [formData.inventory_number, editingTool, tools]);
 
   const fetchTools = async () => {
     try {
@@ -63,8 +110,8 @@ function ToolsScreen() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -84,6 +131,19 @@ function ToolsScreen() {
     if (!formData.quantity || formData.quantity < 1) {
       newErrors.quantity = 'Ilość musi być większa od 0';
     }
+
+    // Sprawdzenie duplikatu numeru ewidencyjnego na submit
+    const inv = (formData.inventory_number || '').trim();
+    if (inv) {
+      const conflict = (tools || []).some(t => (
+        t?.inventory_number &&
+        String(t.inventory_number).toLowerCase() === inv.toLowerCase() &&
+        t.id !== (editingTool?.id)
+      ));
+      if (conflict) {
+        newErrors.inventory_number = 'Numer ewidencyjny jest już używany';
+      }
+    }
     
     return newErrors;
   };
@@ -100,7 +160,7 @@ function ToolsScreen() {
     setIsLoading(true);
     setErrors({});
 
-    try {
+  try {
       let dataToSubmit = { ...formData };
       
       // Generate SKU if not provided and not editing
@@ -127,7 +187,20 @@ function ToolsScreen() {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving tool:', error);
-      setErrors({ submit: 'Wystąpił błąd podczas zapisywania narzędzia' });
+      const serverMsg = error?.response?.data?.message || '';
+      if (serverMsg) {
+        if (serverMsg.toLowerCase().includes('sku')) {
+          setErrors(prev => ({ ...prev, sku: serverMsg }));
+        } else if (serverMsg.toLowerCase().includes('numer ewidencyjny') || serverMsg.toLowerCase().includes('inventory')) {
+          setErrors(prev => ({ ...prev, inventory_number: serverMsg }));
+        } else if (serverMsg.toLowerCase().includes('fabryczny') || serverMsg.toLowerCase().includes('serial')) {
+          setErrors(prev => ({ ...prev, serial_number: serverMsg }));
+        } else {
+          setErrors(prev => ({ ...prev, submit: serverMsg }));
+        }
+      } else {
+        setErrors(prev => ({ ...prev, submit: 'Wystąpił błąd podczas zapisywania narzędzia' }));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,9 +208,12 @@ function ToolsScreen() {
 
   const handleOpenModal = (tool = null) => {
     setEditingTool(tool);
-    setFormData(tool ? { ...tool } : {
+    setFormData(tool ? { ...tool, serial_unreadable: !!tool.serial_unreadable } : {
       name: '',
       sku: '',
+      serial_number: '',
+      serial_unreadable: false,
+      inventory_number: '',
       category: '',
       location: '',
       quantity: 1,
@@ -154,6 +230,9 @@ function ToolsScreen() {
     setFormData({
       name: '',
       sku: '',
+      serial_number: '',
+      serial_unreadable: false,
+      inventory_number: '',
       category: '',
       location: '',
       quantity: 1,
@@ -180,6 +259,61 @@ function ToolsScreen() {
   const handleRowClick = (tool) => {
     setSelectedTool(tool);
     setShowDetailsModal(true);
+  };
+
+  const handleOpenServiceModal = (tool) => {
+    setServiceTool(tool);
+    setServiceQuantity(1);
+    setServiceOrderNumber(tool?.service_order_number || '');
+    setShowServiceModal(true);
+  };
+
+  const handleCloseServiceModal = () => {
+    setShowServiceModal(false);
+    setServiceTool(null);
+    setServiceQuantity(1);
+    setServiceOrderNumber('');
+  };
+
+  const handleConfirmService = async () => {
+    if (!serviceTool) return;
+    const maxQty = (serviceTool.quantity || 0) - (serviceTool.service_quantity || 0);
+    if (serviceQuantity < 1 || serviceQuantity > maxQty) {
+      toast.error(`Wybierz ilość od 1 do ${maxQty}`);
+      return;
+    }
+    try {
+      const resp = await api.post(`/api/tools/${serviceTool.id}/service`, { quantity: serviceQuantity, service_order_number: (serviceOrderNumber || '').trim() || null });
+      const updated = resp?.tool || resp; // w zależności od kształtu odpowiedzi
+      setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
+      if (selectedTool?.id === updated.id) {
+        setSelectedTool(prev => ({ ...prev, ...updated }));
+      }
+      toast.success(resp?.message || 'Wysłano narzędzia na serwis');
+      handleCloseServiceModal();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Nie udało się wysłać na serwis';
+      toast.error(msg);
+    }
+  };
+
+  const handleServiceReceive = async () => {
+    if (!selectedTool) return;
+    const current = selectedTool.service_quantity || 0;
+    if (current <= 0) {
+      toast.info('Brak sztuk w serwisie do odebrania');
+      return;
+    }
+    try {
+      const resp = await api.post(`/api/tools/${selectedTool.id}/service/receive`, { quantity: current });
+      const updated = resp?.tool || resp;
+      setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
+      setSelectedTool(prev => ({ ...prev, ...updated }));
+      toast.success(resp?.message || 'Odebrano z serwisu');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Nie udało się odebrać z serwisu';
+      toast.error(msg);
+    }
   };
 
   const handleScanResult = (result) => {
@@ -302,6 +436,304 @@ function ToolsScreen() {
     }
   };
 
+  // Download only-QR label (name + SKU + QR)
+  const downloadQrLabel = async (tool) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const scale = 4;
+      canvas.width = 400 * scale;
+      canvas.height = 300 * scale;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Title: name
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${26 * scale}px Arial`;
+      ctx.fillText(tool.name || '', canvas.width / 2, 40 * scale);
+
+      // Subtitle: SKU
+      ctx.font = `${18 * scale}px Arial`;
+      ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
+
+      const qrCodeUrl = await generateQRCode(tool.sku || '', 800);
+      if (qrCodeUrl) {
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          const size = 200 * scale;
+          const x = (canvas.width - size) / 2;
+          const y = 90 * scale;
+          ctx.drawImage(qrImg, x, y, size, size);
+
+          const link = document.createElement('a');
+          link.download = `etykieta-qr-${tool.sku || 'narzędzie'}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+        };
+        qrImg.src = qrCodeUrl;
+      }
+    } catch (error) {
+      console.error('Error generating QR-only label:', error);
+      alert('Wystąpił błąd podczas generowania etykiety (QR)');
+    }
+  };
+
+  // Download only-barcode label (name + SKU + barcode)
+  const downloadBarcodeLabel = async (tool) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const scale = 4;
+      canvas.width = 400 * scale;
+      canvas.height = 300 * scale;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Title: name
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${26 * scale}px Arial`;
+      ctx.fillText(tool.name || '', canvas.width / 2, 40 * scale);
+
+      // Subtitle: SKU
+      ctx.font = `${18 * scale}px Arial`;
+      ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
+
+      const barcodeUrl = generateBarcode(tool.sku || '');
+      if (barcodeUrl) {
+        const barcodeImg = new Image();
+        barcodeImg.onload = () => {
+          const w = 300 * scale;
+          const h = 110 * scale;
+          const x = (canvas.width - w) / 2;
+          const y = 110 * scale;
+          ctx.drawImage(barcodeImg, x, y, w, h);
+
+          const link = document.createElement('a');
+          link.download = `etykieta-kreskowy-${tool.sku || 'narzędzie'}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+        };
+        barcodeImg.src = barcodeUrl;
+      }
+    } catch (error) {
+      console.error('Error generating barcode-only label:', error);
+      alert('Wystąpił błąd podczas generowania etykiety (kod kreskowy)');
+    }
+  };
+
+  // ===== Eksport listy i szczegółów =====
+  const downloadBlob = (filename, mime, content) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportListToPDF = () => {
+    const stamp = new Date().toLocaleString('pl-PL');
+    const itemsArr = filteredTools || [];
+
+    const headerCells = [
+      'Nazwa',
+      'Numer fabryczny',
+      'Kategoria',
+      'Status',
+      'Lokalizacja',
+      'SKU',
+      'Ilość',
+      'Opis'
+    ];
+    const headerHtml = headerCells.map(h => `<th>${h}</th>`).join('');
+
+    const tableRows = itemsArr.map(item => {
+      const cells = [
+        `<td>${item.name || ''}</td>`,
+        `<td>${item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')}</td>`,
+        `<td>${item.category || ''}</td>`,
+        `<td>${item.status || ''}</td>`,
+        `<td>${item.location || ''}</td>`,
+        `<td>${item.sku || ''}</td>`,
+        `<td>${item.quantity ?? ''}</td>`,
+        `<td>${item.description || ''}</td>`
+      ];
+      return `<tr>${cells.join('')}</tr>`;
+    }).join('');
+
+    const html = `
+      <html>
+      <head>
+        <meta charset=\"utf-8\" />
+        <title>Eksport Narzędzia — lista</title>
+        <style>
+          body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
+          h1 { font-size: 18px; margin: 0 0 8px; }
+          .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          thead th { background: #f3f4f6; color: #111827; text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+          tbody td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+          tbody tr:nth-child(even) td { background: #fafafa; }
+          @page { size: A4; margin: 12mm; }
+        </style>
+      </head>
+      <body>
+        <h1>Lista narzędzi</h1>
+        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <table>
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </body>
+      </html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return alert('Pop-up został zablokowany przez przeglądarkę');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  const exportListToXLSX = () => {
+    const itemsArr = filteredTools || [];
+    const headers = [
+      'Nazwa',
+      'Numer fabryczny',
+      'Kategoria',
+      'Status',
+      'Lokalizacja',
+      'SKU',
+      'Ilość',
+      'Opis'
+    ];
+    const rows = itemsArr.map(item => [
+      item.name || '',
+      (item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')),
+      item.category || '',
+      item.status || '',
+      item.location || '',
+      item.sku || '',
+      item.quantity ?? '',
+      item.description || ''
+    ]);
+    const aoa = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Narzędzia');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadBlob(`narzedzia_lista_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
+  };
+
+  const exportDetailsToPDF = () => {
+    if (!selectedTool) return;
+    const stamp = new Date().toLocaleString('pl-PL');
+    const rows = [
+      ['Nazwa', selectedTool.name || '-'],
+      ['SKU', selectedTool.sku || '-'],
+      ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '-')],
+      ['Kategoria', selectedTool.category || '-'],
+      ['Lokalizacja', selectedTool.location || '-'],
+      ['Status', selectedTool.status || '-'],
+      ['Ilość', selectedTool.quantity ?? '-'],
+      ['Opis', selectedTool.description || '-']
+    ];
+
+    // Dodaj dane serwisowe, jeśli dostępne
+    if ((selectedTool.service_quantity || 0) > 0) {
+      rows.push(['W serwisie', String(selectedTool.service_quantity)]);
+    }
+    if (selectedTool.service_order_number) {
+      rows.push(['Nr zlecenia serwisowego', selectedTool.service_order_number]);
+    }
+    if (selectedTool.service_sent_at) {
+      const sent = new Date(selectedTool.service_sent_at).toLocaleString('pl-PL');
+      rows.push(['Data wysłania na serwis', sent]);
+    }
+
+    const tableRowsHtml = rows.map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`).join('');
+
+    const html = `
+      <html><head><meta charset=\"utf-8\" />
+      <title>Eksport Narzędzia — szczegóły ${selectedTool.name || ''}</title>
+      <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 8px; }
+        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead th { background: #f3f4f6; color: #111827; text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        tbody td { padding: 8px; border-bottom: 1px solid #eee; }
+        tbody tr:nth-child(even) td { background: #fafafa; }
+        @page { size: A4; margin: 12mm; }
+      </style>
+      </head>
+      <body>
+        <h1>Szczegóły narzędzia</h1>
+        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <table>
+          <thead><tr><th>Pole</th><th>Wartość</th></tr></thead>
+          <tbody>${tableRowsHtml}</tbody>
+        </table>
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return alert('Pop-up został zablokowany przez przeglądarkę');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  const exportDetailsToXLSX = () => {
+    if (!selectedTool) return;
+    const headers = ['Pole', 'Wartość'];
+    const fields = [
+      ['Nazwa', selectedTool.name || ''],
+      ['SKU', selectedTool.sku || ''],
+      ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '')],
+      ['Kategoria', selectedTool.category || ''],
+      ['Lokalizacja', selectedTool.location || ''],
+      ['Status', selectedTool.status || ''],
+      ['Ilość', selectedTool.quantity ?? ''],
+      ['Opis', selectedTool.description || '']
+    ];
+    if ((selectedTool.service_quantity || 0) > 0) {
+      fields.push(['W serwisie', String(selectedTool.service_quantity)]);
+    }
+    if (selectedTool.service_order_number) {
+      fields.push(['Nr zlecenia serwisowego', selectedTool.service_order_number]);
+    }
+    if (selectedTool.service_sent_at) {
+      const sent = new Date(selectedTool.service_sent_at).toLocaleString('pl-PL');
+      fields.push(['Data wysłania na serwis', sent]);
+    }
+    const aoa = [headers, ...fields];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Narzędzie');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadBlob(`narzedzie_${(selectedTool.sku || selectedTool.name || 'pozycja')}_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
+  };
+
   // QR Code Display Component
   const QRCodeDisplay = ({ text }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -392,41 +824,7 @@ function ToolsScreen() {
 
   return (
     <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
-      <style jsx>{`
-        /* Optymalizacja renderowania tekstu dla lepszej ostrości */
-        .sharp-text {
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          text-rendering: optimizeLegibility;
-          font-feature-settings: "liga" 1, "kern" 1;
-        }
-        
-        /* Optymalizacja obrazów dla lepszej jakości */
-        .sharp-image {
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
-          image-rendering: pixelated;
-        }
-        
-        /* Poprawa kontrastu dla elementów drukowanych */
-        .print-optimized {
-          color: #000000 !important;
-          background: #ffffff !important;
-        }
-        
-        @media print {
-          * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          .sharp-text {
-            font-weight: bolder !important;
-            letter-spacing: 0.025em !important;
-          }
-        }
-      `}</style>
+
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
@@ -451,7 +849,7 @@ function ToolsScreen() {
             </label>
             <input
               type="text"
-              placeholder="Nazwa, SKU, kategoria..."
+              placeholder="Nazwa, SKU, kategoria, numer ewidencyjny..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
@@ -488,6 +886,22 @@ function ToolsScreen() {
             </select>
           </div>
         </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={exportListToPDF}
+            className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90 sharp-text"
+          >
+            Eksportuj jako PDF
+          </button>
+          <button
+            type="button"
+            onClick={exportListToXLSX}
+            className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
+          >
+            Eksportuj jako EXCEL
+          </button>
+        </div>
       </div>
 
       {/* Tools List */}
@@ -516,7 +930,9 @@ function ToolsScreen() {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Nr. ew.</th>
                   <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Nazwa</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Numer fabryczny</th>
                   <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Kategoria</th>
                   <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Status</th>
                   <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Lokalizacja</th>
@@ -531,27 +947,39 @@ function ToolsScreen() {
                     className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                     onClick={() => handleRowClick(tool)}
                   >
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.inventory_number || '-'}</td>
                     <td className="p-4">
                       <div className="font-medium text-slate-900 dark:text-slate-100 sharp-text">{tool.name}</div>
                       {tool.description && (
                         <div className="text-sm text-slate-500 dark:text-slate-400 sharp-text">{tool.description}</div>
                       )}
                     </td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.serial_number || (tool.serial_unreadable ? 'nieczytelny' : '-')}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.category || '-'}</td>
                     <td className="p-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${
-                        tool.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                        tool.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                        tool.status === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
-                        'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
-                      }`}>
-                        {tool.status || 'nieznany'}
-                      </span>
+                      {(() => {
+                        const displayStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'nieznany');
+                        const cls = displayStatus === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                          displayStatus === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                          displayStatus === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
+                          'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
+                        return (
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${cls}`}>
+                            {displayStatus}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.location || '-'}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.sku || '-'}</td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleOpenServiceModal(tool)}
+                          className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 text-sm font-medium sharp-text"
+                        >
+                          Serwis
+                        </button>
                         <button
                           onClick={() => handleOpenModal(tool)}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium sharp-text"
@@ -587,17 +1015,29 @@ function ToolsScreen() {
                       <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 sharp-text">{tool.description}</div>
                     )}
                   </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${
-                    tool.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                    tool.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                    tool.status === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
-                    'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
-                  }`}>
-                    {tool.status || 'nieznany'}
-                  </span>
+                  {(() => {
+                    const displayStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'nieznany');
+                    const cls = displayStatus === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
+                      displayStatus === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
+                      displayStatus === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
+                      'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
+                    return (
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${cls}`}>
+                        {displayStatus}
+                      </span>
+                    );
+                  })()}
                 </div>
                 
                 <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer ewidencyjny:</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.inventory_number || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer fabryczny:</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.serial_number || (tool.serial_unreadable ? 'nieczytelny' : '-')}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 dark:text-slate-400 sharp-text">Kategoria:</span>
                     <span className="text-slate-900 dark:text-slate-100 sharp-text">{tool.category || '-'}</span>
@@ -613,6 +1053,12 @@ function ToolsScreen() {
                 </div>
                 
                 <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-600" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleOpenServiceModal(tool)}
+                    className="flex-1 bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-300 py-2 px-3 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-800 transition-colors text-sm font-medium sharp-text"
+                  >
+                    Serwis
+                  </button>
                   <button
                     onClick={() => handleOpenModal(tool)}
                     className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium sharp-text"
@@ -631,6 +1077,62 @@ function ToolsScreen() {
           </div>
         </>
       )}
+      {/* Service Modal */}
+      {showServiceModal && serviceTool && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) handleCloseServiceModal(); }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">Wyślij na serwis</h2>
+                <button
+                  onClick={handleCloseServiceModal}
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <span className="text-2xl">×</span>
+                </button>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">Narzędzie: <span className="font-medium">{serviceTool.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">Dostępne do serwisu: <span className="font-medium">{(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}</span> szt.</p>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Ilość do serwisu</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}
+                  value={serviceQuantity}
+                  onChange={(e) => setServiceQuantity(parseInt(e.target.value || '1', 10))}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
+                />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Numer zlecenia serwisowego</label>
+                <input
+                  type="text"
+                  value={serviceOrderNumber}
+                  onChange={(e) => setServiceOrderNumber(e.target.value)}
+                  placeholder="Np. SER-2025-00123"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
+                />
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={handleCloseServiceModal}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text"
+                >
+                  Anuluj
+                </button>
+                <button
+                  onClick={handleConfirmService}
+                  className="px-3 py-1.5 bg-rose-600 dark:bg-rose-700 text-white rounded-lg text-sm hover:bg-rose-700 dark:hover:bg-rose-800 sharp-text"
+                >
+                  Wyślij
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Barcode Scanner */}
       {showBarcodeScanner && (
@@ -642,7 +1144,10 @@ function ToolsScreen() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal(); }}
+        >
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
@@ -706,6 +1211,58 @@ function ToolsScreen() {
                     {errors.sku && (
                       <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.sku}</p>
                     )}
+                  </div>
+                </div>
+
+                {/* Inventory number - full width */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    Numer ewidencyjny
+                  </label>
+                  <input
+                    type="text"
+                    name="inventory_number"
+                    value={formData.inventory_number || ''}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text ${
+                      errors.inventory_number ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
+                    }`}
+                    placeholder="Np. NE-000123"
+                  />
+                  {errors.inventory_number && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 sharp-text">{errors.inventory_number}</p>
+                  )}
+                </div>
+
+                {/* Serial number with unreadable checkbox */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    Numer fabryczny *
+                  </label>
+                  <input
+                    type="text"
+                    name="serial_number"
+                    value={formData.serial_number || ''}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text ${
+                      errors.serial_number ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
+                    }`}
+                    placeholder="Np. SN-123456"
+                    disabled={formData.serial_unreadable}
+                  />
+                  {errors.serial_number && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 sharp-text">{errors.serial_number}</p>
+                  )}
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      id="serial_unreadable"
+                      type="checkbox"
+                      name="serial_unreadable"
+                      checked={!!formData.serial_unreadable}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="serial_unreadable" className="text-sm text-slate-700 dark:text-slate-300 sharp-text">Numer nieczytelny</label>
                   </div>
                 </div>
 
@@ -829,7 +1386,10 @@ function ToolsScreen() {
 
       {/* Tool Details Modal */}
       {showDetailsModal && selectedTool && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDetailsModal(false); }}
+        >
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
@@ -844,6 +1404,7 @@ function ToolsScreen() {
                 </button>
               </div>
 
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Tool Information */}
                 <div className="space-y-4">
@@ -853,6 +1414,14 @@ function ToolsScreen() {
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-slate-400 sharp-text">Nazwa:</span>
                         <span className="text-slate-900 dark:text-slate-100 font-medium sharp-text">{selectedTool.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer ewidencyjny:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-mono sharp-text">{selectedTool.inventory_number || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer fabryczny:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-mono sharp-text">{selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '-')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
@@ -877,6 +1446,10 @@ function ToolsScreen() {
                           {selectedTool.status || 'nieznany'}
                         </span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 sharp-text">Ilość:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-medium sharp-text">{selectedTool.quantity ?? '-'}</span>
+                      </div>
                       {selectedTool.description && (
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 sharp-text">Opis:</span>
@@ -886,13 +1459,47 @@ function ToolsScreen() {
                     </div>
                   </div>
 
+                  {/* Informacja o serwisie nad Eksport */}
+                  {(selectedTool.service_quantity || 0) > 0 && (
+                    <div className="pt-2">
+                      <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-700">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2 sharp-text">Serwis</h3>
+                        <p className="text-sm text-slate-700 dark:text-slate-200 sharp-text">W serwisie: <span className="font-medium">{selectedTool.service_quantity}</span> szt.</p>
+                        {selectedTool.service_order_number && (
+                          <p className="text-sm text-slate-700 dark:text-slate-200 sharp-text">Nr zlecenia: <span className="font-mono">{selectedTool.service_order_number}</span></p>
+                        )}
+                        {selectedTool.status === 'serwis' && selectedTool.service_sent_at && (
+                          <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 sharp-text">Data wysłania: {new Date(selectedTool.service_sent_at).toLocaleString()}</p>
+                        )}
+                        <div className="pt-2">
+                          <button
+                            onClick={handleServiceReceive}
+                            className="px-3 py-1.5 bg-green-600 dark:bg-green-700 text-white rounded-lg text-sm hover:bg-green-700 dark:hover:bg-green-800 sharp-text"
+                          >
+                            Odebrano
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Usunięto wspólny przycisk pobrania etykiety */}
                   <div className="pt-4">
-                    <button
-                      onClick={() => downloadLabel(selectedTool)}
-                      className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
-                    >
-                      Pobierz etykietę
-                    </button>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Eksport</h3>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={exportDetailsToPDF}
+                        className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90 sharp-text"
+                      >
+                        Eksportuj do PDF
+                      </button>
+                      <button
+                        onClick={exportDetailsToXLSX}
+                        className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
+                      >
+                        Eksportuj do EXCEL
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -903,12 +1510,28 @@ function ToolsScreen() {
                     <div className="flex justify-center">
                       <QRCodeDisplay text={selectedTool.sku} />
                     </div>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => downloadQrLabel(selectedTool)}
+                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
+                      >
+                        Pobierz etykietę (tylko QR)
+                      </button>
+                    </div>
                   </div>
 
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod kreskowy</h3>
                     <div className="flex justify-center">
                       <BarcodeDisplay text={selectedTool.sku} />
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => downloadBarcodeLabel(selectedTool)}
+                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
+                      >
+                        Pobierz etykietę (tylko kod kreskowy)
+                      </button>
                     </div>
                   </div>
                 </div>

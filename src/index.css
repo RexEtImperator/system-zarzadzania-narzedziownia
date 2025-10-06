@@ -2,6 +2,11 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Wyłącz przejścia podczas przełączania motywu, aby uniknąć keterowania zmian */
+.notransition *, .notransition *::before, .notransition *::after {
+  transition: none !important;
+}
+
 /* Animacja skanowania dla skanera kodów kreskowych */
 @keyframes scan {
   0% {
@@ -21,5 +26,34 @@
 @media (max-width: 640px) {
   .barcode-scanner-container {
     padding: 1rem;
+  }
+}
+/* Global utility classes moved from ToolsScreen */
+.sharp-text {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+.sharp-image {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.print-optimized {
+  color: #000000 !important;
+  background: #ffffff !important;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .sharp-text {
+    font-weight: bolder !important;
+    letter-spacing: 0.025em !important;
   }
 }

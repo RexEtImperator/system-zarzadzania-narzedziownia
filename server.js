@@ -204,6 +204,7 @@ function initializeDatabase() {
     barcode TEXT,
     qr_code TEXT,
     serial_number TEXT,
+    inventory_number TEXT,
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
@@ -243,6 +244,11 @@ function initializeDatabase() {
               if (err) console.error('Błąd dodawania kolumny qr_code:', err.message);
             });
           }
+          if (!columnNames.includes('serial_unreadable')) {
+            db.run('ALTER TABLE tools ADD COLUMN serial_unreadable INTEGER DEFAULT 0', (err) => {
+              if (err) console.error('Błąd dodawania kolumny serial_unreadable:', err.message);
+            });
+          }
           if (!columnNames.includes('status')) {
             db.run('ALTER TABLE tools ADD COLUMN status TEXT DEFAULT "dostępne"', (err) => {
               if (err) console.error('Błąd dodawania kolumny status:', err.message);
@@ -268,6 +274,38 @@ function initializeDatabase() {
               if (err) console.error('Błąd dodawania kolumny serial_number:', err.message);
             });
           }
+          if (!columnNames.includes('inventory_number')) {
+            db.run('ALTER TABLE tools ADD COLUMN inventory_number TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny inventory_number:', err.message);
+            });
+          }
+
+          // Serwis: ilość wysłana na serwis oraz data wysyłki
+          if (!columnNames.includes('service_quantity')) {
+            db.run('ALTER TABLE tools ADD COLUMN service_quantity INTEGER DEFAULT 0', (err) => {
+              if (err) console.error('Błąd dodawania kolumny service_quantity:', err.message);
+            });
+          }
+          if (!columnNames.includes('service_sent_at')) {
+            db.run('ALTER TABLE tools ADD COLUMN service_sent_at DATETIME NULL', (err) => {
+              if (err) console.error('Błąd dodawania kolumny service_sent_at:', err.message);
+            });
+          }
+          if (!columnNames.includes('service_order_number')) {
+            db.run('ALTER TABLE tools ADD COLUMN service_order_number TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny service_order_number:', err.message);
+            });
+          }
+
+          // Utwórz unikalny indeks dla numeru ewidencyjnego (jeśli nie istnieje)
+          // Używamy indeksu częściowego, aby zezwolić na NULL w inventory_number
+          db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_tools_inventory_number_unique ON tools(inventory_number) WHERE inventory_number IS NOT NULL', (err) => {
+            if (err) {
+              console.error('Błąd tworzenia unikalnego indeksu dla inventory_number:', err.message);
+            } else {
+              console.log('Zapewniono unikalny indeks dla inventory_number w tabeli tools');
+            }
+          });
         }
       });
 
@@ -317,6 +355,23 @@ function initializeDatabase() {
       console.error('Błąd podczas tworzenia tabeli tool_issues:', err.message);
     } else {
       console.log('Tabela tool_issues została utworzona lub już istnieje');
+    }
+  });
+
+  // Tabela historii serwisowania narzędzi
+  db.run(`CREATE TABLE IF NOT EXISTS tool_service_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_id INTEGER NOT NULL,
+    action TEXT NOT NULL, -- 'sent' | 'received'
+    quantity INTEGER NOT NULL,
+    order_number TEXT,
+    created_at DATETIME DEFAULT (datetime('now')),
+    FOREIGN KEY (tool_id) REFERENCES tools (id)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli tool_service_history:', err.message);
+    } else {
+      console.log('Tabela tool_service_history została utworzona lub już istnieje');
     }
   });
 
@@ -604,8 +659,8 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP'],
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES'],
         'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP'],
         'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP'],
         'viewer': ['VIEW_USERS', 'VIEW_BHP']
@@ -874,8 +929,8 @@ app.get('/api/tools/search', authenticateToken, (req, res) => {
 
   // Wyszukaj narzędzie po SKU, kodzie kreskowym lub kodzie QR
   db.get(
-    'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? LIMIT 1',
-    [code, code, code],
+    'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? OR inventory_number = ? LIMIT 1',
+    [code, code, code, code],
     (err, tool) => {
       if (err) {
         console.error('Błąd podczas wyszukiwania narzędzia:', err);
@@ -907,17 +962,27 @@ app.get('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint dodawania narzędzia
 app.post('/api/tools', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number } = req.body;
 
   if (!name || !sku) {
     return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
   }
 
+  // Wymagaj numeru fabrycznego, chyba że zaznaczono, że jest nieczytelny
+  const serialProvided = serial_number && String(serial_number).trim().length > 0;
+  const unreadableFlag = !!serial_unreadable;
+  if (!serialProvided && !unreadableFlag) {
+    return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
+  }
+
   db.run(
-    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serial_number],
+    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null],
     function(err) {
       if (err) {
+        if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
+          return res.status(400).json({ message: 'Narzędzie o tym numerze ewidencyjnym już istnieje' });
+        }
         if (err.message.includes('UNIQUE constraint failed')) {
           return res.status(400).json({ message: 'Narzędzie o tym SKU już istnieje' });
         }
@@ -937,18 +1002,28 @@ app.post('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint aktualizacji narzędzia
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, status } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
     return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
   }
 
+  // W edycji: jeśli numer fabryczny pusty, wymagaj zaznaczenia nieczytelności
+  const serialProvided = serial_number && String(serial_number).trim().length > 0;
+  const unreadableFlag = !!serial_unreadable;
+  if (!serialProvided && !unreadableFlag) {
+    return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
+  }
+
   db.run(
-    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serial_number, status || 'dostępne', id],
+    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, status || 'dostępne', id],
     function(err) {
       if (err) {
+        if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
+          return res.status(400).json({ message: 'Narzędzie o tym numerze ewidencyjnym już istnieje' });
+        }
         if (err.message.includes('UNIQUE constraint failed')) {
           return res.status(400).json({ message: 'Narzędzie o tym SKU już istnieje' });
         }
@@ -974,6 +1049,159 @@ app.delete('/api/tools/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
     }
     res.status(200).json({ message: 'Narzędzie zostało usunięte' });
+  });
+});
+
+// Endpoint wysyłki narzędzia na serwis (obsługa ilości)
+app.post('/api/tools/:id/service', authenticateToken, (req, res) => {
+  const toolId = req.params.id;
+  const { quantity, service_order_number } = req.body;
+
+  // Pobierz aktualne dane narzędzia
+  db.get('SELECT id, quantity, COALESCE(service_quantity, 0) as service_quantity FROM tools WHERE id = ?', [toolId], (err, tool) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (!tool) {
+      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+    }
+
+    const sendQuantity = Math.max(1, parseInt(quantity || 1, 10));
+    const availableForService = tool.quantity - tool.service_quantity;
+    if (sendQuantity > availableForService) {
+      return res.status(400).json({ message: `Maksymalnie można wysłać ${availableForService} szt.` });
+    }
+
+    const newServiceQuantity = tool.service_quantity + sendQuantity;
+
+    // Ustal nowy status: jeśli całkowita ilość to 1 i coś wysłane -> 'serwis', w przeciwnym wypadku pozostaw bez zmian
+    let updateStatusSql = '';
+    let updateParams = [newServiceQuantity, new Date().toISOString(), toolId];
+    if (tool.quantity === 1 && newServiceQuantity >= 1) {
+      updateStatusSql = ', status = ?';
+      updateParams = [newServiceQuantity, new Date().toISOString(), 'serwis', toolId];
+    }
+
+    // Aktualizuj również numer zlecenia serwisowego (jeśli przekazano)
+    let updateSql = `UPDATE tools SET service_quantity = ?, service_sent_at = ?, service_order_number = COALESCE(?, service_order_number)`;
+    let params = [newServiceQuantity, new Date().toISOString(), service_order_number || null];
+    if (tool.quantity === 1 && newServiceQuantity >= 1) {
+      updateSql += ', status = ?';
+      params.push('serwis');
+    }
+    updateSql += ' WHERE id = ?';
+    params.push(toolId);
+
+    db.run(
+      updateSql,
+      params,
+      function(updateErr) {
+        if (updateErr) {
+          return res.status(500).json({ message: 'Błąd serwera' });
+        }
+
+        // Zwróć zaktualizowane narzędzie
+        db.get('SELECT * FROM tools WHERE id = ?', [toolId], (getErr, updatedTool) => {
+          if (getErr) {
+            return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanego narzędzia' });
+          }
+          res.status(200).json({ 
+            message: `Wysłano na serwis ${sendQuantity} szt.${service_order_number ? ` (zlecenie: ${service_order_number})` : ''}`, 
+            tool: updatedTool 
+          });
+        });
+      }
+    );
+  });
+});
+
+// Endpoint odbioru narzędzia z serwisu (obsługa ilości)
+app.post('/api/tools/:id/service/receive', authenticateToken, (req, res) => {
+  const toolId = req.params.id;
+  const { quantity } = req.body || {};
+
+  // Pobierz aktualne dane narzędzia
+  db.get('SELECT id, quantity, COALESCE(service_quantity, 0) as service_quantity, service_order_number FROM tools WHERE id = ?', [toolId], (err, tool) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (!tool) {
+      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+    }
+
+    const current = tool.service_quantity;
+    const receiveQuantity = Math.max(1, parseInt(quantity || current, 10));
+    if (receiveQuantity > current) {
+      return res.status(400).json({ message: `Maksymalnie można odebrać ${current} szt.` });
+    }
+
+    const remaining = current - receiveQuantity;
+
+    let updateSql = 'UPDATE tools SET service_quantity = ?';
+    const params = [remaining];
+    if (remaining === 0) {
+      updateSql += ', service_sent_at = NULL, service_order_number = NULL, status = "dostępne"';
+    }
+    updateSql += ' WHERE id = ?';
+    params.push(toolId);
+
+    db.run(updateSql, params, function(updateErr) {
+      if (updateErr) {
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      // Zapisz historię odbioru
+      db.run(
+        'INSERT INTO tool_service_history (tool_id, action, quantity, order_number) VALUES (?, ?, ?, ?)',
+        [toolId, 'received', receiveQuantity, tool.service_order_number || null],
+        function(histErr) {
+          if (histErr) {
+            return res.status(500).json({ message: 'Błąd serwera' });
+          }
+
+          // Zwróć zaktualizowane narzędzie
+          db.get('SELECT * FROM tools WHERE id = ?', [toolId], (getErr, updatedTool) => {
+            if (getErr) {
+              return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanego narzędzia' });
+            }
+            res.status(200).json({ 
+              message: `Odebrano z serwisu ${receiveQuantity} szt.`,
+              tool: updatedTool,
+              remaining
+            });
+          });
+        }
+      );
+    });
+  });
+});
+
+// Podsumowanie historii serwisowania do Analityki
+app.get('/api/service-history/summary', authenticateToken, (req, res) => {
+  const inServiceQuery = `
+    SELECT id, name, sku, COALESCE(service_quantity,0) as service_quantity, service_order_number, service_sent_at
+    FROM tools
+    WHERE COALESCE(service_quantity,0) > 0
+    ORDER BY service_sent_at DESC
+  `;
+  const recentEventsQuery = `
+    SELECT h.id, h.tool_id, t.name, t.sku, h.action, h.quantity, h.order_number, h.created_at
+    FROM tool_service_history h
+    JOIN tools t ON t.id = h.tool_id
+    ORDER BY h.created_at DESC
+    LIMIT 50
+  `;
+
+  db.all(inServiceQuery, [], (err, inService) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    db.all(recentEventsQuery, [], (err2, events) => {
+      if (err2) {
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+      res.json({ in_service: inService, recent_events: events });
+    });
   });
 });
 
@@ -1295,7 +1523,7 @@ app.get('/api/employees', authenticateToken, (req, res) => {
 });
 
 // Endpoint dodawania pracownika
-app.post('/api/employees', authenticateToken, (req, res) => {
+app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const { first_name, last_name, phone, position, department, brand_number } = req.body;
 
   if (!first_name || !last_name || !position || !department) {
@@ -1397,7 +1625,7 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
 });
 
 // Endpoint do usuwania historii wydań i zwrotów
-app.delete('/tools/history', authenticateToken, (req, res) => {
+app.delete('/tools/history', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
   console.log('Rozpoczęcie usuwania historii wydań i zwrotów...');
 
   db.serialize(() => {
@@ -1446,6 +1674,44 @@ app.delete('/tools/history', authenticateToken, (req, res) => {
         });
       });
     });
+  });
+});
+
+// Endpoint do usuwania historii serwisowania
+app.delete('/api/service-history', authenticateToken, requirePermission('DELETE_SERVICE_HISTORY'), (req, res) => {
+  console.log('Rozpoczęcie usuwania historii serwisowania...');
+
+  db.run('DELETE FROM tool_service_history', function(err) {
+    if (err) {
+      console.error('Błąd podczas usuwania historii serwisowania:', err);
+      return res.status(500).json({ message: 'Błąd serwera podczas usuwania historii serwisowania' });
+    }
+
+    const deletedCount = this.changes || 0;
+    console.log(`Usunięto ${deletedCount} rekordów z tabeli tool_service_history`);
+
+    const auditQuery = `
+      INSERT INTO audit_logs (user_id, action, details, timestamp)
+      VALUES (?, ?, ?, datetime('now'))
+    `;
+
+    db.run(
+      auditQuery,
+      [
+        req.user.id,
+        'DELETE_SERVICE_HISTORY',
+        `Usunięto historię serwisowania (${deletedCount} rekordów)`
+      ],
+      (auditErr) => {
+        if (auditErr) {
+          console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+        }
+        return res.status(200).json({
+          message: 'Historia serwisowania została usunięta',
+          deleted_count: deletedCount
+        });
+      }
+    );
   });
 });
 
@@ -2949,7 +3215,10 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'MANAGE_USERS',
     'VIEW_AUDIT_LOG',
     'VIEW_BHP',
-    'MANAGE_BHP'
+    'MANAGE_BHP',
+    'DELETE_ISSUE_HISTORY',
+    'DELETE_SERVICE_HISTORY',
+    'MANAGE_EMPLOYEES'
   ];
 
   res.json(availablePermissions);

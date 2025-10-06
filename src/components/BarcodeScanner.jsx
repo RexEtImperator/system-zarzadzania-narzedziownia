@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ShieldExclamationIcon, LockClosedIcon, LightBulbIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import BarcodeScanner from 'react-qr-barcode-scanner';
 
 // Dodaj polyfill dla getSupportedConstraints natychmiast po załadowaniu modułu
@@ -189,7 +190,10 @@ const BarcodeScannerComponent = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+    >
       <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -206,9 +210,7 @@ const BarcodeScannerComponent = ({
         {!isSupported ? (
           <div className="text-center py-8">
             <div className="text-red-600 mb-4">
-              <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+              <ShieldExclamationIcon className="w-16 h-16 mx-auto mb-4" aria-hidden="true" />
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">
               Przeglądarka nie obsługuje kamery
@@ -235,10 +237,7 @@ const BarcodeScannerComponent = ({
         ) : hasPermission === false ? (
           <div className="text-center py-8">
             <div className="text-red-600 mb-4">
-              <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
-              </svg>
+              <LockClosedIcon className="w-16 h-16 mx-auto mb-4" aria-hidden="true" />
             </div>
             <p className="text-gray-700 mb-4">
               Brak dostępu do kamery. Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.
@@ -345,10 +344,7 @@ const BarcodeScannerComponent = ({
                 onClick={toggleTorch}
                 className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+                <LightBulbIcon className="w-5 h-5" aria-hidden="true" />
                 <span>{torchEnabled ? 'Wyłącz' : 'Włącz'} latarkę</span>
               </button>
 
@@ -363,9 +359,7 @@ const BarcodeScannerComponent = ({
             <div className="mt-4 text-sm text-gray-600 text-center">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <InformationCircleIcon className="w-5 h-5 text-blue-500 mr-2" aria-hidden="true" />
                   <span className="font-medium text-blue-700">Wskazówki skanowania</span>
                 </div>
                 <ul className="text-xs text-blue-600 space-y-1">
@@ -379,9 +373,7 @@ const BarcodeScannerComponent = ({
               {/* Dodatkowe wskazówki dla naklejek z drukarki etykiet */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-center mb-2">
-                  <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
+                  <LightBulbIcon className="w-5 h-5 text-yellow-600 mr-2" aria-hidden="true" />
                   <span className="font-medium text-yellow-700">Naklejki z drukarki etykiet</span>
                 </div>
                 <ul className="text-xs text-yellow-700 space-y-1">

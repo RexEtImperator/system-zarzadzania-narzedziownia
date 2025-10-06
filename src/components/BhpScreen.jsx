@@ -4,7 +4,7 @@ import api from '../api';
 import { toast } from 'react-toastify';
 import { PERMISSIONS } from '../constants';
 
-function BhpScreen({ employees = [], user }) {
+function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const formatDateForInput = (value) => {
     if (!value) return '';
     try {
@@ -70,6 +70,13 @@ function BhpScreen({ employees = [], user }) {
   const [returnModal, setReturnModal] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeIssueId, setActiveIssueId] = useState('');
+
+  // Ustaw wstępny filtr z deep-linka, jeśli przekazano
+  useEffect(() => {
+    if (initialSearchTerm) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
 
   // ===== Eksport listy i szczegółów =====
   const downloadBlob = (filename, mime, content) => {
@@ -962,7 +969,7 @@ function BhpScreen({ employees = [], user }) {
 
       {/* Modal dodawania/edycji */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{editingItem ? 'Edytuj pozycję BHP' : 'Dodaj pozycję BHP'}</h2>
@@ -1100,7 +1107,7 @@ function BhpScreen({ employees = [], user }) {
 
       {/* Modal szczegółów */}
       {detailsItem && detailsData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) { setDetailsItem(null); setDetailsData(null); } }}>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Szczegóły BHP: {detailsItem.inventory_number}</h2>
@@ -1190,7 +1197,7 @@ function BhpScreen({ employees = [], user }) {
 
       {/* Modal wydania */}
       {issueModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) setIssueModal(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Wydaj sprzęt BHP</h2>
@@ -1216,7 +1223,7 @@ function BhpScreen({ employees = [], user }) {
 
       {/* Modal zwrotu */}
       {returnModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) setReturnModal(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Zwrot sprzętu BHP</h2>

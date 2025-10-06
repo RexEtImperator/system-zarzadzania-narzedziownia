@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { ArchiveBoxIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import DepartmentManagementScreen from './DepartmentManagementScreen';
 import PositionManagementScreen from './PositionManagementScreen';
+import UserManagementScreen from './UserManagementScreen';
 
-const AppConfigScreen = ({ apiClient }) => {
+const AppConfigScreen = ({ apiClient, user }) => {
   const MIN_LOGO_WIDTH = 64;
   const MIN_LOGO_HEIGHT = 64;
   const MAX_LOGO_WIDTH = 1024;
@@ -128,6 +130,7 @@ const AppConfigScreen = ({ apiClient }) => {
   const tabs = [
     { id: 'general', name: 'Ogólne', icon: '⚙️' },
     { id: 'security', name: 'Bezpieczeństwo', icon: '🔒' },
+    { id: 'users', name: 'Użytkownicy', icon: '👥' },
     { id: 'features', name: 'Funkcje', icon: '🎛️' },
     { id: 'departments', name: 'Działy', icon: '🏢' },
     { id: 'positions', name: 'Stanowiska', icon: '👔' },
@@ -705,9 +708,7 @@ const AppConfigScreen = ({ apiClient }) => {
               </>
             ) : (
               <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10v10H7z" />
-                </svg>
+                <ArchiveBoxIcon className="w-4 h-4 mr-2" aria-hidden="true" />
                 Wykonaj kopię zapasową
               </>
             )}
@@ -724,6 +725,8 @@ const AppConfigScreen = ({ apiClient }) => {
         return renderGeneralTab();
       case 'security':
         return renderSecurityTab();
+      case 'users':
+        return <UserManagementScreen user={user} />;
       case 'features':
         return renderFeaturesTab();
       case 'departments':
@@ -762,9 +765,7 @@ const AppConfigScreen = ({ apiClient }) => {
             </>
           ) : (
             <>
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <CheckIcon className="w-4 h-4 mr-2" aria-hidden="true" />
               Zapisz zmiany
             </>
           )}
@@ -776,9 +777,7 @@ const AppConfigScreen = ({ apiClient }) => {
         <div className="rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 transition-colors duration-200">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400 dark:text-green-300" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
+              <CheckCircleIcon className="h-5 w-5 text-green-400 dark:text-green-300" aria-hidden="true" />
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-green-800 dark:text-green-300">

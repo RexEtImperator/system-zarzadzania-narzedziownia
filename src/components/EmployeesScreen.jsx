@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../api';
 import EmployeeModal from './EmployeeModal';
+import { PERMISSIONS, hasPermission } from '../constants';
 
 const AUDIT_ACTIONS = {
   EMPLOYEE_ADD: 'EMPLOYEE_ADD',
@@ -216,7 +217,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Filtry i wyszukiwanie</h3>
-          {user?.role === 'administrator' && (
+          {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
             <button
               onClick={() => setShowAddModal(true)}
               className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"

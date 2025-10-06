@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PlusIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -344,9 +345,7 @@ const PositionManagementScreen = ({ apiClient }) => {
           onClick={handleAdd}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
+          <PlusIcon className="w-4 h-4 mr-2" aria-hidden="true" />
           Dodaj stanowisko
         </button>
       </div>
@@ -366,9 +365,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
-                        </svg>
+                        <BriefcaseIcon className="w-6 h-6 text-white" aria-hidden="true" />
                       </div>
                     </div>
                     <div className="ml-4">

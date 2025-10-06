@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bars3Icon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
   return (
@@ -10,20 +11,7 @@ const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
             className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
           >
             <span className="sr-only">Otwórz menu</span>
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
           <h1 className="ml-3 text-lg font-semibold text-gray-900 truncate">
             Zarządzanie
@@ -49,20 +37,7 @@ const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
             className="inline-flex items-center p-2 border border-transparent rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
             title="Wyloguj"
           >
-            <svg
-              className="h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
+            <ArrowRightOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </div>

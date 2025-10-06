@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useLayoutEffect } from 'react';
 
 const ThemeContext = createContext();
 
@@ -21,11 +21,11 @@ export const ThemeProvider = ({ children }) => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Zapisz preferencje w localStorage
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-    
-    // Dodaj/usuń klasę dark z elementu html
+
+    // Dodaj/usuń klasę dark z elementu html synchronicznie przed malowaniem
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -33,7 +33,18 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [isDarkMode]);
 
+  const temporarilyDisableTransitions = () => {
+    // Wyłącz przejścia kolorów podczas przełączania motywu, aby uniknąć efektu "po chwili"
+    const root = document.documentElement;
+    root.classList.add('notransition');
+    // krótka przerwa na zastosowanie stylów, następnie usuń klasę
+    setTimeout(() => {
+      root.classList.remove('notransition');
+    }, 50);
+  };
+
   const toggleTheme = () => {
+    temporarilyDisableTransitions();
     setIsDarkMode(prev => !prev);
   };
 

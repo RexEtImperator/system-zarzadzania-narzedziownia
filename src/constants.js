@@ -149,8 +149,20 @@ export const hasPermission = (user, permission) => {
     return false;
   }
 
+  // Normalizacja nazw ról z różnych miejsc aplikacji
+  const normalizeRole = (role) => {
+    const r = String(role).toLowerCase();
+    if (r === 'administrator' || r === 'admin') return ROLES.ADMIN;
+    if (r === 'manager') return ROLES.MANAGER;
+    // Traktuj 'employee' i 'viewer' jako użytkownika z uprawnieniami podglądu
+    if (r === 'employee' || r === 'viewer' || r === 'user') return ROLES.USER;
+    return r; // fallback: już zgodny z ROLES
+  };
+
+  const normalizedRole = normalizeRole(user.role);
+
   // Admin ma wszystkie uprawnienia
-  if (user.role === ROLES.ADMIN) {
+  if (normalizedRole === ROLES.ADMIN) {
     return true;
   }
 
@@ -183,6 +195,6 @@ export const hasPermission = (user, permission) => {
     ]
   };
 
-  const userPermissions = rolePermissions[user.role] || [];
+  const userPermissions = rolePermissions[normalizedRole] || [];
   return userPermissions.includes(permission);
 };

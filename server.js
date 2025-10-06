@@ -1546,7 +1546,7 @@ app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEE
 });
 
 // Endpoint aktualizacji pracownika
-app.put('/api/employees/:id', authenticateToken, (req, res) => {
+app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const { first_name, last_name, phone, position, department, brand_number } = req.body;
   const id = req.params.id;
 
@@ -1570,7 +1570,7 @@ app.put('/api/employees/:id', authenticateToken, (req, res) => {
 });
 
 // Endpoint usuwania pracownika
-app.delete('/api/employees/:id', authenticateToken, (req, res) => {
+app.delete('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const id = req.params.id;
 
   db.run('DELETE FROM employees WHERE id = ?', [id], function(err) {

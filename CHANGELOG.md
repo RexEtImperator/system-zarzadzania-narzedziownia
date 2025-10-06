@@ -46,3 +46,16 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 - Guard: defensywny `filter(Boolean)` przy filtrowaniu listy narzędzi, aby uniknąć błędów na pustych wpisach.
 
 [1.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0
+
+## [1.3.0] - 2025-10-06
+
+### Dodane / Zmienione
+- Uprawnienia: dodano `MANAGE_EMPLOYEES` do listy dostępnych uprawnień oraz do domyślnych ról (`administrator`, `manager`).
+- API Pracownicy: wymagane uprawnienie `MANAGE_EMPLOYEES` dla endpointów `POST/PUT/DELETE /api/employees`.
+- UI: warunkowe wyświetlanie kafelka „Dodaj pracownika” na Dashboardzie i przycisku w ekranie Pracownicy w zależności od uprawnienia.
+- Wersja: podbicie wersji frontendu (`package.json`) do `1.3.0`.
+
+### Techniczne
+- Spójność polityki uprawnień między backendem a frontendem (wspólne stałe i walidacja).
+
+[1.3.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0

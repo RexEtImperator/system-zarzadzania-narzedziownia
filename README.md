@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0)
+[![Wersja](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
 System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
@@ -168,10 +168,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.2.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.3.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.2.0
+System Zarządzania Narzędziownią - wersja 1.3.0

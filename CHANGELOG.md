@@ -47,15 +47,19 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 [1.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0
 
-## [1.3.0] - 2025-10-06
+## [1.4.0] - 2025-10-06
 
 ### Dodane / Zmienione
 - Uprawnienia: dodano `MANAGE_EMPLOYEES` do listy dostępnych uprawnień oraz do domyślnych ról (`administrator`, `manager`).
 - API Pracownicy: wymagane uprawnienie `MANAGE_EMPLOYEES` dla endpointów `POST/PUT/DELETE /api/employees`.
 - UI: warunkowe wyświetlanie kafelka „Dodaj pracownika” na Dashboardzie i przycisku w ekranie Pracownicy w zależności od uprawnienia.
-- Wersja: podbicie wersji frontendu (`package.json`) do `1.3.0`.
+- Wersja: podbicie wersji frontendu (`package.json`) do `1.4.0`.
+ - Porty dev: stała konfiguracja — backend na `http://localhost:3000`, frontend na `https://localhost:3001` (proxy do backendu).
+ - Dashboard: zmieniono kafelek „Stanowiska” na „Pracownicy” i wyświetlanie łącznej liczby pracowników.
+ - Analityka: usunięto kafelki statystyk na górze sekcji.
+ - Nawigacja: usunięto zakładkę „Etykiety” z menu i tras aplikacji.
 
 ### Techniczne
 - Spójność polityki uprawnień między backendem a frontendem (wspólne stałe i walidacja).
 
-[1.3.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0
+[1.4.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0

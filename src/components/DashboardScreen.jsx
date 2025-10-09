@@ -13,7 +13,11 @@ const DashboardScreen = ({ user }) => {
     activeDepartments: 0,
     totalPositions: 0,
     totalTools: 0,
-    toolHistory: []
+    toolHistory: [],
+    overdueInspections: 0,
+    totalBhp: 0,
+    overdueToolsCount: 0,
+    overdueBhpCount: 0
   });
   const [loading, setLoading] = useState(true);
   const [showQuickIssueModal, setShowQuickIssueModal] = useState(false);
@@ -260,6 +264,60 @@ const DashboardScreen = ({ user }) => {
       // Pobierz historię wydań/zwrotów narzędzi
       const toolHistoryRes = await api.get('/api/tool-issues?limit=6');
       
+      // Pobierz listy narzędzi i BHP, aby policzyć przeterminowane przeglądy
+      let tools = [];
+      let bhpItems = [];
+      try {
+        const toolsRes = await api.get('/api/tools');
+        tools = Array.isArray(toolsRes) ? toolsRes : [];
+      } catch (e) {
+        console.warn('Nie udało się pobrać narzędzi do przeglądów:', e?.message || e);
+      }
+      try {
+        const bhpRes = await api.get('/api/bhp');
+        bhpItems = Array.isArray(bhpRes) ? bhpRes : [];
+      } catch (e) {
+        // /api/bhp wymaga uprawnień VIEW_BHP — traktuj brak uprawnień jako 0 pozycji
+        console.warn('Nie udało się pobrać BHP do przeglądów (może brak uprawnień):', e?.message || e);
+      }
+
+      // Pomocniczy parser dat wspierający formaty ISO i europejskie
+      const parseDateFlexible = (val) => {
+        if (!val) return null;
+        const str = String(val).trim();
+        // ISO lub z czasem: 2024-10-05 lub 2024-10-05 12:00:00
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+          const d = new Date(str);
+          return isNaN(d.getTime()) ? null : d;
+        }
+        // Format europejski: dd.mm.yyyy lub dd/mm/yyyy lub dd-mm-yyyy
+        const m = str.match(/^(\d{2})[.\/-](\d{2})[.\/-](\d{4})/);
+        if (m) {
+          const [, dd, mm, yyyy] = m;
+          const d = new Date(`${yyyy}-${mm}-${dd}`);
+          return isNaN(d.getTime()) ? null : d;
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      // Liczba przeterminowanych: data przeglądu < dziś (początek dnia)
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isOverdue = (dateStr) => {
+        const d = parseDateFlexible(dateStr);
+        if (!d) return false;
+        const startOfDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        return startOfDate < startOfToday;
+      };
+
+      const overdueTools = (Array.isArray(tools) ? tools : []).filter(t => t?.inspection_date && isOverdue(t.inspection_date));
+      const overdueBhp = (Array.isArray(bhpItems) ? bhpItems : []).filter(b => b?.inspection_date && isOverdue(b.inspection_date));
+      const overdueToolsCount = overdueTools.length;
+      const overdueBhpCount = overdueBhp.length;
+      const overdueCount = overdueToolsCount + overdueBhpCount;
+      const totalBhp = Array.isArray(bhpItems) ? bhpItems.length : 0;
+
       // Przekształć dane z API na format wymagany przez UI
       const toolHistoryData = toolHistoryRes.data?.map(issue => ({
         id: issue.id,
@@ -275,7 +333,11 @@ const DashboardScreen = ({ user }) => {
         activeDepartments: statsRes.activeDepartments || 0,
         totalPositions: statsRes.totalPositions || 0,
         totalTools: statsRes.totalTools || 0,
-        toolHistory: toolHistoryData
+        toolHistory: toolHistoryData,
+        overdueInspections: overdueCount,
+        totalBhp,
+        overdueToolsCount,
+        overdueBhpCount
       };
       
       setStats(dashboardStats);
@@ -287,7 +349,11 @@ const DashboardScreen = ({ user }) => {
         activeDepartments: 0,
         totalPositions: 0,
         totalTools: 0,
-        toolHistory: []
+        toolHistory: [],
+        overdueInspections: 0,
+        totalBhp: 0,
+        overdueToolsCount: 0,
+        overdueBhpCount: 0
       };
       setStats(mockStats);
     } finally {
@@ -295,14 +361,25 @@ const DashboardScreen = ({ user }) => {
     }
   };
 
-  const StatCard = ({ title, value, icon, color = 'blue' }) => (
+  const StatCard = ({ title, value, icon, color = 'blue', tooltip }) => (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
-          <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`}>
-            {loading ? '...' : value}
-          </p>
+          <div className="relative inline-block group">
+            <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`} aria-describedby={tooltip ? `${title}-tooltip` : undefined}>
+              {loading ? '...' : value}
+            </p>
+            {tooltip && (
+              <div
+                id={`${title}-tooltip`}
+                role="tooltip"
+                className="absolute left-1/2 -translate-x-1/2 mt-2 z-20 whitespace-nowrap rounded-md bg-slate-900 text-white text-xs px-3 py-2 shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none"
+              >
+                {tooltip}
+              </div>
+            )}
+          </div>
         </div>
         <div className={`w-12 h-12 bg-${color}-100 dark:bg-${color}-900/30 rounded-lg flex items-center justify-center`}>
           {React.cloneElement(icon, { 
@@ -351,39 +428,51 @@ const DashboardScreen = ({ user }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Pracownicy"
-          value={stats.totalEmployees}
-          icon={
-            <UsersIcon />
-          }
-          color="blue"
-        />
-        
-        <StatCard
-          title="Działy"
-          value={stats.activeDepartments}
-          icon={
-            <BuildingOfficeIcon />
-          }
-          color="green"
-        />
-        
-        <StatCard
-          title="Stanowiska"
-          value={stats.totalPositions}
-          icon={
-            <BriefcaseIcon />
-          }
-          color="purple"
-        />
-        
-        <StatCard
           title="Narzędzia w systemie"
           value={stats.totalTools}
           icon={
             <WrenchScrewdriverIcon />
           }
           color="orange"
+        />
+        
+        <StatCard
+          title="Sprzęt BHP"
+          value={stats.totalBhp}
+          icon={
+            <InboxIcon />
+          }
+          color="green"
+        />
+        
+        <StatCard
+          title="Pracownicy"
+          value={stats.totalEmployees}
+          icon={
+            <UsersIcon />
+          }
+          color="purple"
+        />
+        
+        <StatCard
+          title="Przeglądy przeterminowane"
+          value={stats.overdueInspections}
+          icon={
+            <ClockIcon />
+          }
+          color="red"
+          tooltip={
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Narzędzia:</span>
+                <span>{stats.overdueToolsCount}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">BHP:</span>
+                <span>{stats.overdueBhpCount}</span>
+              </div>
+            </div>
+          }
         />
       </div>
 

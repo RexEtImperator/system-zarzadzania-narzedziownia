@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0)
+[![Wersja](https://img.shields.io/badge/version-1.4.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
 System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
@@ -127,11 +127,16 @@ Uwagi:
 - Dev (backend + frontend):
   - `npm run dev`
   - Backend: `http://localhost:3000`
-  - Frontend: `http://localhost:3001`
-- Tylko backend: `npm run server`
-- Tylko frontend: `npm start`
-- Build produkcyjny: `npm run build` (wynik w katalogu `build/`)
-- Uwaga: frontend korzysta z portu `3001` (ustawiony w skrypcie `start`). Jeśli port jest zajęty, zwolnij go lub zmień port.
+  - Frontend: `https://localhost:3001`
+  - Tylko backend: `npm run server`
+  - Tylko frontend: `npm start`
+  - Build produkcyjny: `npm run build` (wynik w katalogu `build/`)
+  - Uwaga: frontend korzysta z portu `3001` (ustawiony w skrypcie `start`). Jeśli port jest zajęty, zwolnij go lub zmień port.
+
+### Zmiany UI w 1.4.0
+- Usunięto zakładkę „Etykiety” z nawigacji i trasy aplikacji.
+- Usunięto kafelki statystyk z górnej części ekranu „Analityka”.
+- Dashboard: zastąpiono kafelek „Stanowiska” kafelkiem „Pracownicy” z łączną liczbą.
 
 ## Funkcjonalności
 
@@ -168,10 +173,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.3.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.3.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.4.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.3.0
+System Zarządzania Narzędziownią - wersja 1.4.0

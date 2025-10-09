@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../api';
 import { toast } from 'react-toastify';
@@ -70,6 +70,27 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const [returnModal, setReturnModal] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeIssueId, setActiveIssueId] = useState('');
+  const [sortBy, setSortBy] = useState('inspection');
+
+  // Podpowiedzi z istniejących pozycji BHP (bez numerów seryjnych i ewidencyjnych)
+  const uniqueValues = (field) => {
+    try {
+      const vals = (items || []).map(i => i?.[field]).filter(v => !!v && String(v).trim() !== '');
+      return Array.from(new Set(vals)).slice(0, 100);
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const manufacturerOptions = useMemo(() => uniqueValues('manufacturer'), [items]);
+  const modelOptions = useMemo(() => uniqueValues('model'), [items]);
+  const catalogOptions = useMemo(() => uniqueValues('catalog_number'), [items]);
+  const shockAbsorberManufacturerOptions = useMemo(() => uniqueValues('shock_absorber_name'), [items]);
+  const shockAbsorberModelOptions = useMemo(() => uniqueValues('shock_absorber_model'), [items]);
+  const shockAbsorberCatalogOptions = useMemo(() => uniqueValues('shock_absorber_catalog_number'), [items]);
+  const srdManufacturerOptions = useMemo(() => uniqueValues('srd_manufacturer'), [items]);
+  const srdModelOptions = useMemo(() => uniqueValues('srd_model'), [items]);
+  const srdCatalogOptions = useMemo(() => uniqueValues('srd_catalog_number'), [items]);
 
   // Ustaw wstępny filtr z deep-linka, jeśli przekazano
   useEffect(() => {
@@ -465,13 +486,10 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       const diffDays = Math.ceil((insp - now) / (1000 * 60 * 60 * 24));
       const key = `${item.id}-${diffDays}`;
       if (notifiedRef.current.has(key)) return;
-      if (diffDays < 0) {
-        toast.error(`Przegląd po terminie: ${item.inventory_number} (${Math.abs(diffDays)} ${dayWord(diffDays)})`, { toastId: key });
-        notifiedRef.current.add(key);
-      } else if (diffDays <= 7) {
+      if (diffDays <= 7 && diffDays >= 0) {
         toast.warn(`Przegląd w ciągu 7 dni: ${item.inventory_number} (za ${diffDays} ${dayWord(diffDays)})`, { toastId: key });
         notifiedRef.current.add(key);
-      } else if (diffDays <= 30) {
+      } else if (diffDays <= 30 && diffDays >= 0) {
         toast.info(`Przegląd w ciągu 30 dni: ${item.inventory_number} (za ${diffDays} ${dayWord(diffDays)})`, { toastId: key });
         notifiedRef.current.add(key);
       }
@@ -701,6 +719,19 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   };
 
   const filteredItems = (() => {
+    if (sortBy === 'inventory') {
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+      const arr = [...filteredItemsBase];
+      arr.sort((a, b) => {
+        const ai = a.inventory_number || '';
+        const bi = b.inventory_number || '';
+        if (!ai && !bi) return 0;
+        if (!ai) return 1;
+        if (!bi) return -1;
+        return collator.compare(ai, bi);
+      });
+      return arr;
+    }
     const upcoming = [];
     const overdue = [];
     const noDate = [];
@@ -715,11 +746,9 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       }
     });
     if (reviewsFilter) {
-      // Najbliższy przegląd: przyszłe daty rosnąco, zaległe bardziej zaległe pierwsze
       upcoming.sort((a, b) => a.d - b.d);
       overdue.sort((a, b) => a.d - b.d);
     } else {
-      // Najdalszy przegląd: przyszłe daty malejąco (najpóźniejsze pierwsze), zaległe mniej zaległe pierwsze
       upcoming.sort((a, b) => b.d - a.d);
       overdue.sort((a, b) => b.d - a.d);
     }
@@ -773,7 +802,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
 
       {/* Filtry */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Wyszukaj</label>
             <input
@@ -797,15 +826,28 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Przeglądy</label>
-            <button
-              type="button"
-              onClick={() => setReviewsFilter(prev => !prev)}
-              className={`w-full px-3 py-2 rounded-lg border ${reviewsFilter ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'}`}
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sortowanie</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {reviewsFilter ? 'Najbliższy przegląd' : 'Najdalszy przegląd'}
-            </button>
+              <option value="inspection">Data przeglądu</option>
+              <option value="inventory">Nr ewidencyjny</option>
+            </select>
           </div>
+          {sortBy === 'inspection' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Przeglądy</label>
+              <button
+                type="button"
+                onClick={() => setReviewsFilter(prev => !prev)}
+                className={`w-full px-3 py-2 rounded-lg border ${reviewsFilter ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'}`}
+              >
+                {reviewsFilter ? 'Najbliższy przegląd' : 'Najdalszy przegląd'}
+              </button>
+            </div>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
@@ -830,7 +872,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Nr ewidencyjny</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Nr. ew.</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Producent / Model</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Seryjny / Katalogowy</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Przegląd</th>
@@ -982,11 +1024,11 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Producent</label>
-                  <input type="text" value={formData.manufacturer} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  <input type="text" list="manufacturerOptions" value={formData.manufacturer} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
-                  <input type="text" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  <input type="text" list="modelOptions" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Numer seryjny</label>
@@ -994,7 +1036,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Numer katalogowy</label>
-                  <input type="text" value={formData.catalog_number} onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  <input type="text" list="catalogOptions" value={formData.catalog_number} onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data produkcji (szelek)</label>
@@ -1037,11 +1079,11 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amortyzator - producent</label>
-                      <input type="text" value={formData.shock_absorber_name} onChange={(e) => setFormData({ ...formData, shock_absorber_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="shockAbsorberManufacturerOptions" value={formData.shock_absorber_name} onChange={(e) => setFormData({ ...formData, shock_absorber_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amortyzator - model</label>
-                      <input type="text" value={formData.shock_absorber_model} onChange={(e) => setFormData({ ...formData, shock_absorber_model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="shockAbsorberModelOptions" value={formData.shock_absorber_model} onChange={(e) => setFormData({ ...formData, shock_absorber_model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1051,7 +1093,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amortyzator - numer katalogowy</label>
-                      <input type="text" value={formData.shock_absorber_catalog_number} onChange={(e) => setFormData({ ...formData, shock_absorber_catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="shockAbsorberCatalogOptions" value={formData.shock_absorber_catalog_number} onChange={(e) => setFormData({ ...formData, shock_absorber_catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1069,11 +1111,11 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urządzenie samohamowne - producent</label>
-                      <input type="text" value={formData.srd_manufacturer} onChange={(e) => setFormData({ ...formData, srd_manufacturer: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="srdManufacturerOptions" value={formData.srd_manufacturer} onChange={(e) => setFormData({ ...formData, srd_manufacturer: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urządzenie samohamowne - model</label>
-                      <input type="text" value={formData.srd_model} onChange={(e) => setFormData({ ...formData, srd_model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="srdModelOptions" value={formData.srd_model} onChange={(e) => setFormData({ ...formData, srd_model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1083,7 +1125,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urządzenie samohamowne - numer katalogowy</label>
-                      <input type="text" value={formData.srd_catalog_number} onChange={(e) => setFormData({ ...formData, srd_catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                      <input type="text" list="srdCatalogOptions" value={formData.srd_catalog_number} onChange={(e) => setFormData({ ...formData, srd_catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1096,6 +1138,34 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
               )}
 
               {/* Usunięte: Amortyzator - data rozpoczęcia użytkowania (globalne pole wyżej) */}
+              {/* Datalisty z podpowiedziami */}
+              <datalist id="manufacturerOptions">
+                {manufacturerOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="modelOptions">
+                {modelOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="catalogOptions">
+                {catalogOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="shockAbsorberManufacturerOptions">
+                {shockAbsorberManufacturerOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="shockAbsorberModelOptions">
+                {shockAbsorberModelOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="shockAbsorberCatalogOptions">
+                {shockAbsorberCatalogOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="srdManufacturerOptions">
+                {srdManufacturerOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="srdModelOptions">
+                {srdModelOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
+              <datalist id="srdCatalogOptions">
+                {srdCatalogOptions.map((v) => (<option key={v} value={v} />))}
+              </datalist>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600">Anuluj</button>
                 <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800">Zapisz</button>
@@ -1108,7 +1178,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       {/* Modal szczegółów */}
       {detailsItem && detailsData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) { setDetailsItem(null); setDetailsData(null); } }}>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Szczegóły BHP: {detailsItem.inventory_number}</h2>
               <div className="flex items-center gap-3">

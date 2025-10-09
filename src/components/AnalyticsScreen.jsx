@@ -257,67 +257,18 @@ function AnalyticsScreen({ tools, employees, user }) {
     .filter(x => x.daysTo !== null && x.daysTo < 0)
     .sort((a, b) => a.daysTo - b.daysTo);
 
+  // Rozdziel przeterminowane na osobne sekcje dla Narzędzi i BHP
+  const overdueTools = overdueInspections.filter(x => x.source === 'tools');
+  const overdueBhp = overdueInspections.filter(x => x.source === 'bhp');
+
   return (
-    <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analityka</h1>
-        <p className="text-slate-600 dark:text-slate-400">Przegląd statystyk i raportów systemu</p>
-      </div>
+   <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+     <div className="mb-8">
+       <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analityka</h1>
+       <p className="text-slate-600 dark:text-slate-400">Przegląd statystyk i raportów systemu</p>
+     </div>
 
-      {/* Statystyki główne */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Wszystkie narzędzia</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalTools}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🔧</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Dostępne</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{availableTools}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">✅</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Wydane</p>
-              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{issuedTools}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📤</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pracownicy</p>
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{totalEmployees}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">👥</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* (Usunięto kafelki: Wykorzystanie narzędzi, Ostatnie aktywności) */}
-
-      <div className="mt-8">
+     <div className="mt-8">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Nadchodzące przeglądy</h3>
@@ -344,17 +295,17 @@ function AnalyticsScreen({ tools, employees, user }) {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Przeterminowane</h4>
-                {overdueInspections.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak przeterminowanych przeglądów.</p>
+                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Przeterminowane (Narzędzia)</h4>
+                {overdueTools.length === 0 ? (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak przeterminowanych przeglądów narzędzi.</p>
                 ) : (
                   <ul className="space-y-2">
-                    {overdueInspections.slice(0, 10).map(item => (
-                      <li key={`over-${item.source}-${item.id}`} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {overdueTools.slice(0, 10).map(item => (
+                      <li key={`over-tools-${item.id}`} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
-                            <span className={`px-2 py-0.5 text-xs rounded-full border ${item.source === 'bhp' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'}`}>{item.source === 'bhp' ? 'BHP' : 'Narzędzia'}</span>
+                            <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">Narzędzia</span>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">Przegląd: {formatDateOnly(item.inspection_date)}</p>
                         </div>
@@ -364,7 +315,42 @@ function AnalyticsScreen({ tools, employees, user }) {
                             type="button"
                             onClick={() => {
                               try {
-                                const screen = item.source === 'bhp' ? 'bhp' : 'tools';
+                                const screen = 'tools';
+                                const q = item.query || '';
+                                window.dispatchEvent(new CustomEvent('navigate', { detail: { screen, q } }));
+                              } catch (_) {}
+                            }}
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            Szczegóły
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">Przeterminowane (BHP)</h4>
+                {overdueBhp.length === 0 ? (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak przeterminowanych przeglądów BHP.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {overdueBhp.slice(0, 10).map(item => (
+                      <li key={`over-bhp-${item.id}`} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
+                            <span className="px-2 py-0.5 text-xs rounded-full border bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700">BHP</span>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Przegląd: {formatDateOnly(item.inspection_date)}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{Math.abs(item.daysTo)} dni po terminie</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                const screen = 'bhp';
                                 const q = item.query || '';
                                 window.dispatchEvent(new CustomEvent('navigate', { detail: { screen, q } }));
                               } catch (_) {}

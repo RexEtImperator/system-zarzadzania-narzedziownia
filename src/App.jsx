@@ -208,7 +208,6 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
     { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
-    { id: 'labels', label: 'Etykiety', icon: '🏷️', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'admin', label: 'Ustawienia', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
   ];
 
@@ -291,7 +290,6 @@ import ToolsScreen from './components/ToolsScreen';
 import BhpScreen from './components/BhpScreen';
 import EmployeesScreen from './components/EmployeesScreen';
 import AnalyticsScreen from './components/AnalyticsScreen';
-import LabelsManager from './components/LabelsManager';
 import AuditLogScreen from './components/AuditLogScreen';
 import TopBar from './components/TopBar';
 import UserSettingsScreen from './components/UserSettingsScreen';
@@ -593,6 +591,13 @@ function App() {
     }
   }, [user]);
 
+  // Odśwież narzędzia przy wejściu do Analityki, aby mieć aktualne daty przeglądów
+  useEffect(() => {
+    if (user && currentScreen === 'analytics') {
+      fetchTools();
+    }
+  }, [user, currentScreen]);
+
   // Automatyczne wylogowanie przy nieprawidłowym tokenie (zdarzenie z klienta API)
   useEffect(() => {
     const onAuthInvalid = (e) => {
@@ -771,7 +776,6 @@ function App() {
             {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
             {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
-            {currentScreen === 'labels' && <LabelsManager tools={tools} user={user} />}
             {currentScreen === 'audit' && <AuditLogScreen user={user} />}
             {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
             {currentScreen === 'user-management' && <UserManagementScreen user={user} />}

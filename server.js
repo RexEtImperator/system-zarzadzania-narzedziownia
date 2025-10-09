@@ -118,6 +118,30 @@ function initializeDatabase() {
   });
   // Inicjuj harmonogram kopii zapasowych
   initBackupScheduler();
+  // Tabela kategorii narzędzi
+  db.run(`CREATE TABLE IF NOT EXISTS tool_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    created_at DATETIME DEFAULT (datetime('now')),
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli tool_categories:', err.message);
+    } else {
+      // Zainicjuj domyślne kategorie, jeśli tabela jest pusta
+      db.get('SELECT COUNT(*) as count FROM tool_categories', [], (err, row) => {
+        if (err) {
+          console.error('Błąd podczas sprawdzania tool_categories:', err.message);
+        } else if ((row?.count || 0) === 0) {
+          const defaults = ['Ręczne', 'Elektronarzędzia', 'Spawalnicze', 'Pneumatyczne', 'Akumulatorowe'];
+          const stmt = db.prepare('INSERT INTO tool_categories (name) VALUES (?)');
+          defaults.forEach((name) => stmt.run(name));
+          stmt.finalize();
+          console.log('Zainicjalizowano domyślne kategorie narzędzi');
+        }
+      });
+    }
+  });
   // Tabela użytkowników
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,6 +318,13 @@ function initializeDatabase() {
           if (!columnNames.includes('service_order_number')) {
             db.run('ALTER TABLE tools ADD COLUMN service_order_number TEXT', (err) => {
               if (err) console.error('Błąd dodawania kolumny service_order_number:', err.message);
+            });
+          }
+
+          // Data przeglądu narzędzia
+          if (!columnNames.includes('inspection_date')) {
+            db.run('ALTER TABLE tools ADD COLUMN inspection_date DATETIME', (err) => {
+              if (err) console.error('Błąd dodawania kolumny inspection_date:', err.message);
             });
           }
 
@@ -962,7 +993,7 @@ app.get('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint dodawania narzędzia
 app.post('/api/tools', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date } = req.body;
 
   if (!name || !sku) {
     return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
@@ -976,8 +1007,8 @@ app.post('/api/tools', authenticateToken, (req, res) => {
   }
 
   db.run(
-    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null],
+    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
@@ -1002,7 +1033,7 @@ app.post('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint aktualizacji narzędzia
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
@@ -1017,8 +1048,8 @@ app.put('/api/tools/:id', authenticateToken, (req, res) => {
   }
 
   db.run(
-    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, status || 'dostępne', id],
+    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, inspection_date = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, status || 'dostępne', id],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
@@ -1603,12 +1634,13 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
     
     // Dodaj wpis do dziennika audytu
     const auditQuery = `
-      INSERT INTO audit_logs (user_id, action, details, timestamp)
-      VALUES (?, ?, ?, datetime('now'))
+      INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+      VALUES (?, ?, ?, ?, datetime('now'))
     `;
-    
+
     db.run(auditQuery, [
       req.user.id,
+      req.user.username,
       'DELETE_ALL_EMPLOYEES',
       `Usunięto wszystkich pracowników (${this.changes} rekordów)`
     ], (auditErr) => {
@@ -1691,14 +1723,15 @@ app.delete('/api/service-history', authenticateToken, requirePermission('DELETE_
     console.log(`Usunięto ${deletedCount} rekordów z tabeli tool_service_history`);
 
     const auditQuery = `
-      INSERT INTO audit_logs (user_id, action, details, timestamp)
-      VALUES (?, ?, ?, datetime('now'))
+      INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+      VALUES (?, ?, ?, ?, datetime('now'))
     `;
 
     db.run(
       auditQuery,
       [
         req.user.id,
+        req.user.username,
         'DELETE_SERVICE_HISTORY',
         `Usunięto historię serwisowania (${deletedCount} rekordów)`
       ],
@@ -3171,9 +3204,9 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
               })
             };
 
-            db.run(`INSERT INTO audit_logs (user_id, action, target_type, target_id, details, timestamp) 
-                    VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-              [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+            db.run(`INSERT INTO audit_logs (user_id, username, action, target_type, target_id, details, timestamp) 
+                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+              [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
               (err) => {
                 if (err) {
                   console.error('Błąd podczas zapisywania do audit log:', err.message);
@@ -3248,3 +3281,140 @@ function requirePermission(permission) {
     );
   };
 }
+
+// ===== API kategorii narzędzi =====
+// Pobierz listę kategorii
+app.get('/api/categories', authenticateToken, (req, res) => {
+  db.all('SELECT id, name FROM tool_categories ORDER BY name', (err, rows) => {
+    if (err) {
+      console.error('Błąd podczas pobierania kategorii:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    res.json(rows);
+  });
+});
+
+// Pobierz listę kategorii wraz z liczbą narzędzi w każdej kategorii
+app.get('/api/categories/stats', authenticateToken, (req, res) => {
+  const sql = `
+    SELECT 
+      c.id,
+      c.name,
+      COALESCE(COUNT(t.id), 0) AS tool_count
+    FROM tool_categories c
+    LEFT JOIN tools t ON LOWER(t.category) = LOWER(c.name)
+    GROUP BY c.id, c.name
+    ORDER BY c.name
+  `;
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error('Błąd podczas pobierania statystyk kategorii:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    res.json(rows);
+  });
+});
+
+// Dodaj kategorię (administrator)
+app.post('/api/categories', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+  }
+  const { name } = req.body || {};
+  if (!name || String(name).trim() === '') {
+    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+  }
+  const normalized = String(name).trim();
+  db.run('INSERT INTO tool_categories (name) VALUES (?)', [normalized], function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        return res.status(400).json({ error: 'Kategoria o tej nazwie już istnieje' });
+      }
+      console.error('Błąd podczas dodawania kategorii:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    db.get('SELECT id, name FROM tool_categories WHERE id = ?', [this.lastID], (getErr, row) => {
+      if (getErr) {
+        return res.status(500).json({ error: 'Błąd podczas pobierania kategorii' });
+      }
+      res.status(201).json(row);
+    });
+  });
+});
+
+// Aktualizuj kategorię (administrator)
+app.put('/api/categories/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+  }
+  const { id } = req.params;
+  const { name } = req.body || {};
+  if (!name || String(name).trim() === '') {
+    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+  }
+  const normalized = String(name).trim();
+  db.run('UPDATE tool_categories SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [normalized, id], function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        return res.status(400).json({ error: 'Kategoria o tej nazwie już istnieje' });
+      }
+      console.error('Błąd podczas aktualizacji kategorii:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+    }
+    db.get('SELECT id, name FROM tool_categories WHERE id = ?', [id], (getErr, row) => {
+      if (getErr) {
+        return res.status(500).json({ error: 'Błąd podczas pobierania kategorii' });
+      }
+      res.json(row);
+    });
+  });
+});
+
+// Usuń kategorię (administrator)
+app.delete('/api/categories/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+  }
+  const { id } = req.params;
+  db.run('DELETE FROM tool_categories WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Błąd podczas usuwania kategorii:', err.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+    }
+    res.json({ message: 'Kategoria została usunięta' });
+  });
+});
+
+// Usuń kategorię po nazwie (administrator)
+app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+  }
+  const { name } = req.params;
+  const normalized = String(name || '').trim();
+  if (!normalized) {
+    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+  }
+  db.get('SELECT id FROM tool_categories WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, cat) => {
+    if (findErr) {
+      console.error('Błąd wyszukiwania kategorii po nazwie:', findErr.message);
+      return res.status(500).json({ error: 'Błąd serwera' });
+    }
+    if (!cat) {
+      return res.json({ message: 'Rekord kategorii nie istnieje', deleted: false });
+    }
+    db.run('DELETE FROM tool_categories WHERE id = ?', [cat.id], function(deleteErr) {
+      if (deleteErr) {
+        console.error('Błąd usuwania kategorii po nazwie:', deleteErr.message);
+        return res.status(500).json({ error: 'Błąd serwera' });
+      }
+      res.json({ message: 'Kategoria została usunięta (by-name)', deleted: true });
+    });
+  });
+});

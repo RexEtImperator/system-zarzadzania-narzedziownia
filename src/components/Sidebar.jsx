@@ -46,12 +46,7 @@ const Sidebar = ({
       icon: (<Cog6ToothIcon className="w-5 h-5" aria-hidden="true" />),
       permission: PERMISSIONS.SYSTEM_SETTINGS
     },
-    {
-      id: 'labels',
-      label: 'Etykiety',
-      icon: (<TagIcon className="w-5 h-5" aria-hidden="true" />),
-      permission: PERMISSIONS.ACCESS_TOOLS
-    },
+    
     {
       id: 'audit',
       label: 'Dziennik audytu',

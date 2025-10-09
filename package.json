@@ -1,6 +1,6 @@
 {
   "name": "system-zarzadzania-narzedziownia-frontend",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Frontend dla systemu zarządzania narzędziownią",
   "proxy": "http://localhost:3000",
   "main": "app.js",
@@ -9,7 +9,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --passWithNoTests",
     "eject": "react-scripts eject",
-    "server": "node server.js",
+    "server": "set PORT=3000 && node server.js",
     "dev": "concurrently \"npm run server\" \"npm start\""
   },
   "keywords": [],

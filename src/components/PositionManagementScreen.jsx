@@ -22,12 +22,104 @@ const PositionManagementScreen = ({ apiClient }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Edycja kategorii narzędzi z poziomu zakładki „Stanowiska”
+  const [toolCategories, setToolCategories] = useState([]);
+  const [toolCatLoading, setToolCatLoading] = useState(false);
+  const [showCatPanel, setShowCatPanel] = useState(false);
+  const [toolCatNewName, setToolCatNewName] = useState('');
+  const [toolCatEditingId, setToolCatEditingId] = useState(null);
+  const [toolCatEditingName, setToolCatEditingName] = useState('');
 
   useEffect(() => {
     fetchPositions();
     fetchDepartments();
     fetchEmployees();
   }, []);
+
+  // Kategorie narzędzi – operacje
+  const loadToolCategories = async () => {
+    try {
+      setToolCatLoading(true);
+      const data = await apiClient.get('/api/categories/stats');
+      const list = Array.isArray(data) ? data.map(c => ({ id: c.id, name: c.name, tool_count: c.tool_count ?? 0 })) : [];
+      setToolCategories(list);
+    } catch (err) {
+      console.warn('Nie udało się pobrać kategorii narzędzi:', err?.message || err);
+      setToolCategories([
+        { id: 1, name: 'Ręczne', tool_count: 0 },
+        { id: 2, name: 'Elektronarzędzia', tool_count: 0 },
+        { id: 3, name: 'Spawalnicze', tool_count: 0 },
+        { id: 4, name: 'Pneumatyczne', tool_count: 0 },
+        { id: 5, name: 'Akumulatorowe', tool_count: 0 }
+      ]);
+    } finally {
+      setToolCatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Załaduj kategorie przy wejściu na ekran stanowisk (do panelu edycji)
+    loadToolCategories();
+  }, []);
+
+  const addToolCategory = async () => {
+    const name = (toolCatNewName || '').trim();
+    if (!name) {
+      toast.error('Podaj nazwę kategorii');
+      return;
+    }
+    try {
+      const created = await apiClient.post('/api/categories', { name });
+      setToolCategories(prev => [...prev, { id: created.id, name: created.name }]);
+      setToolCatNewName('');
+      toast.success('Dodano kategorię');
+    } catch (err) {
+      const msg = err?.message || 'Nie udało się dodać kategorii';
+      toast.error(msg);
+    }
+  };
+
+  const startEditToolCategory = (cat) => {
+    setToolCatEditingId(cat.id);
+    setToolCatEditingName(cat.name);
+  };
+
+  const cancelEditToolCategory = () => {
+    setToolCatEditingId(null);
+    setToolCatEditingName('');
+  };
+
+  const saveEditToolCategory = async () => {
+    const id = toolCatEditingId;
+    const name = (toolCatEditingName || '').trim();
+    if (!id) return;
+    if (!name) {
+      toast.error('Nazwa nie może być pusta');
+      return;
+    }
+    try {
+      const updated = await apiClient.put(`/api/categories/${id}`, { name });
+      setToolCategories(prev => prev.map(c => c.id === id ? { id, name: updated.name || name } : c));
+      cancelEditToolCategory();
+      toast.success('Zaktualizowano kategorię');
+    } catch (err) {
+      const msg = err?.message || 'Nie udało się zaktualizować kategorii';
+      toast.error(msg);
+    }
+  };
+
+  const deleteToolCategory = async (cat) => {
+    if (!cat?.id) return;
+    if (!window.confirm(`Usunąć kategorię „${cat.name}”?`)) return;
+    try {
+      await apiClient.delete(`/api/categories/${cat.id}`);
+      setToolCategories(prev => prev.filter(c => c.id !== cat.id));
+      toast.success('Usunięto kategorię');
+    } catch (err) {
+      const msg = err?.message || 'Nie udało się usunąć kategorii';
+      toast.error(msg);
+    }
+  };
 
   const fetchPositions = async () => {
     try {
@@ -350,6 +442,96 @@ const PositionManagementScreen = ({ apiClient }) => {
         </button>
       </div>
 
+      {/* Panel edycji kategorii narzędzi */}
+      <div className="mt-4 p-4 border border-slate-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-md font-medium text-gray-900 dark:text-white">Kategorie narzędzi</h3>
+          <button
+            type="button"
+            onClick={() => setShowCatPanel(prev => !prev)}
+            className="px-3 py-1 rounded bg-indigo-600 dark:bg-indigo-700 text-white"
+          >
+            {showCatPanel ? 'Ukryj edycję' : 'Edytuj kategorie'}
+          </button>
+        </div>
+        {showCatPanel && (
+          <div>
+            <div className="flex items-end gap-2 mb-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nowa kategoria</label>
+                <input
+                  type="text"
+                  value={toolCatNewName}
+                  onChange={(e) => setToolCatNewName(e.target.value)}
+                  placeholder="np. Ręczne"
+                  className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addToolCategory}
+                className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800"
+              >
+                Dodaj
+              </button>
+            </div>
+
+            {toolCatLoading ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie kategorii...</div>
+            ) : toolCategories.length === 0 ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400">Brak kategorii</div>
+            ) : (
+              <ul className="divide-y divide-slate-200 dark:divide-gray-700">
+                {toolCategories.map(cat => (
+                  <li key={cat.id} className="py-3 flex items-center justify-between">
+                    <div className="flex-1">
+                      {toolCatEditingId === cat.id ? (
+                        <input
+                          type="text"
+                          value={toolCatEditingName}
+                          onChange={(e) => setToolCatEditingName(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      ) : (
+                        <span className="text-sm text-gray-900 dark:text-white">{cat.name} <span className="text-gray-500 dark:text-gray-400">({cat.tool_count ?? 0})</span></span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {toolCatEditingId === cat.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={saveEditToolCategory}
+                            className="px-3 py-1 rounded bg-green-600 dark:bg-green-700 text-white"
+                          >Zapisz</button>
+                          <button
+                            type="button"
+                            onClick={cancelEditToolCategory}
+                            className="px-3 py-1 rounded bg-slate-200 dark:bg-gray-700 text-slate-800 dark:text-gray-200"
+                          >Anuluj</button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEditToolCategory(cat)}
+                            className="px-3 py-1 rounded bg-indigo-600 dark:bg-indigo-700 text-white"
+                          >Edytuj</button>
+                          <button
+                            type="button"
+                            onClick={() => deleteToolCategory(cat)}
+                            className="px-3 py-1 rounded bg-red-600 dark:bg-red-700 text-white"
+                          >Usuń</button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
       {/* Positions Table */}
       <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         {loading ? (

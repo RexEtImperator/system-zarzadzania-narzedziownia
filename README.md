@@ -8,12 +8,18 @@ System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzan
 ## Opis projektu
 
 Aplikacja umożliwia:
-- Zarządzanie bazą narzędzi
+- Zarządzanie bazą narzędzi i sprzętem BHP
+- Generowanie i wykorzystanie kodów QR/kreskowych (narzędzia)
 - Zarządzanie pracownikami i ich danymi
-- Wypożyczanie i zwracanie narzędzi
-- Śledzenie historii wypożyczeń
-- Zarządzanie działami i pozycjami
-- System uprawnień użytkowników
+- Wydawanie i zwracanie narzędzi/sprzętu BHP
+- Śledzenie historii wydań i zwrotów
+- Zarządzanie działami i stanowiskami
+- System logowania oraz uprawnień użytkowników (RBAC)
+- Przeglądy BHP i terminy kontroli
+- Analityka i wykresy (trend, przegląd danych)
+- Zarządzanie użytkownikami i rolami
+- Kopie zapasowe (backup) i podgląd plików kopii
+- Logi audytowe kluczowych akcji
 
 ## Technologie
 
@@ -144,28 +150,85 @@ Uwagi:
 - Pionowe zakładki z lewym panelem nawigacyjnym i treścią po prawej
 - Sticky lewy panel na wysokich ekranach
 - Dynamiczny nagłówek sekcji po prawej (ikona + nazwa aktywnej zakładki)
-- Spójne style i placeholdery w modalach, poprawki dark mode
+- Spójne style i placeholdery w modalach
 
 ### Dashboard
 - Przegląd statystyk narzędzi i pracowników
-- Szybkie wyszukiwanie
+- Szybkie wydanie i zwrot
 - Historia ostatnich aktywności
+
+## Zrzuty ekranu
+
+- Dashboard: ![Dashboard](./public/screenshots/dashboard.svg)
+- Narzędzia (lista): ![Narzędzia](./public/screenshots/tools.svg)
+- Pracownicy (lista): ![Pracownicy](./public/screenshots/employees.svg)
+
+## Diagram procesu wypożyczenia/zwrotu
+
+```mermaid
+flowchart LR
+  A[Wybór narzędzia] --> B{Dostępne?}
+  B -- Tak --> C[Wydanie narzędzia]
+  C --> D[Przypisanie do pracownika]
+  D --> E[Zapis w historii]
+  B -- Nie --> F[Komunikat: niedostępne]
+  E --> G[Zwrot narzędzia]
+  G --> H[Aktualizacja statusu]
+  H --> I[Zapis w historii]
+```
 
 ### Zarządzanie narzędziami
 - Dodawanie nowych narzędzi
 - Edycja istniejących narzędzi
-- Śledzenie statusu (dostępne/wypożyczone)
-- Historia wypożyczeń
+- Śledzenie statusu (dostępne/wydane/serwis)
+- Historia wydań i zwrotów
+
+### Zarządzanie sprzętem BHP
+- Dodawanie nowych sprzętów
+- Edycja istniejących sprzętów
+- Śledzenie statusu (dostępne/wydane)
+- Historia wydań i zwrotów
 
 ### Zarządzanie pracownikami
-- Rejestracja nowych pracowników
-- Zarządzanie działami i pozycjami
+- Dodawanie nowych pracowników
+- Zarządzanie działami i stanowiskami
 - Przypisywanie uprawnień
 
-### System wypożyczeń
-- Wypożyczanie narzędzi pracownikom
-- Zwracanie narzędzi
-- Historia wypożyczeń
+### System wydań
+- Proces wydania i zwrotu narzędzi/sprzętu BHP
+- Weryfikacja dostępności, historia operacji
+
+### Logowanie i uprawnienia
+- Logowanie z użyciem JWT
+- Role i uprawnienia (RBAC), kontrola dostępu do akcji i ekranów
+- Warunkowe wyświetlanie elementów UI na podstawie uprawnień
+
+### Działy i stanowiska
+- Zarządzanie strukturą organizacyjną: działy i stanowiska
+- Przypisanie stanowisk do pracowników
+
+### BHP (przeglądy)
+- Przeglądy BHP narzędzi, terminy i przypomnienia
+- Usprawnienia sortowania „Najbliższy/Najdalszy”
+
+### Audyt (logi)
+- Rejestrowanie istotnych akcji i nawigacji po ekranach
+- Wgląd w historię działań użytkowników
+
+### Skaner kodów
+- Skanowanie kodów QR i kreskowych (kamera urządzenia)
+- Generowanie i wykorzystanie kodów w procesach wypożyczeń
+
+### Konfiguracja / Backup
+- Podgląd ostatniej kopii zapasowej i listy plików
+- Akcja „Wykonaj kopię” z poziomu UI
+
+### Ustawienia użytkownika
+- Preferencje interfejsu, tryb ciemny
+- Spójne style i zachowanie modalnych okien
+
+### Powiadomienia
+- Toasty informacyjne/sukcesu/błędu dla operacji (React Toastify)
 
 ## Licencja
 

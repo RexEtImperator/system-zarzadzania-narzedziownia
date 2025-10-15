@@ -12,12 +12,36 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:8083',
+  'http://127.0.0.1:8083',
+  'https://localhost:3000',
+  'https://localhost:3001',
+  // Dopuszczamy adresy LAN w trakcie developmentu (np. Expo Web na innym IP)
+  'http://192.168.10.99:8083',
+  'http://192.168.10.99:3000'
+];
+
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000', 'https://localhost:3001', 'https://localhost:3000'],
+  origin: (origin, callback) => {
+    // Zezwól na brak origin (np. narzędzia CLI) oraz lokalne/lAN-owe pochodzenia
+    const lanPattern = /^http:\/\/192\.168\.\d+\.\d+:\d+$/;
+    const localhostPattern = /^http:\/\/localhost:\d+$/;
+    if (!origin || allowedOrigins.includes(origin) || lanPattern.test(origin) || localhostPattern.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Obsługa preflight dla tras API (Express 5: używamy wyrażenia regularnego)
+app.options(/^\/api\/.*$/, cors());
+
 app.use(express.json());
 
 // Połączenie z bazą danych

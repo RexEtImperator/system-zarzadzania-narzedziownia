@@ -12,4 +12,5 @@ export { default as MobileHeader } from './MobileHeader';
 export { default as PositionManagementScreen } from './PositionManagementScreen';
 export { default as Sidebar } from './Sidebar';
 export { default as ToolsScreen } from './ToolsScreen';
+export { default as InventoryScreen } from './InventoryScreen';
 export { default as TopBar } from './TopBar';

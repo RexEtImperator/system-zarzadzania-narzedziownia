@@ -229,6 +229,9 @@ function initializeDatabase() {
     qr_code TEXT,
     serial_number TEXT,
     inventory_number TEXT,
+    min_stock INTEGER,
+    max_stock INTEGER,
+    is_consumable INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
@@ -325,6 +328,23 @@ function initializeDatabase() {
           if (!columnNames.includes('inspection_date')) {
             db.run('ALTER TABLE tools ADD COLUMN inspection_date DATETIME', (err) => {
               if (err) console.error('Błąd dodawania kolumny inspection_date:', err.message);
+            });
+          }
+
+          // Stany magazynowe dla materiałów zużywalnych
+          if (!columnNames.includes('min_stock')) {
+            db.run('ALTER TABLE tools ADD COLUMN min_stock INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny min_stock:', err.message);
+            });
+          }
+          if (!columnNames.includes('max_stock')) {
+            db.run('ALTER TABLE tools ADD COLUMN max_stock INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny max_stock:', err.message);
+            });
+          }
+          if (!columnNames.includes('is_consumable')) {
+            db.run('ALTER TABLE tools ADD COLUMN is_consumable INTEGER DEFAULT 0', (err) => {
+              if (err) console.error('Błąd dodawania kolumny is_consumable:', err.message);
             });
           }
 
@@ -993,7 +1013,7 @@ app.get('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint dodawania narzędzia
 app.post('/api/tools', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable } = req.body;
 
   if (!name || !sku) {
     return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
@@ -1006,9 +1026,16 @@ app.post('/api/tools', authenticateToken, (req, res) => {
     return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
   }
 
+  // Walidacja stanów magazynowych
+  const minStockSan = (min_stock === '' || min_stock === null || typeof min_stock === 'undefined') ? null : Math.max(0, parseInt(min_stock, 10));
+  const maxStockSan = (max_stock === '' || max_stock === null || typeof max_stock === 'undefined') ? null : Math.max(0, parseInt(max_stock, 10));
+  if (minStockSan !== null && maxStockSan !== null && maxStockSan < minStockSan) {
+    return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
+  }
+
   db.run(
-    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null],
+    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
@@ -1033,7 +1060,7 @@ app.post('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint aktualizacji narzędzia
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date, min_stock, max_stock, is_consumable } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
@@ -1047,9 +1074,16 @@ app.put('/api/tools/:id', authenticateToken, (req, res) => {
     return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
   }
 
+  // Walidacja stanów magazynowych
+  const minStockSan = (min_stock === '' || min_stock === null || typeof min_stock === 'undefined') ? null : Math.max(0, parseInt(min_stock, 10));
+  const maxStockSan = (max_stock === '' || max_stock === null || typeof max_stock === 'undefined') ? null : Math.max(0, parseInt(max_stock, 10));
+  if (minStockSan !== null && maxStockSan !== null && maxStockSan < minStockSan) {
+    return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
+  }
+
   db.run(
-    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, inspection_date = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, status || 'dostępne', id],
+    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, inspection_date = ?, min_stock = ?, max_stock = ?, is_consumable = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0, status || 'dostępne', id],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {

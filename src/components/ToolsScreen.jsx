@@ -255,6 +255,29 @@ function ToolsScreen({ initialSearchTerm = '' }) {
         newErrors.sku = 'Narzędzie o tym SKU już istnieje';
       }
     }
+
+    // Walidacja stanów magazynowych dla materiałów zużywalnych
+    const minValRaw = formData.min_stock;
+    const maxValRaw = formData.max_stock;
+    const minProvided = !(minValRaw === '' || minValRaw === null || typeof minValRaw === 'undefined');
+    const maxProvided = !(maxValRaw === '' || maxValRaw === null || typeof maxValRaw === 'undefined');
+    let minParsed = null;
+    let maxParsed = null;
+    if (minProvided) {
+      minParsed = parseInt(minValRaw, 10);
+      if (Number.isNaN(minParsed) || minParsed < 0) {
+        newErrors.min_stock = 'Nieprawidłowy minimalny stan (liczba ≥ 0)';
+      }
+    }
+    if (maxProvided) {
+      maxParsed = parseInt(maxValRaw, 10);
+      if (Number.isNaN(maxParsed) || maxParsed < 0) {
+        newErrors.max_stock = 'Nieprawidłowy maksymalny stan (liczba ≥ 0)';
+      }
+    }
+    if (!newErrors.min_stock && !newErrors.max_stock && minProvided && maxProvided && maxParsed < minParsed) {
+      newErrors.max_stock = 'Maksymalny stan nie może być mniejszy niż minimalny';
+    }
     
     return newErrors;
   };
@@ -324,7 +347,14 @@ function ToolsScreen({ initialSearchTerm = '' }) {
 
   const handleOpenModal = (tool = null) => {
     setEditingTool(tool);
-    setFormData(tool ? { ...tool, serial_unreadable: !!tool.serial_unreadable, inspection_date: tool.inspection_date || '' } : {
+    setFormData(tool ? { 
+      ...tool, 
+      serial_unreadable: !!tool.serial_unreadable, 
+      is_consumable: !!tool.is_consumable,
+      min_stock: typeof tool.min_stock !== 'undefined' && tool.min_stock !== null ? tool.min_stock : '',
+      max_stock: typeof tool.max_stock !== 'undefined' && tool.max_stock !== null ? tool.max_stock : '',
+      inspection_date: tool.inspection_date || '' 
+    } : {
       name: '',
       sku: '',
       serial_number: '',
@@ -335,7 +365,10 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       quantity: 1,
       status: 'dostępne',
       description: '',
-      inspection_date: ''
+      inspection_date: '',
+      is_consumable: false,
+      min_stock: '',
+      max_stock: ''
     });
     setErrors({});
     setShowModal(true);
@@ -355,7 +388,10 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       quantity: 1,
       status: 'dostępne',
       description: '',
-      inspection_date: ''
+      inspection_date: '',
+      is_consumable: false,
+      min_stock: '',
+      max_stock: ''
     });
     setErrors({});
   };
@@ -1492,6 +1528,70 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                   {errors.quantity && (
                     <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.quantity}</p>
                   )}
+                </div>
+
+                {/* Consumable & Stock Limits */}
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 p-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="is_consumable"
+                      type="checkbox"
+                      name="is_consumable"
+                      checked={!!formData.is_consumable}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="is_consumable" className="text-sm font-medium text-slate-700 dark:text-slate-200 sharp-text">
+                      Materiał zużywalny
+                    </label>
+                  </div>
+
+                  {formData.is_consumable && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                          Stan minimalny
+                        </label>
+                        <input
+                          type="number"
+                          name="min_stock"
+                          value={formData.min_stock}
+                          onChange={handleInputChange}
+                          min="0"
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                            errors.min_stock ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
+                          }`}
+                          placeholder="np. 10"
+                        />
+                        {errors.min_stock && (
+                          <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.min_stock}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                          Stan maksymalny
+                        </label>
+                        <input
+                          type="number"
+                          name="max_stock"
+                          value={formData.max_stock}
+                          onChange={handleInputChange}
+                          min="0"
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 sharp-text ${
+                            errors.max_stock ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
+                          }`}
+                          placeholder="np. 100"
+                        />
+                        {errors.max_stock && (
+                          <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.max_stock}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 sharp-text">
+                    Ustaw min/max aby śledzić braki materiałów.
+                  </p>
                 </div>
 
                 {/* Description - full width */}

@@ -7,7 +7,8 @@ import api from './api';
 import { 
   DepartmentManagementScreen, 
   PositionManagementScreen,
-  AppConfigScreen 
+  AppConfigScreen,
+  InventoryScreen
 } from './components';
 import { ThemeProvider } from './contexts/ThemeContext';
 import PermissionsModal from './components/PermissionsModal';
@@ -205,6 +206,7 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
+    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.ACCESS_TOOLS },
     { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
@@ -773,6 +775,7 @@ function App() {
           <div className="flex-1 overflow-auto">
             {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
+            {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
             {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
             {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}

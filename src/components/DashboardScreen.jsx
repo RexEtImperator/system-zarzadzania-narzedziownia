@@ -264,6 +264,16 @@ const DashboardScreen = ({ user }) => {
       // Pobierz historię wydań/zwrotów narzędzi
       const toolHistoryRes = await api.get('/api/tool-issues?limit=6');
       
+      // Pobierz historię wydań/zwrotów BHP (jeśli są uprawnienia)
+      let bhpHistoryRes = null;
+      try {
+        if (hasPermission(user, PERMISSIONS.VIEW_BHP)) {
+          bhpHistoryRes = await api.get('/api/bhp-issues?limit=6');
+        }
+      } catch (e) {
+        console.warn('Nie udało się pobrać historii BHP (może brak uprawnień):', e?.message || e);
+      }
+      
       // Pobierz listy narzędzi i BHP, aby policzyć przeterminowane przeglądy
       let tools = [];
       let bhpItems = [];
@@ -328,12 +338,21 @@ const DashboardScreen = ({ user }) => {
         quantity: issue.quantity
       })) || [];
       
+      const bhpHistoryData = bhpHistoryRes?.data?.map(issue => ({
+        id: issue.id,
+        action: issue.status === 'wydane' ? 'wydanie' : 'zwrot',
+        bhpLabel: issue.bhp_model ? `${issue.bhp_model} (${issue.bhp_inventory_number || 'brak nr'})` : `Nr ewid.: ${issue.bhp_inventory_number || 'nieznany'}`,
+        employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
+        time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at)
+      })) || [];
+      
       const dashboardStats = {
         totalEmployees: statsRes.totalEmployees || 0,
         activeDepartments: statsRes.activeDepartments || 0,
         totalPositions: statsRes.totalPositions || 0,
         totalTools: statsRes.totalTools || 0,
         toolHistory: toolHistoryData,
+        bhpHistory: bhpHistoryData,
         overdueInspections: overdueCount,
         totalBhp,
         overdueToolsCount,
@@ -350,6 +369,7 @@ const DashboardScreen = ({ user }) => {
         totalPositions: 0,
         totalTools: 0,
         toolHistory: [],
+        bhpHistory: [],
         overdueInspections: 0,
         totalBhp: 0,
         overdueToolsCount: 0,
@@ -625,16 +645,111 @@ const DashboardScreen = ({ user }) => {
           )}
         </div>
       </div>
+
+      {/* BHP History */}
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
+        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                <ClockIcon className="w-5 h-5 text-white" aria-hidden="true" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
+                Historia wydań/zwrotów BHP
+              </h3>
+            </div>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors duration-200">
+              Ostatnie {stats.bhpHistory?.length || 0}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {!hasPermission(user, PERMISSIONS.VIEW_BHP) ? (
+            <div className="text-center py-8">
+              <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">Brak uprawnień</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">Nie masz uprawnień, aby przeglądać historię BHP.</p>
+            </div>
+          ) : loading ? (
+            <div className="animate-pulse space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex space-x-4">
+                  <div className="rounded-full bg-gray-200 dark:bg-gray-700 h-12 w-12"></div>
+                  <div className="flex-1 space-y-2 py-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (stats.bhpHistory?.length || 0) > 0 ? (
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {stats.bhpHistory.map((item, index) => (
+                  <li key={item.id}>
+                    <div className="relative pb-8">
+                      {index !== stats.bhpHistory.length - 1 && (
+                        <span
+                          className="absolute top-5 left-6 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="relative flex space-x-4">
+                        <div>
+                          <span className={`h-12 w-12 rounded-xl ${getActionColor(item.action)} flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-lg`}>
+                            {getActionIcon(item.action)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1 pt-1.5">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-200">
+                                {getActionText(item.action)} sprzęt BHP: <span className="font-semibold text-green-600 dark:text-green-400">{item.bhpLabel}</span>
+                              </p>
+                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 transition-colors duration-200">
+                                <span className="flex items-center">
+                                  <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+                                  {item.employeeName}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center transition-colors duration-200">
+                                <ClockIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+                                {item.time}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">Brak historii</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">Nie ma jeszcze żadnych wydań lub zwrotów sprzętu BHP.</p>
+            </div>
+          )}
+        </div>
+      </div>
       
       {/* Quick Issue Modal */}
       {showQuickIssueModal && (
         <div
           className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-          onClick={() => {
-            setShowQuickIssueModal(false);
-            setSearchCode('');
-            setFoundTool(null);
-            setSelectedEmployee('');
+          onClick={(e) => {
+            // Zamykaj tylko przy kliknięciu w tło (overlay), nie wewnątrz modala
+            if (e.target === e.currentTarget) {
+              setShowQuickIssueModal(false);
+              setSearchCode('');
+              setFoundTool(null);
+              setSelectedEmployee('');
+            }
           }}
         >
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
@@ -769,9 +884,12 @@ const DashboardScreen = ({ user }) => {
       {showQuickReturnModal && (
         <div
           className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-          onClick={() => {
-            setShowQuickReturnModal(false);
-            setIssuedTools([]);
+          onClick={(e) => {
+            // Zamykaj tylko przy kliknięciu w tło (overlay), nie wewnątrz modala
+            if (e.target === e.currentTarget) {
+              setShowQuickReturnModal(false);
+              setIssuedTools([]);
+            }
           }}
         >
           <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white dark:bg-gray-800">

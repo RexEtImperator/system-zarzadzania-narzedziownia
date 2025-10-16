@@ -710,7 +710,7 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES'],
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE'],
         'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES'],
         'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP'],
         'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP'],
@@ -917,6 +917,66 @@ app.get('/api/tool-issues', authenticateToken, (req, res) => {
     db.all(dataQuery, [limit, offset], (err, issues) => {
       if (err) {
         console.error('Błąd przy pobieraniu wydań narzędzi:', err);
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+
+      res.json({
+        data: issues,
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          totalItems: total,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        }
+      });
+    });
+  });
+});
+
+// Endpoint pobierania wszystkich wydań/zwrotów BHP z paginacją
+app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP'), (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM bhp_issues bi
+    LEFT JOIN bhp b ON bi.bhp_id = b.id
+    LEFT JOIN employees e ON bi.employee_id = e.id
+    LEFT JOIN users u ON bi.issued_by_user_id = u.id
+  `;
+
+  const dataQuery = `
+    SELECT 
+      bi.*, 
+      b.inventory_number AS bhp_inventory_number,
+      b.model AS bhp_model,
+      e.first_name AS employee_first_name,
+      e.last_name AS employee_last_name,
+      u.full_name AS issued_by_user_name
+    FROM bhp_issues bi
+    LEFT JOIN bhp b ON bi.bhp_id = b.id
+    LEFT JOIN employees e ON bi.employee_id = e.id
+    LEFT JOIN users u ON bi.issued_by_user_id = u.id
+    ORDER BY bi.issued_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  db.get(countQuery, [], (err, countResult) => {
+    if (err) {
+      console.error('Błąd przy pobieraniu liczby wydań BHP:', err);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    const total = countResult.total;
+    const totalPages = Math.ceil(total / limit);
+
+    db.all(dataQuery, [limit, offset], (err, issues) => {
+      if (err) {
+        console.error('Błąd przy pobieraniu wydań BHP:', err);
         return res.status(500).json({ message: 'Błąd serwera', error: err.message });
       }
 
@@ -1577,6 +1637,27 @@ app.get('/api/bhp/:id/history', authenticateToken, (req, res) => {
   });
 });
 
+// === DEBUG: List registered routes at startup ===
+setTimeout(() => {
+  try {
+    const routes = [];
+    if (app && app._router && app._router.stack) {
+      app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+          const methods = Object.keys(middleware.route.methods)
+            .filter((m) => middleware.route.methods[m])
+            .map((m) => m.toUpperCase())
+            .join(',');
+          routes.push(`${methods} ${middleware.route.path}`);
+        }
+      });
+    }
+    console.log('Zarejestrowane trasy:', routes);
+  } catch (e) {
+    console.log('Błąd podczas wypisywania tras:', e.message);
+  }
+}, 1000);
+
 // Endpoint pobierania pracowników
 app.get('/api/employees', authenticateToken, (req, res) => {
   db.all('SELECT * FROM employees', [], (err, employees) => {
@@ -1738,6 +1819,241 @@ app.delete('/tools/history', authenticateToken, requirePermission('DELETE_ISSUE_
             });
           });
         });
+      });
+    });
+  });
+});
+
+// Endpoint do usuwania historii WYDAŃ narzędzi (tylko wpisy ze statusem "wydane")
+app.delete('/api/tools/history/issues', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+  console.log('Usuwanie historii WYDAŃ narzędzi...');
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('Błąd rozpoczęcia transakcji (issues tools):', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      db.run('DELETE FROM tool_issues WHERE status = "wydane"', function(err) {
+        if (err) {
+          console.error('Błąd usuwania wpisów WYDAŃ z tool_issues:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań narzędzi' });
+        }
+
+        const deletedCount = this.changes || 0;
+        console.log(`Usunięto ${deletedCount} rekordów WYDAŃ z tool_issues`);
+
+        // Po usunięciu wszystkich WYDAŃ status narzędzi powinien być dostępny
+        db.run('UPDATE tools SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
+          if (err) {
+            console.error('Błąd resetowania statusów narzędzi po usunięciu wydań:', err);
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd podczas resetowania statusów narzędzi' });
+          }
+
+          const auditQuery = `
+            INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+            VALUES (?, ?, ?, ?, datetime('now'))
+          `;
+          db.run(
+            auditQuery,
+            [
+              req.user.id,
+              req.user.username,
+              'DELETE_ISSUE_HISTORY',
+              `Usunięto historię WYDAŃ narzędzi (${deletedCount} rekordów)`
+            ],
+            (auditErr) => {
+              if (auditErr) {
+                console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+              }
+              db.run('COMMIT', (commitErr) => {
+                if (commitErr) {
+                  console.error('Błąd zatwierdzania transakcji (issues tools):', commitErr);
+                  return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                }
+                res.json({
+                  message: 'Usunięto historię WYDAŃ narzędzi',
+                  deleted_count: deletedCount
+                });
+              });
+            }
+          );
+        });
+      });
+    });
+  });
+});
+
+// Endpoint do usuwania historii ZWROTÓW narzędzi (tylko wpisy ze statusem "zwrócone")
+app.delete('/api/tools/history/returns', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+  console.log('Usuwanie historii ZWROTÓW narzędzi...');
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('Błąd rozpoczęcia transakcji (returns tools):', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      db.run('DELETE FROM tool_issues WHERE status = "zwrócone"', function(err) {
+        if (err) {
+          console.error('Błąd usuwania wpisów ZWROTÓW z tool_issues:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd podczas usuwania historii zwrotów narzędzi' });
+        }
+
+        const deletedCount = this.changes || 0;
+        console.log(`Usunięto ${deletedCount} rekordów ZWROTÓW z tool_issues`);
+
+        const auditQuery = `
+          INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+          VALUES (?, ?, ?, ?, datetime('now'))
+        `;
+
+        db.run(
+          auditQuery,
+          [
+            req.user.id,
+            req.user.username,
+            'DELETE_ISSUE_HISTORY',
+            `Usunięto historię ZWROTÓW narzędzi (${deletedCount} rekordów)`
+          ],
+          (auditErr) => {
+            if (auditErr) {
+              console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+            }
+            db.run('COMMIT', (commitErr) => {
+              if (commitErr) {
+                console.error('Błąd zatwierdzania transakcji (returns tools):', commitErr);
+                return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+              }
+              res.json({
+                message: 'Usunięto historię ZWROTÓW narzędzi',
+                deleted_count: deletedCount
+              });
+            });
+          }
+        );
+      });
+    });
+  });
+});
+
+// Endpoint do usuwania historii WYDAŃ sprzętu BHP
+app.delete('/api/bhp/history/issues', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+  console.log('Usuwanie historii WYDAŃ BHP...');
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('Błąd rozpoczęcia transakcji (issues bhp):', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      db.run('DELETE FROM bhp_issues WHERE status = "wydane"', function(err) {
+        if (err) {
+          console.error('Błąd usuwania wpisów WYDAŃ z bhp_issues:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań BHP' });
+        }
+
+        const deletedCount = this.changes || 0;
+        console.log(`Usunięto ${deletedCount} rekordów WYDAŃ z bhp_issues`);
+
+        db.run('UPDATE bhp SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
+          if (err) {
+            console.error('Błąd resetowania statusów BHP po usunięciu wydań:', err);
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd podczas resetowania statusów BHP' });
+          }
+
+          const auditQuery = `
+            INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+            VALUES (?, ?, ?, ?, datetime('now'))
+          `;
+          db.run(
+            auditQuery,
+            [
+              req.user.id,
+              req.user.username,
+              'DELETE_ISSUE_HISTORY',
+              `Usunięto historię WYDAŃ BHP (${deletedCount} rekordów)`
+            ],
+            (auditErr) => {
+              if (auditErr) {
+                console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+              }
+              db.run('COMMIT', (commitErr) => {
+                if (commitErr) {
+                  console.error('Błąd zatwierdzania transakcji (issues bhp):', commitErr);
+                  return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                }
+                res.json({
+                  message: 'Usunięto historię WYDAŃ BHP',
+                  deleted_count: deletedCount
+                });
+              });
+            }
+          );
+        });
+      });
+    });
+  });
+});
+
+// Endpoint do usuwania historii ZWROTÓW sprzętu BHP
+app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+  console.log('Usuwanie historii ZWROTÓW BHP...');
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('Błąd rozpoczęcia transakcji (returns bhp):', err);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+
+      db.run('DELETE FROM bhp_issues WHERE status = "zwrócone"', function(err) {
+        if (err) {
+          console.error('Błąd usuwania wpisów ZWROTÓW z bhp_issues:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd podczas usuwania historii zwrotów BHP' });
+        }
+
+        const deletedCount = this.changes || 0;
+        console.log(`Usunięto ${deletedCount} rekordów ZWROTÓW z bhp_issues`);
+
+        const auditQuery = `
+          INSERT INTO audit_logs (user_id, username, action, details, timestamp)
+          VALUES (?, ?, ?, ?, datetime('now'))
+        `;
+
+        db.run(
+          auditQuery,
+          [
+            req.user.id,
+            req.user.username,
+            'DELETE_ISSUE_HISTORY',
+            `Usunięto historię ZWROTÓW BHP (${deletedCount} rekordów)`
+          ],
+          (auditErr) => {
+            if (auditErr) {
+              console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+            }
+            db.run('COMMIT', (commitErr) => {
+              if (commitErr) {
+                console.error('Błąd zatwierdzania transakcji (returns bhp):', commitErr);
+                return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+              }
+              res.json({
+                message: 'Usunięto historię ZWROTÓW BHP',
+                deleted_count: deletedCount
+              });
+            });
+          }
+        );
       });
     });
   });
@@ -3285,10 +3601,80 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'MANAGE_BHP',
     'DELETE_ISSUE_HISTORY',
     'DELETE_SERVICE_HISTORY',
-    'MANAGE_EMPLOYEES'
+    'MANAGE_EMPLOYEES',
+    'VIEW_DATABASE'
   ];
 
   res.json(availablePermissions);
+});
+
+// Admin/permission-only: Lista tabel w bazie danych
+app.get('/api/db/tables', authenticateToken, requirePermission('VIEW_DATABASE'), (req, res) => {
+  const sql = `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`;
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error('Błąd podczas pobierania listy tabel:', err.message);
+      return res.status(500).json({ message: 'Błąd podczas pobierania listy tabel' });
+    }
+    const tables = rows.map(r => r.name);
+    res.json(tables);
+  });
+});
+
+// Admin/permission-only: Podgląd zawartości wybranej tabeli z paginacją
+app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABASE'), (req, res) => {
+  const tableName = String(req.params.name || '').trim();
+  const limit = Math.max(1, Math.min(500, parseInt(req.query.limit, 10) || 50));
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+
+  // Walidacja nazwy tabeli przeciwko SQL injection – dopuszczamy tylko istniejące nazwy z sqlite_master
+  const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
+  db.get(validateSql, [tableName], (err, row) => {
+    if (err) {
+      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+    }
+    if (!row) {
+      return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    }
+
+    // Pobierz schemat (kolumny)
+    db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
+      if (errCols) {
+        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+      }
+
+      const columnNames = (cols || []).map(c => c.name);
+
+      // Pobierz rekordy z paginacją
+      const dataSql = `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`;
+      db.all(dataSql, [limit, offset], (errData, rows) => {
+        if (errData) {
+          console.error('Błąd pobierania danych tabeli:', errData.message);
+          return res.status(500).json({ message: 'Błąd pobierania danych tabeli' });
+        }
+
+        // Policz całkowitą liczbę rekordów
+        const countSql = `SELECT COUNT(*) as count FROM ${tableName}`;
+        db.get(countSql, [], (errCount, countRow) => {
+          if (errCount) {
+            console.error('Błąd liczenia rekordów tabeli:', errCount.message);
+            return res.status(500).json({ message: 'Błąd liczenia rekordów tabeli' });
+          }
+
+          res.json({
+            table: tableName,
+            columns: columnNames,
+            rows: rows || [],
+            limit,
+            offset,
+            total: countRow?.count || 0
+          });
+        });
+      });
+    });
+  });
 });
 
 // Middleware: wymagane uprawnienie z role_permissions (administrator ma pełny dostęp)

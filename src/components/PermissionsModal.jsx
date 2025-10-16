@@ -58,7 +58,8 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'VIEW_BHP': 'BHP – przeglądanie',
     'MANAGE_BHP': 'BHP – zarządzanie',
     'DELETE_ISSUE_HISTORY': 'Usuwanie historii wydań',
-    'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania'
+    'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania',
+    'VIEW_DATABASE': 'Podgląd bazy danych'
   };
 
   useEffect(() => {

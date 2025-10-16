@@ -63,3 +63,22 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 - Spójność polityki uprawnień między backendem a frontendem (wspólne stałe i walidacja).
 
 [1.4.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0
+
+## [1.5.0] - 2025-10-16
+
+### Dodane / Zmienione
+- Administrator: nowy ekran „Podgląd bazy danych” (DbViewer) z listą tabel po lewej i podglądem rekordów po prawej, w tym paginacja (`limit`, `offset`).
+- Uprawnienia: dodano `VIEW_DATABASE` do dostępnych uprawnień i domyślnie dla roli `administrator`.
+- TopBar: nowa pozycja w menu użytkownika „Podgląd bazy danych” (widoczna dla administratora).
+- Ustawienia → Dane systemowe: rozdzielono na sekcje „Narzędzia” i „Sprzęt BHP”, dodano przyciski „Usuń historię wydań” i „Usuń historię zwrotów” dla obu sekcji; wprowadzono potwierdzenia akcji.
+
+### Backend
+- API: `GET /api/db/tables` oraz `GET /api/db/table/:name?limit=&offset=` — podgląd bazy z walidacją nazwy tabeli względem `sqlite_master` oraz paginacją.
+- API: `DELETE /api/tools/history/issues`, `DELETE /api/tools/history/returns`, `DELETE /api/bhp/history/issues`, `DELETE /api/bhp/history/returns` — usuwanie historii, transakcje i wpisy audytowe.
+
+### Techniczne
+- Bezpieczeństwo: wymóg uprawnienia `VIEW_DATABASE` do korzystania z API podglądu bazy; walidacja nazw tabel.
+- Dokumentacja: zaktualizowano README (sekcja 1.5.0, badge i link do wydania).
+- Wersja: podbicie `package.json` (root i backend) do `1.5.0`.
+
+[1.5.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0

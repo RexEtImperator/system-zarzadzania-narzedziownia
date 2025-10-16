@@ -8,7 +8,8 @@ import {
   DepartmentManagementScreen, 
   PositionManagementScreen,
   AppConfigScreen,
-  InventoryScreen
+  InventoryScreen,
+  DbViewerScreen
 } from './components';
 import { ThemeProvider } from './contexts/ThemeContext';
 import PermissionsModal from './components/PermissionsModal';
@@ -29,7 +30,8 @@ const PERMISSIONS = {
   VIEW_BHP: 'view_bhp',
   MANAGE_BHP: 'manage_bhp',
   DELETE_ISSUE_HISTORY: 'delete_issue_history',
-  DELETE_SERVICE_HISTORY: 'delete_service_history'
+  DELETE_SERVICE_HISTORY: 'delete_service_history',
+  VIEW_DATABASE: 'view_database'
 };
 
 // Stałe akcji audytu
@@ -305,6 +307,10 @@ function AdminPanel({ user, onNavigate }) {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [showDeleteEmployeesConfirm, setShowDeleteEmployeesConfirm] = useState(false);
   const [showDeleteServiceHistoryConfirm, setShowDeleteServiceHistoryConfirm] = useState(false);
+  const [showDeleteToolIssuesConfirm, setShowDeleteToolIssuesConfirm] = useState(false);
+  const [showDeleteToolReturnsConfirm, setShowDeleteToolReturnsConfirm] = useState(false);
+  const [showDeleteBhpIssuesConfirm, setShowDeleteBhpIssuesConfirm] = useState(false);
+  const [showDeleteBhpReturnsConfirm, setShowDeleteBhpReturnsConfirm] = useState(false);
 
   const handleDeleteHistory = async () => {
     try {
@@ -339,6 +345,55 @@ function AdminPanel({ user, onNavigate }) {
     } catch (error) {
       console.error('Error deleting service history:', error);
       toast.error('Błąd podczas usuwania historii serwisowania');
+    }
+  };
+
+  // Nowe akcje: kasowanie historii wydań/zwrotów (Narzędzia i BHP)
+  const handleDeleteToolIssuesHistory = async () => {
+    try {
+      await api.delete('/api/tools/history/issues');
+      toast.success('Usunięto historię WYDAŃ narzędzi');
+      setShowDeleteToolIssuesConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię WYDAŃ narzędzi');
+    } catch (error) {
+      console.error('Error deleting tool issues history:', error);
+      toast.error('Błąd podczas usuwania historii wydań narzędzi');
+    }
+  };
+
+  const handleDeleteToolReturnsHistory = async () => {
+    try {
+      await api.delete('/api/tools/history/returns');
+      toast.success('Usunięto historię ZWROTÓW narzędzi');
+      setShowDeleteToolReturnsConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię ZWROTÓW narzędzi');
+    } catch (error) {
+      console.error('Error deleting tool returns history:', error);
+      toast.error('Błąd podczas usuwania historii zwrotów narzędzi');
+    }
+  };
+
+  const handleDeleteBhpIssuesHistory = async () => {
+    try {
+      await api.delete('/api/bhp/history/issues');
+      toast.success('Usunięto historię WYDAŃ BHP');
+      setShowDeleteBhpIssuesConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię WYDAŃ BHP');
+    } catch (error) {
+      console.error('Error deleting BHP issues history:', error);
+      toast.error('Błąd podczas usuwania historii wydań BHP');
+    }
+  };
+
+  const handleDeleteBhpReturnsHistory = async () => {
+    try {
+      await api.delete('/api/bhp/history/returns');
+      toast.success('Usunięto historię ZWROTÓW BHP');
+      setShowDeleteBhpReturnsConfirm(false);
+      addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię ZWROTÓW BHP');
+    } catch (error) {
+      console.error('Error deleting BHP returns history:', error);
+      toast.error('Błąd podczas usuwania historii zwrotów BHP');
     }
   };
 
@@ -457,22 +512,61 @@ function AdminPanel({ user, onNavigate }) {
                   </div>
                 </div>
                 <div className="flex-1"></div>
-                <div className="space-y-3">
+
+                <div className="space-y-6">
+                  {/* Sekcja: Narzędzia */}
                   {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
-                    <button 
-                      onClick={() => setShowDeleteHistoryConfirm(true)}
-                      className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
-                    >
-                      Usuń historię wydań
-                    </button>
+                    <div>
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Narzędzia</h4>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowDeleteToolIssuesConfirm(true)}
+                          className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
+                        >
+                          Usuń historię wydań
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteToolReturnsConfirm(true)}
+                          className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
+                        >
+                          Usuń historię zwrotów
+                        </button>
+                      </div>
+                    </div>
                   )}
+
+                  {/* Sekcja: Sprzęt BHP */}
+                  {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
+                    <div>
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Sprzęt BHP</h4>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowDeleteBhpIssuesConfirm(true)}
+                          className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
+                        >
+                          Usuń historię wydań
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteBhpReturnsConfirm(true)}
+                          className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
+                        >
+                          Usuń historię zwrotów
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Serwisowanie */}
                   {hasPermission(user, PERMISSIONS.DELETE_SERVICE_HISTORY) && (
-                    <button 
-                      onClick={() => setShowDeleteServiceHistoryConfirm(true)}
-                      className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
-                    >
-                      Usuń historię serwisowania
-                    </button>
+                    <div>
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Serwisowanie</h4>
+                      <button
+                        onClick={() => setShowDeleteServiceHistoryConfirm(true)}
+                        className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
+                      >
+                        Usuń historię serwisowania
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -523,6 +617,50 @@ function AdminPanel({ user, onNavigate }) {
         title="Usuń historię serwisowania"
         message="Czy na pewno chcesz usunąć całą historię serwisowania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie powiązane wpisy."
         confirmText="Usuń historię serwisowania"
+        cancelText="Anuluj"
+        type="danger"
+      />
+
+      {/* Modale: Narzędzia – wydań/zwrotów */}
+      <ConfirmationModal
+        isOpen={showDeleteToolIssuesConfirm}
+        onClose={() => setShowDeleteToolIssuesConfirm(false)}
+        onConfirm={handleDeleteToolIssuesHistory}
+        title="Usuń historię wydań narzędzi"
+        message="Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH narzędzi? Operacja jest nieodwracalna."
+        confirmText="Usuń historię wydań"
+        cancelText="Anuluj"
+        type="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteToolReturnsConfirm}
+        onClose={() => setShowDeleteToolReturnsConfirm(false)}
+        onConfirm={handleDeleteToolReturnsHistory}
+        title="Usuń historię zwrotów narzędzi"
+        message="Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH narzędzi? Operacja jest nieodwracalna."
+        confirmText="Usuń historię zwrotów"
+        cancelText="Anuluj"
+        type="danger"
+      />
+
+      {/* Modale: BHP – wydań/zwrotów */}
+      <ConfirmationModal
+        isOpen={showDeleteBhpIssuesConfirm}
+        onClose={() => setShowDeleteBhpIssuesConfirm(false)}
+        onConfirm={handleDeleteBhpIssuesHistory}
+        title="Usuń historię wydań sprzętu BHP"
+        message="Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH sprzętu BHP? Operacja jest nieodwracalna."
+        confirmText="Usuń historię wydań"
+        cancelText="Anuluj"
+        type="danger"
+      />
+      <ConfirmationModal
+        isOpen={showDeleteBhpReturnsConfirm}
+        onClose={() => setShowDeleteBhpReturnsConfirm(false)}
+        onConfirm={handleDeleteBhpReturnsHistory}
+        title="Usuń historię zwrotów sprzętu BHP"
+        message="Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH sprzętu BHP? Operacja jest nieodwracalna."
+        confirmText="Usuń historię zwrotów"
         cancelText="Anuluj"
         type="danger"
       />
@@ -785,6 +923,7 @@ function App() {
             {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
             {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
             {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
+            {currentScreen === 'db-viewer' && <DbViewerScreen user={user} />}
           </div>
         </div>
         

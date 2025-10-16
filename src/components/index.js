@@ -14,3 +14,4 @@ export { default as Sidebar } from './Sidebar';
 export { default as ToolsScreen } from './ToolsScreen';
 export { default as InventoryScreen } from './InventoryScreen';
 export { default as TopBar } from './TopBar';
+export { default as DbViewerScreen } from './DbViewerScreen';

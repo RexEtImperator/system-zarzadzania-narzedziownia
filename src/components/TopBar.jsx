@@ -436,6 +436,15 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                   <WrenchIcon className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true" />
                   <span>Ustawienia</span>
                 </button>
+                {user?.role === 'administrator' && (
+                  <button
+                    onClick={() => { setIsDropdownOpen(false); onNavigate && onNavigate('db-viewer'); }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center space-x-2 transition-colors duration-200"
+                  >
+                    <span className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true">📄</span>
+                    <span>Podgląd bazy danych</span>
+                  </button>
+                )}
                 <button
                   onClick={handleThemeToggle}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center justify-between transition-colors duration-200"

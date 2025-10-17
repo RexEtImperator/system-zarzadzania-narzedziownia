@@ -56,6 +56,18 @@ npm run server
 npm start
 ```
 
+### Wymagania środowiskowe
+- Node.js: LTS 22.x (zalecane; projekt definiuje `"engines": { "node": ">=22 <23" }`).
+- NPM: wersja `>=9`.
+- Opcjonalnie: NVM do zarządzania wersją Node (`.nvmrc` wskazuje `22`).
+
+Na Windows możesz użyć NVM for Windows:
+```
+nvm install 22
+nvm use 22
+node -v  # powinno pokazać v22.x.x
+```
+
 ## Konfiguracja .env
 
 Zalecane zmienne środowiskowe dla rozwoju lokalnego:

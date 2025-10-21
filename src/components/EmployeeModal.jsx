@@ -193,7 +193,7 @@ const EmployeeModal = ({
 
                     <div>
                       <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Departament *
+                        Dział *
                       </label>
                       <select
                         name="departmentId"
@@ -204,7 +204,7 @@ const EmployeeModal = ({
                           errors.departmentId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       >
-                        <option value="">Wybierz departament</option>
+                        <option value="">Wybierz dział</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}

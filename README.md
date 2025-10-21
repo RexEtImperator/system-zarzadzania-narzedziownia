@@ -1,6 +1,7 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0)
+[![Wersja](https://img.shields.io/badge/version-1.6.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0)
+[![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
 System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
@@ -260,3 +261,9 @@ dbrzezinsky
 
 ## Wersja
 System Zarządzania Narzędziownią - wersja 1.5.0
+
+### Zmiany w 1.6.0
+- ConfirmationModal: pełne wsparcie trybu ciemnego (dark mode) w tle, panelu, nagłówkach, treści i przyciskach.
+- Dziennik audytu: zastąpiono `window.confirm` modalem potwierdzenia przy usuwaniu logów (spójny UI, wsparcie dark mode).
+- API audytu: naprawiono endpoint usuwania logów — frontend używa `DELETE /api/audit` zgodnego z backendem.
+- Dokumentacja: zaktualizowano README i CHANGELOG dla wersji 1.6.0.

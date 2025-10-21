@@ -82,3 +82,19 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 - Wersja: podbicie `package.json` (root i backend) do `1.5.0`.
 
 [1.5.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0
+
+## [1.6.0] - 2025-10-21
+
+### Dodane / Zmienione
+- ConfirmationModal: pełne wsparcie trybu ciemnego (dark mode) dla wszystkich elementów modala.
+- Dziennik audytu: dodano modal potwierdzenia dla akcji usuwania logów (zastępuje `window.confirm`).
+- UI: spójne kolory i zachowanie modali w trybie jasnym i ciemnym.
+
+### Backend
+- Audyt: ujednolicenie endpointu usuwania logów — korzystanie z `DELETE /api/audit`.
+
+### Techniczne
+- Dokumentacja: aktualizacja README i CHANGELOG dla wersji 1.6.0.
+- Wersja: podbicie `package.json` (root i backend) do `1.6.0`.
+
+[1.6.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0

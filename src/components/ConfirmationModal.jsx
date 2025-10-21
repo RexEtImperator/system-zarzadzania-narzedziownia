@@ -18,27 +18,27 @@ const ConfirmationModal = ({
     switch (type) {
       case 'danger':
         return {
-          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-red-600" aria-hidden="true" />),
-          iconBg: 'bg-red-100',
-          buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" aria-hidden="true" />),
+          iconBg: 'bg-red-100 dark:bg-red-900/30',
+          buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-400'
         };
       case 'warning':
         return {
-          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" aria-hidden="true" />),
-          iconBg: 'bg-yellow-100',
-          buttonClass: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />),
+          iconBg: 'bg-yellow-100 dark:bg-yellow-900/30',
+          buttonClass: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 dark:bg-yellow-700 dark:hover:bg-yellow-800 dark:focus:ring-yellow-400'
         };
       case 'info':
         return {
-          icon: (<InformationCircleIcon className="w-6 h-6 text-blue-600" aria-hidden="true" />),
-          iconBg: 'bg-blue-100',
-          buttonClass: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+          icon: (<InformationCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" aria-hidden="true" />),
+          iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+          buttonClass: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-400'
         };
       default:
         return {
-          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-red-600" aria-hidden="true" />),
-          iconBg: 'bg-red-100',
-          buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+          icon: (<ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" aria-hidden="true" />),
+          iconBg: 'bg-red-100 dark:bg-red-900/30',
+          buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-400'
         };
     }
   };
@@ -68,7 +68,7 @@ const ConfirmationModal = ({
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Backdrop */}
         <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-black dark:bg-opacity-60 transition-opacity"
           onClick={handleBackdropClick}
         ></div>
 
@@ -78,8 +78,8 @@ const ConfirmationModal = ({
         </span>
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div className="inline-block align-bottom bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div className="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               {/* Icon */}
               <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${typeStyles.iconBg} sm:mx-0 sm:h-10 sm:w-10`}>
@@ -88,11 +88,11 @@ const ConfirmationModal = ({
 
               {/* Content */}
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
                   {title}
                 </h3>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
                     {message}
                   </p>
                 </div>
@@ -101,7 +101,7 @@ const ConfirmationModal = ({
           </div>
 
           {/* Actions */}
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <div className="bg-gray-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"
               onClick={onConfirm}
@@ -121,7 +121,7 @@ const ConfirmationModal = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>

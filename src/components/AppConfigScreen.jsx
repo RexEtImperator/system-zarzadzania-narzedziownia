@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import DepartmentManagementScreen from './DepartmentManagementScreen';
 import PositionManagementScreen from './PositionManagementScreen';
 import UserManagementScreen from './UserManagementScreen';
+import ConfirmationModal from './ConfirmationModal';
 
 const AppConfigScreen = ({ apiClient, user }) => {
   const MIN_LOGO_WIDTH = 64;
@@ -59,6 +60,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [catNewName, setCatNewName] = useState('');
   const [catEditingId, setCatEditingId] = useState(null);
   const [catEditingName, setCatEditingName] = useState('');
+  // Modal potwierdzenia usuwania logo
+  const [showLogoDeleteModal, setShowLogoDeleteModal] = useState(false);
+  const [logoDeleteFilename, setLogoDeleteFilename] = useState(null);
+  const [logoDeleteLoading, setLogoDeleteLoading] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -233,6 +238,26 @@ const AppConfigScreen = ({ apiClient, user }) => {
     }
   };
 
+  const handleLogoDelete = async (filename) => {
+    if (!filename) return;
+    try {
+      setLogoDeleteLoading(true);
+      await apiClient.delete(`/api/config/logo/${encodeURIComponent(filename)}`);
+      toast.success('Wersja logo została usunięta');
+      await loadLogoHistory();
+    } catch (error) {
+      let msg = 'Błąd usuwania wersji logo';
+      if (error && typeof error.message === 'string') {
+        try { const parsed = JSON.parse(error.message); msg = parsed.error || parsed.message || msg; } catch (_) { msg = error.message || msg; }
+      }
+      toast.error(msg);
+    } finally {
+      setLogoDeleteLoading(false);
+      setShowLogoDeleteModal(false);
+      setLogoDeleteFilename(null);
+    }
+  };
+
   const renderGeneralTab = () => (
     <div className="space-y-6">
       <div>
@@ -368,7 +393,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
                         onClick={() => handleLogoRollback(v.filename)}
                         className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-600 text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-500"
                       >
-                        Przywróć
+                        Zastosuj
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setLogoDeleteFilename(v.filename); setShowLogoDeleteModal(true); }}
+                        className="ml-2 text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50"
+                      >
+                        Usuń
                       </button>
                     </div>
                   </div>
@@ -1008,6 +1040,20 @@ const AppConfigScreen = ({ apiClient, user }) => {
           </main>
         </div>
       </div>
+
+      {/* Modal potwierdzenia usunięcia logo */}
+      <ConfirmationModal
+        isOpen={showLogoDeleteModal}
+        onClose={() => { if (!logoDeleteLoading) { setShowLogoDeleteModal(false); setLogoDeleteFilename(null); } }}
+        onConfirm={() => logoDeleteFilename && handleLogoDelete(logoDeleteFilename)}
+        title="Usuń wersję logo"
+        message={logoDeleteFilename ? `Czy na pewno chcesz usunąć wersję: ${logoDeleteFilename}?` : 'Czy na pewno chcesz usunąć tę wersję logo?'}
+        confirmText="Usuń"
+        cancelText="Anuluj"
+        type="danger"
+        loading={logoDeleteLoading}
+      />
+
     </div>
   );
 };

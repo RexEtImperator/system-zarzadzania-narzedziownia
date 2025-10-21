@@ -2848,6 +2848,23 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
   });
 });
 
+// Endpoint usuwania wszystkich logów audytu (tylko administrator)
+app.delete('/api/audit', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+
+  db.run('DELETE FROM audit_logs', function(err) {
+    if (err) {
+      console.error('Błąd podczas usuwania logów audytu:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+
+    const deletedCount = this.changes || 0;
+    return res.json({ message: 'Logi audytu zostały usunięte', deleted_count: deletedCount });
+  });
+});
+
 // ===== ENDPOINTY KONFIGURACJI APLIKACJI =====
 // Upload logo (PNG) do katalogu public/logos z wersjonowaniem
 let multer;
@@ -3061,6 +3078,31 @@ app.post('/api/config/logo/rollback', authenticateToken, (req, res) => {
     res.json({ message: 'Przywrócono wybraną wersję logo', url: '/logo.png', timestamp, size });
   } catch (err) {
     res.status(500).json({ message: 'Błąd przywracania wersji', error: err.message });
+  }
+});
+
+// Usuń wybraną wersję logo (tylko administrator)
+app.delete('/api/config/logo/:filename', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  const { filename } = req.params || {};
+  if (!filename || typeof filename !== 'string') {
+    return res.status(400).json({ message: 'Brak poprawnej nazwy pliku wersji' });
+  }
+  // Zabezpieczenie: dozwolone tylko pliki w formacie logo-*.png
+  if (!/^logo-\d+\.png$/.test(filename)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa pliku' });
+  }
+  const target = path.join(LOGO_DIR, filename);
+  try {
+    if (!fs.existsSync(target)) {
+      return res.status(404).json({ message: 'Wybrana wersja nie istnieje' });
+    }
+    fs.unlinkSync(target);
+    return res.json({ message: 'Wersja logo została usunięta', deleted: filename });
+  } catch (err) {
+    return res.status(500).json({ message: 'Błąd usuwania wersji logo', error: err.message });
   }
 });
 

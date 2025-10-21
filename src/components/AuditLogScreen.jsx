@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { AUDIT_ACTIONS } from '../constants';
+import { toast } from 'react-toastify';
+import ConfirmationModal from './ConfirmationModal';
 
 // Komponent dziennika audytu
 function AuditLogScreen({ user }) {
@@ -19,6 +21,10 @@ function AuditLogScreen({ user }) {
     startDate: '',
     endDate: ''
   });
+
+  const canManageAuditLogs = user?.role === 'administrator';
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchAuditLogs = async () => {
     try {
@@ -65,16 +71,50 @@ function AuditLogScreen({ user }) {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  const handleDeleteAuditLogs = () => {
+    if (!canManageAuditLogs) {
+      toast.error('Brak uprawnień administratora do usunięcia logów');
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDeleteAuditLogs = async () => {
+    try {
+      setDeleteLoading(true);
+      await api.delete('/api/audit');
+      toast.success('Logi audytu zostały usunięte');
+      setShowDeleteModal(false);
+      // Odśwież listę po usunięciu
+      setPagination(prev => ({ ...prev, page: 1 }));
+      await fetchAuditLogs();
+    } catch (err) {
+      console.error('Błąd podczas usuwania logów audytu:', err);
+      toast.error('Błąd podczas usuwania logów audytu');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
-    <div className="p-4 lg:p-8 bg-slate-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2 transition-colors duration-200">Dziennik audytu</h1>
-        <p className="text-slate-600 dark:text-gray-400 transition-colors duration-200">Historia wszystkich działań w systemie</p>
+    <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2 transition-colors duration-200">Dziennik audytu</h1>
+          <p className="text-slate-600 dark:text-gray-400 transition-colors duration-200">Historia wszystkich działań w systemie</p>
+        </div>
+        {canManageAuditLogs ? (
+          <button
+            onClick={handleDeleteAuditLogs}
+            className="bg-red-600 dark:bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-700 dark:hover:bg-red-800"
+          >
+            Usuń logi
+          </button>
+        ) : null}
       </div>
 
       {/* Filtry */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 p-6 mb-6 transition-colors duration-200">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 transition-colors duration-200">Filtry</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2 transition-colors duration-200">Akcja</label>
@@ -214,6 +254,18 @@ function AuditLogScreen({ user }) {
           </>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDeleteAuditLogs}
+        title="Usuń logi audytu"
+        message="Czy na pewno chcesz usunąć wszystkie logi audytu? Tej operacji nie można cofnąć."
+        confirmText="Usuń logi"
+        cancelText="Anuluj"
+        type="danger"
+        loading={deleteLoading}
+      />
     </div>
   );
 }

@@ -333,6 +333,7 @@ const DashboardScreen = ({ user }) => {
         id: issue.id,
         action: issue.status === 'wydane' ? 'wydanie' : 'zwrot',
         toolName: issue.tool_name,
+        toolId: issue.tool_id,
         employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
         time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at),
         quantity: issue.quantity
@@ -342,6 +343,8 @@ const DashboardScreen = ({ user }) => {
         id: issue.id,
         action: issue.status === 'wydane' ? 'wydanie' : 'zwrot',
         bhpLabel: issue.bhp_model ? `${issue.bhp_model} (${issue.bhp_inventory_number || 'brak nr'})` : `Nr ewid.: ${issue.bhp_inventory_number || 'nieznany'}`,
+        bhpInventoryNumber: issue.bhp_inventory_number,
+        bhpModel: issue.bhp_model,
         employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
         time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at)
       })) || [];
@@ -599,7 +602,7 @@ const DashboardScreen = ({ user }) => {
                           aria-hidden="true"
                         />
                       )}
-                      <div className="relative flex space-x-4">
+                      <div className="relative flex space-x-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2" onClick={() => { window.dispatchEvent(new CustomEvent('navigate', { detail: { screen: 'tools', q: item.toolName } })); }}>
                         <div>
                           <span className={`h-12 w-12 rounded-xl ${getActionColor(item.action)} flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-lg`}>
                             {getActionIcon(item.action)}
@@ -695,7 +698,7 @@ const DashboardScreen = ({ user }) => {
                           aria-hidden="true"
                         />
                       )}
-                      <div className="relative flex space-x-4">
+                      <div className="relative flex space-x-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2" onClick={() => { window.dispatchEvent(new CustomEvent('navigate', { detail: { screen: 'bhp', q: item.bhpInventoryNumber || item.bhpModel || item.bhpLabel } })); }}>
                         <div>
                           <span className={`h-12 w-12 rounded-xl ${getActionColor(item.action)} flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-lg`}>
                             {getActionIcon(item.action)}

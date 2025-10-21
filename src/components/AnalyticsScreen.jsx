@@ -262,9 +262,9 @@ function AnalyticsScreen({ tools, employees, user }) {
   const overdueBhp = overdueInspections.filter(x => x.source === 'bhp');
 
   return (
-   <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
-     <div className="mb-8">
-       <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analityka</h1>
+   <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
+     <div className="mb-6">
+       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analityka</h1>
        <p className="text-slate-600 dark:text-slate-400">Przegląd statystyk i raportów systemu</p>
      </div>
 

@@ -131,7 +131,7 @@ const addAuditLog = async (user, action, details) => {
   }
 };
 
-// Funkcje pobierania skonfigurowanych działów i pozycji
+// Funkcje pobierania skonfigurowanych działów i stanowisk
 const getConfiguredDepartments = async () => {
   try {
     const data = await api.get('/api/departments');
@@ -173,10 +173,8 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h2>
         </div>
-        
         <div className="p-6">
           <p className="text-slate-600 dark:text-slate-300 mb-6">{message}</p>
-          
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -208,8 +206,8 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
-    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.ACCESS_TOOLS },
     { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
+    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.ACCESS_TOOLS },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'admin', label: 'Ustawienia', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
@@ -298,8 +296,6 @@ import AuditLogScreen from './components/AuditLogScreen';
 import TopBar from './components/TopBar';
 import UserSettingsScreen from './components/UserSettingsScreen';
 import UserManagementScreen from './components/UserManagementScreen';
-
-// (UserManagementScreen przeniesiony do src/components/UserManagementScreen.jsx)
 
 // Panel administracyjny
 function AdminPanel({ user, onNavigate }) {
@@ -913,8 +909,8 @@ function App() {
           <div className="flex-1 overflow-auto">
             {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
-            {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
             {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
+            {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
             {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'audit' && <AuditLogScreen user={user} />}

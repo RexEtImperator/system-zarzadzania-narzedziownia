@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bars3Icon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, ArrowRightEndOnRectangleIcon } from '@heroicons/react/24/outline';
 
 const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
   return (
@@ -14,7 +14,7 @@ const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
             <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
           <h1 className="ml-3 text-lg font-semibold text-gray-900 truncate">
-            Zarządzanie
+            {appName || 'SZN - System Zarządzania Narzędziownią'}
           </h1>
         </div>
 
@@ -37,7 +37,7 @@ const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
             className="inline-flex items-center p-2 border border-transparent rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
             title="Wyloguj"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
+            <ArrowRightEndOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </div>

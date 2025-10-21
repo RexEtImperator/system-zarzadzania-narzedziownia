@@ -1137,7 +1137,6 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                 </div>
               )}
 
-              {/* Usunięte: Amortyzator - data rozpoczęcia użytkowania (globalne pole wyżej) */}
               {/* Datalisty z podpowiedziami */}
               <datalist id="manufacturerOptions">
                 {manufacturerOptions.map((v) => (<option key={v} value={v} />))}

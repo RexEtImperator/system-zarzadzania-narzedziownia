@@ -221,9 +221,6 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
           <span className="sr-only">Otwórz menu</span>
           <Bars3Icon className="h-6 w-6" aria-hidden="true" />
         </button>
-        <h1 className="ml-3 text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-          {appName || 'SZN - System Zarządzania Narzędziownią'}
-        </h1>
       </div>
 
       <div className="flex items-center space-x-4">

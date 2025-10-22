@@ -25,7 +25,8 @@ const BarcodeScannerComponent = ({
   isOpen, 
   onClose, 
   onScan, 
-  onError 
+  onError,
+  displayQuantity
 }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [stopStream, setStopStream] = useState(false);
@@ -33,6 +34,9 @@ const BarcodeScannerComponent = ({
   const [isSupported, setIsSupported] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
   const [scanningAnimation, setScanningAnimation] = useState(false);
+  const [lastScannedCode, setLastScannedCode] = useState('');
+  const [lastScanTime, setLastScanTime] = useState(0);
+  const [scanLocked, setScanLocked] = useState(false);
 
   // Sprawdź kompatybilność przeglądarki
   useEffect(() => {
@@ -132,11 +136,29 @@ const BarcodeScannerComponent = ({
   }, [isOpen]);
 
   const handleScan = (err, result) => {
-    if (result) {
+    if (result && result.text) {
+      const now = Date.now();
+      // Ignoruj duplikaty tego samego kodu przez 2s lub gdy blokada aktywna
+      if (scanLocked || (lastScannedCode === result.text && (now - lastScanTime) < 2000)) {
+        return;
+      }
+      setLastScannedCode(result.text);
+      setLastScanTime(now);
       console.log('Zeskanowano kod:', result.text);
       setIsScanning(false);
       setScanningAnimation(false);
-      onScan(result.text);
+      setScanLocked(true);
+      setStopStream(true);
+      try {
+        onScan(result.text);
+      } finally {
+        // Zamknij modal po krótkiej chwili, aby uniknąć wielokrotnych wywołań
+        setTimeout(() => {
+          setScanLocked(false);
+          // Zamknij jeśli nadal otwarty
+          try { onClose(); } catch (_) {}
+        }, 250);
+      }
     } else if (err) {
       console.error('Błąd skanowania:', err);
     }
@@ -272,30 +294,24 @@ const BarcodeScannerComponent = ({
                   'aztec',
                   'pdf_417'
                 ]}
-                delay={50} // Zwiększona czułość - zmniejszony delay z 100ms do 50ms
+                delay={300}
                 constraints={{
                   video: {
                     facingMode: 'environment',
-                    width: { ideal: 1920, min: 1280 }, // Wyższa rozdzielczość dla małych kodów
+                    width: { ideal: 1920, min: 1280 },
                     height: { ideal: 1080, min: 720 },
-                    frameRate: { ideal: 30, min: 15 }, // Wyższa częstotliwość klatek
+                    frameRate: { ideal: 30, min: 15 },
                     focusMode: 'continuous',
                     focusDistance: 'auto',
-                    // Automatyczne dostosowanie jasności i kontrastu
-                    brightness: { ideal: 0.7 },
-                    contrast: { ideal: 1.2 },
-                    saturation: { ideal: 1.1 },
-                    sharpness: { ideal: 1.3 }, // Zwiększona ostrość dla małych kodów
-                    // Zaawansowane ustawienia ostrości dla małych kodów
                     advanced: [
                       { focusMode: 'continuous' },
-                      { focusDistance: 0.1 }, // Bliższa ostrość dla małych naklejek
+                      { focusDistance: 0.1 },
                       { torch: torchEnabled },
-                      { zoom: 1.2 }, // Lekkie przybliżenie dla lepszej czytelności
+                      { zoom: 1.2 },
                       { exposureMode: 'continuous' },
-                      { exposureCompensation: 0.3 }, // Lekkie prześwietlenie
+                      { exposureCompensation: 0.3 },
                       { whiteBalanceMode: 'continuous' },
-                      { iso: { min: 100, max: 800 } } // Kontrola ISO dla lepszej jakości
+                      { iso: { min: 100, max: 800 } }
                     ]
                   }
                 }}
@@ -338,6 +354,16 @@ const BarcodeScannerComponent = ({
                 </div>
               </div>
             </div>
+
+            {/* Ostatnio zeskanowany kod */}
+            {lastScannedCode && (
+              <div className="mb-3 text-center text-sm text-gray-700">
+                Ostatni kod: <span className="font-mono">{lastScannedCode}</span>
+                {typeof displayQuantity !== 'undefined' && displayQuantity !== null && (
+                  <span className="ml-2">| Ilość: <span className="font-semibold">{displayQuantity}</span></span>
+                )}
+              </div>
+            )}
 
             <div className="flex justify-between items-center">
               <button

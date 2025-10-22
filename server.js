@@ -19,6 +19,7 @@ const allowedOrigins = [
   'http://127.0.0.1:8083',
   'https://localhost:3000',
   'https://localhost:3001',
+  'https://localhost:3002',
   // Dopuszczamy adresy LAN w trakcie developmentu (np. Expo Web na innym IP)
   'http://192.168.10.99:8083',
   'http://192.168.10.99:3000'
@@ -28,7 +29,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Zezwól na brak origin (np. narzędzia CLI) oraz lokalne/lAN-owe pochodzenia
     const lanPattern = /^http:\/\/192\.168\.\d+\.\d+:\d+$/;
-    const localhostPattern = /^http:\/\/localhost:\d+$/;
+    const localhostPattern = /^https?:\/\/localhost:\d+$/;
     if (!origin || allowedOrigins.includes(origin) || lanPattern.test(origin) || localhostPattern.test(origin)) {
       return callback(null, true);
     }
@@ -85,29 +86,6 @@ function initializeDatabase() {
           if (!columnNames.includes('last_backup_at')) {
             db.run('ALTER TABLE app_config ADD COLUMN last_backup_at DATETIME', (err) => {
               if (err) console.error('Błąd dodawania kolumny last_backup_at:', err.message);
-            });
-          }
-          // Usuń kolumnę currency jeśli istnieje (SQLite wymaga przebudowy tabeli)
-          if (columnNames.includes('currency')) {
-            db.serialize(() => {
-              db.run('BEGIN TRANSACTION');
-              db.run(`CREATE TABLE IF NOT EXISTS app_config_new (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                app_name TEXT NOT NULL,
-                company_name TEXT,
-                timezone TEXT,
-                language TEXT,
-                date_format TEXT,
-                backup_frequency TEXT,
-                last_backup_at DATETIME,
-                updated_at DATETIME DEFAULT (datetime('now'))
-              )`);
-              db.run(`INSERT INTO app_config_new (id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, updated_at)
-                      SELECT id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, updated_at FROM app_config WHERE id = 1`);
-              db.run('DROP TABLE app_config');
-              db.run('ALTER TABLE app_config_new RENAME TO app_config');
-              db.run('COMMIT');
-              console.log('Usunięto kolumnę currency z app_config');
             });
           }
         }
@@ -500,7 +478,6 @@ function initializeDatabase() {
           ensureColumn('shock_absorber_start_date', 'shock_absorber_start_date DATETIME');
           ensureColumn('shock_absorber_production_date', 'shock_absorber_production_date DATETIME');
           ensureColumn('production_date', 'production_date DATETIME');
-          // Urządzenie samohamowne (SRD) dodatkowe pola
           ensureColumn('srd_manufacturer', 'srd_manufacturer TEXT');
           ensureColumn('srd_model', 'srd_model TEXT');
           ensureColumn('srd_serial_number', 'srd_serial_number TEXT');
@@ -734,7 +711,7 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE'],
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE'],
         'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES'],
         'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP'],
         'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP'],
@@ -759,27 +736,64 @@ function initializeDatabase() {
           });
           console.log('Domyślne uprawnienia ról zostały dodane');
         }
-
-        // Automatyczna migracja: wstaw brakujące BHP-permissions dla istniejących ról
-        const bhpPermissionsInit = {
-          'administrator': ['VIEW_BHP', 'MANAGE_BHP'],
-          'manager': ['VIEW_BHP', 'MANAGE_BHP'],
-          'employee': ['VIEW_BHP'],
-          'user': ['VIEW_BHP'],
-          'viewer': ['VIEW_BHP']
-        };
-        Object.entries(bhpPermissionsInit).forEach(([role, permissions]) => {
-          permissions.forEach(permission => {
-            db.run('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)', 
-              [role, permission], (err) => {
-                if (err) {
-                  console.error(`Błąd migracji: nie udało się dodać ${permission} dla roli ${role}:`, err.message);
-                }
-              });
-          });
-        });
-        console.log('Automatyczna migracja BHP-permissions zakończona');
       });
+    }
+  });
+  // ===== Tabele inwentaryzacji =====
+  db.run(`CREATE TABLE IF NOT EXISTS inventory_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',  -- active | paused | ended
+    owner_user_id INTEGER NOT NULL,
+    started_at DATETIME DEFAULT (datetime('now')),
+    paused_at DATETIME,
+    finished_at DATETIME,
+    notes TEXT
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli inventory_sessions:', err.message);
+    } else {
+      console.log('Tabela inventory_sessions została utworzona lub już istnieje');
+    }
+  });
+
+  db.run(`CREATE TABLE IF NOT EXISTS inventory_counts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    tool_id INTEGER NOT NULL,
+    code TEXT,
+    counted_qty INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT (datetime('now')),
+    updated_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(session_id, tool_id),
+    FOREIGN KEY (session_id) REFERENCES inventory_sessions(id),
+    FOREIGN KEY (tool_id) REFERENCES tools(id)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli inventory_counts:', err.message);
+    } else {
+      console.log('Tabela inventory_counts została utworzona lub już istnieje');
+      db.run('CREATE INDEX IF NOT EXISTS idx_inventory_counts_session ON inventory_counts(session_id)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_inventory_counts_tool ON inventory_counts(tool_id)');
+    }
+  });
+
+  db.run(`CREATE TABLE IF NOT EXISTS inventory_corrections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    tool_id INTEGER NOT NULL,
+    difference_qty INTEGER NOT NULL,
+    reason TEXT,
+    created_at DATETIME DEFAULT (datetime('now')),
+    accepted_by_user_id INTEGER,
+    accepted_at DATETIME,
+    FOREIGN KEY (session_id) REFERENCES inventory_sessions(id),
+    FOREIGN KEY (tool_id) REFERENCES tools(id)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli inventory_corrections:', err.message);
+    } else {
+      console.log('Tabela inventory_corrections została utworzona lub już istnieje');
     }
   });
 }
@@ -3148,6 +3162,391 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
   });
 });
 
+// ===== Inventory Endpoints =====
+// Utworzenie nowej sesji inwentaryzacji (admin)
+app.post('/api/inventory/sessions', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może tworzyć sesje inwentaryzacji' });
+  }
+  const { name, notes } = req.body || {};
+  const normalized = String(name || '').trim();
+  if (!normalized) {
+    return res.status(400).json({ message: 'Nazwa sesji jest wymagana' });
+  }
+  db.run(
+    "INSERT INTO inventory_sessions (name, owner_user_id, status, started_at, notes) VALUES (?, ?, 'active', datetime('now'), ?)",
+    [normalized, req.user.id, notes || null],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+      db.get('SELECT * FROM inventory_sessions WHERE id = ?', [this.lastID], (getErr, row) => {
+        if (getErr) return res.status(500).json({ message: 'Błąd pobierania sesji' });
+        res.status(201).json(row);
+      });
+    }
+  );
+});
+
+// Zmiana statusu sesji (pause/resume/end) - admin
+app.put('/api/inventory/sessions/:id/status', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może zmieniać status sesji' });
+  }
+  const { action } = req.body || {};
+  const id = req.params.id;
+  let sql = null;
+  let params = [id];
+  if (action === 'pause') {
+    sql = "UPDATE inventory_sessions SET status = 'paused', paused_at = datetime('now') WHERE id = ? AND status = 'active'";
+  } else if (action === 'resume') {
+    sql = "UPDATE inventory_sessions SET status = 'active', paused_at = NULL WHERE id = ? AND status = 'paused'";
+  } else if (action === 'end') {
+    sql = "UPDATE inventory_sessions SET status = 'ended', finished_at = datetime('now') WHERE id = ? AND status != 'ended'";
+  } else {
+    return res.status(400).json({ message: 'Nieprawidłowa akcja (dozwolone: pause, resume, end)' });
+  }
+  db.run(sql, params, function(err) {
+    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    if (this.changes === 0) return res.status(404).json({ message: 'Sesja nie została znaleziona lub status bez zmian' });
+    db.get('SELECT * FROM inventory_sessions WHERE id = ?', [id], (getErr, row) => {
+      if (getErr) return res.status(500).json({ message: 'Błąd pobierania sesji' });
+      res.json(row);
+    });
+  });
+});
+
+// Lista sesji + liczba zliczonych pozycji
+app.get('/api/inventory/sessions', authenticateToken, (req, res) => {
+  const sql = `
+    SELECT s.*, (
+      SELECT COUNT(*) FROM inventory_counts ic WHERE ic.session_id = s.id
+    ) AS counted_items
+    FROM inventory_sessions s
+    ORDER BY s.started_at DESC
+  `;
+  db.all(sql, [], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    res.json(rows);
+  });
+});
+
+// Usuwanie zakończonej sesji (admin)
+app.delete('/api/inventory/sessions/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może usuwać sesje inwentaryzacji' });
+  }
+  const id = req.params.id;
+  db.get('SELECT * FROM inventory_sessions WHERE id = ?', [id], (findErr, session) => {
+    if (findErr) return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
+    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
+    if (session.status !== 'ended') return res.status(400).json({ message: "Sesja nie ma statusu 'ended'" });
+
+    let deletedCounts = 0;
+    let deletedCorrections = 0;
+
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      db.run('DELETE FROM inventory_counts WHERE session_id = ?', [id], function(countErr) {
+        if (countErr) {
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Błąd usuwania zliczeń', error: countErr.message });
+        }
+        deletedCounts = this.changes || 0;
+
+        db.run('DELETE FROM inventory_corrections WHERE session_id = ?', [id], function(corrErr) {
+          if (corrErr) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ message: 'Błąd usuwania korekt', error: corrErr.message });
+          }
+          deletedCorrections = this.changes || 0;
+
+          db.run('DELETE FROM inventory_sessions WHERE id = ?', [id], function(sessErr) {
+            if (sessErr) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ message: 'Błąd usuwania sesji', error: sessErr.message });
+            }
+            if (this.changes === 0) {
+              db.run('ROLLBACK');
+              return res.status(404).json({ message: 'Sesja nie została znaleziona' });
+            }
+
+            db.run('COMMIT', (commitErr) => {
+              if (commitErr) {
+                db.run('ROLLBACK');
+                return res.status(500).json({ message: 'Błąd zatwierdzania transakcji', error: commitErr.message });
+              }
+
+              const details = `session:${id} name:${session.name} counts:${deletedCounts} corrections:${deletedCorrections}`;
+              db.run(
+                "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_session_delete', ?, datetime('now'))",
+                [req.user.id, req.user.username, details],
+                (auditErr) => {
+                  if (auditErr) {
+                    console.error('Błąd dodawania logu audytu:', auditErr.message);
+                  }
+                  return res.json({ 
+                    message: 'Sesja została trwale usunięta', 
+                    deleted: true,
+                    session_id: Number(id),
+                    deleted_counts: deletedCounts,
+                    deleted_corrections: deletedCorrections
+                  });
+                }
+              );
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// Skanowanie i zliczanie w sesji
+app.post('/api/inventory/sessions/:id/scan', authenticateToken, (req, res) => {
+  const sessionId = req.params.id;
+  const { code, quantity } = req.body || {};
+  const qty = Math.max(1, parseInt(quantity || 1, 10));
+  if (!code || String(code).trim() === '') {
+    return res.status(400).json({ message: 'Kod jest wymagany' });
+  }
+
+  db.get('SELECT * FROM inventory_sessions WHERE id = ?', [sessionId], (err, session) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
+    if (session.status !== 'active') return res.status(400).json({ message: 'Sesja nie jest aktywna' });
+
+    const findToolSql = 'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? OR inventory_number = ? LIMIT 1';
+    db.get(findToolSql, [code, code, code, code], (findErr, tool) => {
+      if (findErr) return res.status(500).json({ message: 'Błąd serwera' });
+      if (!tool) return res.status(404).json({ message: 'Nie znaleziono narzędzia dla podanego kodu' });
+
+      db.get('SELECT id, counted_qty FROM inventory_counts WHERE session_id = ? AND tool_id = ?', [sessionId, tool.id], (getErr, countRow) => {
+        if (getErr) return res.status(500).json({ message: 'Błąd serwera' });
+        if (!countRow) {
+          db.run(
+            'INSERT INTO inventory_counts (session_id, tool_id, code, counted_qty) VALUES (?, ?, ?, ?)',
+            [sessionId, tool.id, code, qty],
+            function(insErr) {
+              if (insErr) return res.status(500).json({ message: 'Błąd serwera', error: insErr.message });
+              db.get('SELECT * FROM inventory_counts WHERE id = ?', [this.lastID], (cErr, newRow) => {
+                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                // Zapis audytu
+                db.run(
+                  "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_scan', ?, datetime('now'))",
+                  [req.user.id, req.user.username, `session:${sessionId} tool:${tool.id} qty:${qty}`]
+                );
+                res.status(201).json({ message: 'Dodano zliczenie', count: newRow, tool });
+              });
+            }
+          );
+        } else {
+          const updatedQty = (countRow.counted_qty || 0) + qty;
+          db.run(
+            "UPDATE inventory_counts SET counted_qty = ?, updated_at = datetime('now') WHERE id = ?",
+            [updatedQty, countRow.id],
+            function(updErr) {
+              if (updErr) return res.status(500).json({ message: 'Błąd serwera', error: updErr.message });
+              db.get('SELECT * FROM inventory_counts WHERE id = ?', [countRow.id], (cErr, row) => {
+                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                db.run(
+                  "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_scan', ?, datetime('now'))",
+                  [req.user.id, req.user.username, `session:${sessionId} tool:${tool.id} qty:+${qty}`]
+                );
+                res.json({ message: 'Zaktualizowano zliczenie', count: row, tool });
+              });
+            }
+          );
+        }
+      });
+    });
+  });
+});
+
+// Ustawienie zliczonej ilości dla narzędzia w sesji (upsert)
+app.put('/api/inventory/sessions/:id/counts/:toolId', authenticateToken, (req, res) => {
+  const sessionId = req.params.id;
+  const toolId = req.params.toolId;
+  const { counted_qty } = req.body || {};
+  const qty = Math.max(0, parseInt(counted_qty, 10));
+  if (Number.isNaN(qty)) {
+    return res.status(400).json({ message: 'Wymagane: counted_qty (number)' });
+  }
+
+  db.get('SELECT * FROM inventory_sessions WHERE id = ?', [sessionId], (err, session) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
+
+    db.get('SELECT * FROM tools WHERE id = ?', [toolId], (toolErr, tool) => {
+      if (toolErr) return res.status(500).json({ message: 'Błąd serwera' });
+      if (!tool) return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+
+      db.get('SELECT id FROM inventory_counts WHERE session_id = ? AND tool_id = ?', [sessionId, toolId], (getErr, countRow) => {
+        if (getErr) return res.status(500).json({ message: 'Błąd serwera' });
+        if (!countRow) {
+          db.run(
+            'INSERT INTO inventory_counts (session_id, tool_id, code, counted_qty) VALUES (?, ?, ?, ?)',
+            [sessionId, toolId, tool.sku || null, qty],
+            function(insErr) {
+              if (insErr) return res.status(500).json({ message: 'Błąd serwera', error: insErr.message });
+              db.get('SELECT * FROM inventory_counts WHERE id = ?', [this.lastID], (cErr, newRow) => {
+                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                db.run(
+                  "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_count_set', ?, datetime('now'))",
+                  [req.user.id, req.user.username, `session:${sessionId} tool:${toolId} set:${qty}`]
+                );
+                res.status(201).json({ message: 'Ustawiono zliczoną ilość', count: newRow });
+              });
+            }
+          );
+        } else {
+          db.run(
+            "UPDATE inventory_counts SET counted_qty = ?, updated_at = datetime('now') WHERE id = ?",
+            [qty, countRow.id],
+            function(updErr) {
+              if (updErr) return res.status(500).json({ message: 'Błąd serwera', error: updErr.message });
+              db.get('SELECT * FROM inventory_counts WHERE id = ?', [countRow.id], (cErr, row) => {
+                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                db.run(
+                  "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_count_set', ?, datetime('now'))",
+                  [req.user.id, req.user.username, `session:${sessionId} tool:${toolId} set:${qty}`]
+                );
+                res.json({ message: 'Zaktualizowano zliczoną ilość', count: row });
+              });
+            }
+          );
+        }
+      });
+    });
+  });
+});
+
+// Różnice w sesji (zawiera także różnice 0)
+app.get('/api/inventory/sessions/:id/differences', authenticateToken, (req, res) => {
+  const sessionId = req.params.id;
+  const sql = `
+    SELECT 
+      t.id AS tool_id, t.name, t.sku, t.quantity AS system_qty, 
+      COALESCE(ic.counted_qty, 0) AS counted_qty,
+      (COALESCE(ic.counted_qty, 0) - COALESCE(t.quantity, 0)) AS difference
+    FROM tools t
+    LEFT JOIN inventory_counts ic ON ic.tool_id = t.id AND ic.session_id = ?
+    ORDER BY ABS(difference) DESC, t.name
+  `;
+  db.all(sql, [sessionId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    res.json(rows);
+  });
+});
+
+// Historia zliczeń i korekt
+app.get('/api/inventory/sessions/:id/history', authenticateToken, (req, res) => {
+  const sessionId = req.params.id;
+  const countsQuery = `
+    SELECT ic.*, t.name AS tool_name, t.sku AS tool_sku
+    FROM inventory_counts ic
+    JOIN tools t ON t.id = ic.tool_id
+    WHERE ic.session_id = ?
+    ORDER BY ic.updated_at DESC
+  `;
+  const correctionsQuery = `
+    SELECT c.*, t.name AS tool_name, t.sku AS tool_sku, u.username AS accepted_by_username
+    FROM inventory_corrections c
+    JOIN tools t ON t.id = c.tool_id
+    LEFT JOIN users u ON u.id = c.accepted_by_user_id
+    WHERE c.session_id = ?
+    ORDER BY c.created_at DESC
+  `;
+  db.all(countsQuery, [sessionId], (err, counts) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    db.all(correctionsQuery, [sessionId], (err2, corrections) => {
+      if (err2) return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+      res.json({ counts, corrections });
+    });
+  });
+});
+
+// Dodanie korekty różnicy
+app.post('/api/inventory/sessions/:id/corrections', authenticateToken, (req, res) => {
+  const sessionId = req.params.id;
+  const { tool_id, difference_qty, reason } = req.body || {};
+  if (!tool_id || typeof difference_qty !== 'number') {
+    return res.status(400).json({ message: 'Wymagane: tool_id i difference_qty (number)' });
+  }
+  db.run(
+    'INSERT INTO inventory_corrections (session_id, tool_id, difference_qty, reason) VALUES (?, ?, ?, ?)',
+    [sessionId, tool_id, difference_qty, reason || null],
+    function(err) {
+      if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      db.get('SELECT * FROM inventory_corrections WHERE id = ?', [this.lastID], (getErr, row) => {
+        if (getErr) return res.status(500).json({ message: 'Błąd pobierania korekty' });
+        res.status(201).json(row);
+      });
+    }
+  );
+});
+
+// Akceptacja korekty (admin)
+app.post('/api/inventory/corrections/:id/accept', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może akceptować korekty' });
+  }
+  const id = req.params.id;
+  db.run(
+    "UPDATE inventory_corrections SET accepted_by_user_id = ?, accepted_at = datetime('now') WHERE id = ?",
+    [req.user.id, id],
+    function(err) {
+      if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      if (this.changes === 0) return res.status(404).json({ message: 'Korekta nie została znaleziona' });
+
+      // Po akceptacji zastosuj korektę do stanu systemowego narzędzia
+      db.get('SELECT * FROM inventory_corrections WHERE id = ?', [id], (getErr, corr) => {
+        if (getErr || !corr) return res.status(500).json({ message: 'Błąd pobierania korekty do zastosowania' });
+        db.run(
+          'UPDATE tools SET quantity = COALESCE(quantity, 0) + ? WHERE id = ?',
+          [corr.difference_qty, corr.tool_id],
+          function(updErr) {
+            if (updErr) return res.status(500).json({ message: 'Błąd zastosowania korekty', error: updErr.message });
+            // Zapisz zdarzenie w logach audytu
+            db.run(
+              "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_correction_accept', ?, datetime('now'))",
+              [req.user.id, req.user.username, `correction:${id} tool:${corr.tool_id} diff:${corr.difference_qty}`]
+            );
+            res.json({ message: 'Korekta zaakceptowana i zastosowana', id, tool_id: corr.tool_id, applied_difference: corr.difference_qty });
+          }
+        );
+      });
+    }
+  );
+});
+
+// Usuwanie korekty (admin)
+app.delete('/api/inventory/corrections/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może usuwać korekty' });
+  }
+  const id = req.params.id;
+  db.get('SELECT * FROM inventory_corrections WHERE id = ?', [id], (findErr, corr) => {
+    if (findErr) return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
+    if (!corr) return res.status(404).json({ message: 'Korekta nie istnieje' });
+    if (corr.accepted_at) return res.status(400).json({ message: 'Nie można usunąć zatwierdzonej korekty' });
+
+    db.run('DELETE FROM inventory_corrections WHERE id = ?', [id], function(delErr) {
+      if (delErr) return res.status(500).json({ message: 'Błąd usuwania korekty', error: delErr.message });
+      if (this.changes === 0) return res.status(404).json({ message: 'Korekta nie została znaleziona' });
+      db.run(
+        "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_correction_delete', ?, datetime('now'))",
+        [req.user.id, req.user.username, `correction:${id} session:${corr.session_id} tool:${corr.tool_id} diff:${corr.difference_qty}`],
+        (auditErr) => {
+          if (auditErr) console.error('Błąd dodawania logu audytu:', auditErr.message);
+          res.json({ message: 'Korekta została usunięta', id: Number(id), deleted: true });
+        }
+      );
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
@@ -3668,7 +4067,8 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'DELETE_ISSUE_HISTORY',
     'DELETE_SERVICE_HISTORY',
     'MANAGE_EMPLOYEES',
-    'VIEW_DATABASE'
+    'VIEW_DATABASE',
+    'MANAGE_DATABASE'
   ];
 
   res.json(availablePermissions);
@@ -3712,6 +4112,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
       }
 
       const columnNames = (cols || []).map(c => c.name);
+      const pkColumns = (cols || []).filter(c => c.pk).map(c => c.name);
 
       // Pobierz rekordy z paginacją
       const dataSql = `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`;
@@ -3729,17 +4130,388 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
             return res.status(500).json({ message: 'Błąd liczenia rekordów tabeli' });
           }
 
+          const columnTypes = {};
+          (cols || []).forEach(c => { columnTypes[c.name] = c.type || null; });
+
           res.json({
             table: tableName,
             columns: columnNames,
             rows: rows || [],
             limit,
             offset,
-            total: countRow?.count || 0
+            total: countRow?.count || 0,
+            primaryKey: pkColumns,
+            columnTypes
           });
         });
       });
     });
+  });
+});
+
+// Admin-only: Usuwanie wybranej tabeli (z walidacją)
+app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
+  // Tylko administrator może usuwać tabele
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do operacji na bazie' });
+  }
+
+  const tableName = String(req.params.name || '').trim();
+
+  // Prosta walidacja nazwy tabeli
+  if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+  }
+
+  // Zabezpieczenie przed usunięciem krytycznych tabel
+  const protectedTables = ['users', 'role_permissions', 'app_config'];
+  if (protectedTables.includes(tableName)) {
+    return res.status(400).json({ message: 'Tabela jest chroniona i nie może zostać usunięta' });
+  }
+
+  const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
+  db.get(validateSql, [tableName], (err, row) => {
+    if (err) {
+      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Tabela nie istnieje' });
+    }
+
+    db.run(`DROP TABLE IF EXISTS ${tableName}`, (dropErr) => {
+      if (dropErr) {
+        console.error('Błąd usuwania tabeli:', dropErr.message);
+        return res.status(500).json({ message: 'Błąd usuwania tabeli' });
+      }
+
+      // Opcjonalnie: zapis do audit_logs
+      const auditData = {
+        user_id: req.user.id || null,
+        action: 'delete',
+        target_type: 'table',
+        target_id: tableName,
+        details: `DROP TABLE ${tableName}`
+      };
+      db.run(
+        'INSERT INTO audit_logs (user_id, action, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
+        [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+        (logErr) => {
+          if (logErr) {
+            console.error('Błąd podczas zapisywania do audit log:', logErr.message);
+          }
+          return res.json({ message: `Tabela ${tableName} została usunięta` });
+        }
+      );
+    });
+  });
+});
+
+// Admin/permission-only: Aktualizacja wiersza w tabeli po primary key
+app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
+  const tableName = String(req.params.name || '').trim();
+  const pkName = String(req.body?.pk || req.body?.pkName || '').trim();
+  const pkValue = req.body?.id ?? req.body?.pkValue;
+  const updates = req.body?.updates || {};
+
+  if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+  }
+  if (!pkName) {
+    return res.status(400).json({ message: 'Brak nazwy klucza głównego' });
+  }
+  if (pkValue === undefined) {
+    return res.status(400).json({ message: 'Brak wartości klucza głównego' });
+  }
+  if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
+    return res.status(400).json({ message: 'Brak danych do aktualizacji' });
+  }
+
+  // Walidacja tabeli
+  const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
+  db.get(validateSql, [tableName], (err, row) => {
+    if (err) {
+      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Tabela nie istnieje' });
+    }
+
+    // Pobierz schemat, zweryfikuj kolumny i klucz główny
+    db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
+      if (errCols) {
+        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+      }
+      const columnNames = (cols || []).map(c => c.name);
+      const pkColumns = (cols || []).filter(c => c.pk).map(c => c.name);
+      const typesMap = {};
+      const notNullMap = {};
+      (cols || []).forEach(c => {
+        typesMap[c.name] = (c.type || '').toUpperCase();
+        notNullMap[c.name] = !!c.notnull;
+      });
+      if (!pkColumns.includes(pkName)) {
+        return res.status(400).json({ message: 'Nieprawidłowy klucz główny dla tej tabeli' });
+      }
+
+      // Walidacja typów dla aktualizowanych pól
+      for (const [col, val] of Object.entries(updates)) {
+        if (!columnNames.includes(col)) {
+          return res.status(400).json({ message: `Nieznana kolumna: ${col}` });
+        }
+        if (col === pkName) continue;
+        const t = typesMap[col] || '';
+        if (notNullMap[col] && (val === null || typeof val === 'undefined')) {
+          return res.status(400).json({ message: `Kolumna ${col} jest wymagana (NOT NULL)` });
+        }
+        if (val !== null && typeof val !== 'undefined') {
+          if (t.includes('INT')) {
+            if (isNaN(parseInt(val, 10))) {
+              return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby całkowitej` });
+            }
+          } else if (t.includes('REAL') || t.includes('DOUBLE') || t.includes('FLOAT')) {
+            if (isNaN(parseFloat(val))) {
+              return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby zmiennoprzecinkowej` });
+            }
+          }
+        }
+      }
+
+      // Zbuduj bezpieczne SQL
+      const setClauses = [];
+      const values = [];
+      Object.entries(updates).forEach(([col, val]) => {
+        if (columnNames.includes(col) && col !== pkName) {
+          setClauses.push(`${col} = ?`);
+          values.push(val);
+        }
+      });
+      if (setClauses.length === 0) {
+        return res.status(400).json({ message: 'Brak poprawnych kolumn do aktualizacji' });
+      }
+      const sql = `UPDATE ${tableName} SET ${setClauses.join(', ')} WHERE ${pkName} = ?`;
+      values.push(pkValue);
+
+      db.run(sql, values, function(updateErr) {
+        if (updateErr) {
+          console.error('Błąd aktualizacji wiersza:', updateErr.message);
+          return res.status(500).json({ message: 'Błąd aktualizacji wiersza' });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ message: 'Wiersz nie został znaleziony' });
+        }
+        return res.json({ message: 'Wiersz został zaktualizowany', updated: this.changes });
+      });
+    });
+  });
+});
+
+// Admin/permission-only: Usunięcie wiersza po primary key
+app.delete('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
+  const tableName = String(req.params.name || '').trim();
+  const pkName = String(req.query?.pk || req.query?.pkName || '').trim();
+  const pkValue = req.query?.id ?? req.query?.pkValue;
+
+  if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+  }
+  if (!pkName) {
+    return res.status(400).json({ message: 'Brak nazwy klucza głównego' });
+  }
+  if (pkValue === undefined) {
+    return res.status(400).json({ message: 'Brak wartości klucza głównego' });
+  }
+
+  const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
+  db.get(validateSql, [tableName], (err, row) => {
+    if (err) {
+      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Tabela nie istnieje' });
+    }
+
+    db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
+      if (errCols) {
+        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+      }
+      const pkColumns = (cols || []).filter(c => c.pk).map(c => c.name);
+      if (!pkColumns.includes(pkName)) {
+        return res.status(400).json({ message: 'Nieprawidłowy klucz główny dla tej tabeli' });
+      }
+
+      const sql = `DELETE FROM ${tableName} WHERE ${pkName} = ?`;
+      db.run(sql, [pkValue], function(delErr) {
+        if (delErr) {
+          console.error('Błąd usuwania wiersza:', delErr.message);
+          return res.status(500).json({ message: 'Błąd usuwania wiersza' });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ message: 'Wiersz nie został znaleziony' });
+        }
+        return res.json({ message: 'Wiersz został usunięty', deleted: this.changes });
+      });
+    });
+  });
+});
+
+// Admin/permission-only: Dodanie wiersza do tabeli
+app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
+  const tableName = String(req.params.name || '').trim();
+  const values = req.body?.values || {};
+
+  if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+  }
+  if (!values || typeof values !== 'object' || Object.keys(values).length === 0) {
+    return res.status(400).json({ message: 'Brak danych wiersza do dodania' });
+  }
+
+  const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
+  db.get(validateSql, [tableName], (err, row) => {
+    if (err) {
+      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Tabela nie istnieje' });
+    }
+
+    db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
+      if (errCols) {
+        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+      }
+      const availableColumns = (cols || []).map(c => c.name);
+      const notNullCols = (cols || []).filter(c => c.notnull).map(c => c.name);
+      const typesMap = {};
+      (cols || []).forEach(c => { typesMap[c.name] = (c.type || '').toUpperCase(); });
+
+      // Walidacja kolumn i prostych typów
+      for (const [col, val] of Object.entries(values)) {
+        if (!availableColumns.includes(col)) {
+          return res.status(400).json({ message: `Nieznana kolumna: ${col}` });
+        }
+        const t = typesMap[col] || '';
+        if (t.includes('INT')) {
+          if (val !== null && val !== undefined && isNaN(parseInt(val, 10))) {
+            return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby całkowitej` });
+          }
+        } else if (t.includes('REAL') || t.includes('DOUBLE') || t.includes('FLOAT')) {
+          if (val !== null && val !== undefined && isNaN(parseFloat(val))) {
+            return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby zmiennoprzecinkowej` });
+          }
+        }
+      }
+
+      // Sprawdź NOT NULL
+      for (const col of notNullCols) {
+        if (!(col in values)) {
+          return res.status(400).json({ message: `Kolumna ${col} jest wymagana (NOT NULL)` });
+        }
+      }
+
+      const insertCols = Object.keys(values).filter(c => availableColumns.includes(c));
+      if (insertCols.length === 0) {
+        return res.status(400).json({ message: 'Brak poprawnych kolumn do wstawienia' });
+      }
+      const placeholders = insertCols.map(() => '?').join(', ');
+      const sql = `INSERT INTO ${tableName} (${insertCols.join(', ')}) VALUES (${placeholders})`;
+      const params = insertCols.map(c => values[c]);
+
+      db.run(sql, params, function(insErr) {
+        if (insErr) {
+          console.error('Błąd dodawania wiersza:', insErr.message);
+          return res.status(500).json({ message: 'Błąd dodawania wiersza' });
+        }
+        return res.json({ message: 'Wiersz został dodany', id: this.lastID });
+      });
+    });
+  });
+});
+
+// Admin-only: Utworzenie nowej tabeli z prostym schematem
+app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
+  // Tylko administrator może tworzyć tabele
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do operacji na bazie' });
+  }
+
+  const name = String(req.body?.name || '').trim();
+  const columns = Array.isArray(req.body?.columns) ? req.body.columns : [];
+  const primaryKey = String(req.body?.primaryKey || '').trim();
+
+  if (!/^[A-Za-z0-9_]+$/.test(name)) {
+    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+  }
+  if (columns.length === 0) {
+    return res.status(400).json({ message: 'Brak definicji kolumn' });
+  }
+
+  const protectedTables = ['users', 'role_permissions', 'app_config'];
+  if (protectedTables.includes(name)) {
+    return res.status(400).json({ message: 'Tabela jest chroniona i nie może zostać utworzona' });
+  }
+
+  // Walidacja kolumn
+  const colNamesSet = new Set();
+  const colDefs = [];
+  for (const col of columns) {
+    const colName = String(col?.name || '').trim();
+    const colType = String(col?.type || 'TEXT').trim().toUpperCase();
+    const notNull = !!col?.notNull;
+    if (!/^[A-Za-z0-9_]+$/.test(colName)) {
+      return res.status(400).json({ message: `Nieprawidłowa nazwa kolumny: ${colName}` });
+    }
+    if (colNamesSet.has(colName)) {
+      return res.status(400).json({ message: `Duplikat kolumny: ${colName}` });
+    }
+    colNamesSet.add(colName);
+    const allowed = ['TEXT', 'INTEGER', 'REAL', 'BLOB'];
+    if (!allowed.includes(colType)) {
+      return res.status(400).json({ message: `Nieobsługiwany typ kolumny: ${colType}` });
+    }
+    colDefs.push(`${colName} ${colType}${notNull ? ' NOT NULL' : ''}`);
+  }
+
+  // Primary key
+  let pkClause = '';
+  if (primaryKey) {
+    if (!colNamesSet.has(primaryKey)) {
+      return res.status(400).json({ message: 'Primary key musi wskazywać istniejącą kolumnę' });
+    }
+    pkClause = `, PRIMARY KEY (${primaryKey})`;
+  }
+
+  const sql = `CREATE TABLE ${name} (${colDefs.join(', ')}${pkClause})`;
+  db.run(sql, [], (err) => {
+    if (err) {
+      console.error('Błąd tworzenia tabeli:', err.message);
+      return res.status(500).json({ message: 'Błąd tworzenia tabeli' });
+    }
+
+    // Zapis do audit_logs
+    const auditData = {
+      user_id: req.user.id || null,
+      action: 'create',
+      target_type: 'table',
+      target_id: name,
+      details: `CREATE TABLE ${name}`
+    };
+    db.run(
+      'INSERT INTO audit_logs (user_id, action, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
+      [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+      (logErr) => {
+        if (logErr) {
+          console.error('Błąd podczas zapisywania do audit log:', logErr.message);
+        }
+        return res.json({ message: `Tabela ${name} została utworzona` });
+      }
+    );
   });
 });
 

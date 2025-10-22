@@ -18,7 +18,6 @@ const tables = [
   'bhp_issues',
   'departments',
   'employees',
-  'employees_new',
   'positions',
   'role_permissions',
   'tool_categories',

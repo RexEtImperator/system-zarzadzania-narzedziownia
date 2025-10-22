@@ -230,8 +230,8 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
       {/* Sidebar */}
       <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-200 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} `}>
         <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-            <img src="/logo.png" alt="Logo systemu" className="w-48 object-contain drop-shadow-lg" />
+          <div className="border-b border-slate-200 dark:border-gray-700">
+            <img src="/logo.png" alt="Logo systemu" className="mx-auto w-24 h-24 drop-shadow-lg" />
           </div>
           <div className="px-6 py-3 text-xs text-center text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
             {formattedDateTime}
@@ -919,7 +919,16 @@ function App() {
             {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
             {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
             {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
-            {currentScreen === 'db-viewer' && <DbViewerScreen user={user} />}
+            {currentScreen === 'db-viewer' && (
+              user?.role === 'administrator' ? (
+                <DbViewerScreen user={user} />
+              ) : (
+                <div className="p-6">
+                  <h2 className="text-sm font-medium text-gray-900 dark:text-white">Brak uprawnień</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Panel podglądu bazy danych jest dostępny tylko dla administratora.</p>
+                </div>
+              )
+            )}
           </div>
         </div>
         

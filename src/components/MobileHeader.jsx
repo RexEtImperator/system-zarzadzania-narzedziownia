@@ -13,9 +13,6 @@ const MobileHeader = ({ user, onLogout, onToggleSidebar }) => {
             <span className="sr-only">Otwórz menu</span>
             <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
-          <h1 className="ml-3 text-lg font-semibold text-gray-900 truncate">
-            {appName || 'SZN - System Zarządzania Narzędziownią'}
-          </h1>
         </div>
 
         <div className="flex items-center space-x-3">

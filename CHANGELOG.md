@@ -98,3 +98,16 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 - Wersja: podbicie `package.json` (root i backend) do `1.6.0`.
 
 [1.6.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0
+
+## [1.7.0] - 2025-10-22
+
+### Dodane / Zmienione
+- Stan magazynowy (Inventory): widok mobilny — ukryto kolumny `SKU`, `Min`, `Max`; przeniesiono szczegóły do podglądu w komórce `Nazwa`.
+- Dziennik audytu (Audit Log): widok mobilny — ukryto `Użytkownik`, `Szczegóły`, `IP` oraz `Akcja`; dodano chip „Akcja” w podglądzie komórki `Data i czas` wraz z Użytkownikiem, IP i Szczegółami.
+- UI: poprawiona responsywność tabel na telefonach, spójne style elementów mobilnego podglądu.
+
+### Techniczne
+- Dokumentacja: zaktualizowane README (sekcja 1.7.0) i CHANGELOG.
+- Wersja: podbicie `package.json` (root i backend) do `1.7.0`.
+
+[1.7.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0

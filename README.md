@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.6.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0)
+[![Wersja](https://img.shields.io/badge/version-1.7.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
@@ -267,3 +267,9 @@ System Zarządzania Narzędziownią - wersja 1.5.0
 - Dziennik audytu: zastąpiono `window.confirm` modalem potwierdzenia przy usuwaniu logów (spójny UI, wsparcie dark mode).
 - API audytu: naprawiono endpoint usuwania logów — frontend używa `DELETE /api/audit` zgodnego z backendem.
 - Dokumentacja: zaktualizowano README i CHANGELOG dla wersji 1.6.0.
+
+### Zmiany w 1.7.0
+- Stan magazynowy: dostosowanie tabeli do mobile — ukryto kolumny `SKU`, `Min`, `Max` w widoku mobilnym; szczegóły (SKU/Min/Max) przeniesiono do podglądu w komórce `Nazwa`.
+- Dziennik audytu: dostosowanie tabeli do mobile — ukryto kolumny `Użytkownik`, `Szczegóły`, `IP` oraz `Akcja`; dodano znacznik „Akcja” w podglądzie komórki `Data i czas` wraz z Użytkownikiem, IP i Szczegółami.
+- UI: poprawiona czytelność i responsywność tabel na urządzeniach mobilnych.
+- Dokumentacja: aktualizacja README i CHANGELOG dla wersji 1.7.0.

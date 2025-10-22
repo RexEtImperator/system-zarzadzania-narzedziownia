@@ -183,19 +183,19 @@ function AuditLogScreen({ user }) {
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-gray-700 border-b border-slate-200 dark:border-gray-600 transition-colors duration-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200 hidden sm:table-cell">
                       Data i czas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
-                      Użytkownik
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200 hidden sm:table-cell">
                       Akcja
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200 hidden sm:table-cell">
+                      Użytkownik
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
                       Szczegóły
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-300 uppercase tracking-wider transition-colors duration-200 hidden sm:table-cell">
                       IP
                     </th>
                   </tr>
@@ -205,19 +205,30 @@ function AuditLogScreen({ user }) {
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors duration-200">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white transition-colors duration-200">
                         {formatDate(log.timestamp)}
+                        <div className="mt-1 text-xs text-slate-500 dark:text-gray-400 sm:hidden">
+                          <div className="flex items-center gap-1">
+                            Akcja:
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                              {getActionLabel(log.action)}
+                            </span>
+                          </div>
+                          <div>Użytkownik: {log.username}</div>
+                          <div>IP: {log.ip_address || '-'}</div>
+                          <div className="truncate">Szczegóły: {log.details}</div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white transition-colors duration-200">
-                        {log.username}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 transition-colors duration-200">
                           {getActionLabel(log.action)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white max-w-xs truncate transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white transition-colors duration-200 hidden sm:table-cell">
+                        {log.username}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white max-w-xs truncate transition-colors duration-200 hidden sm:table-cell">
                         {log.details}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-gray-400 transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-gray-400 transition-colors duration-200 hidden sm:table-cell">
                         {log.ip_address}
                       </td>
                     </tr>

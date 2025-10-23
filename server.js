@@ -15,13 +15,15 @@ const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
-  'http://localhost:8083',
-  'http://127.0.0.1:8083',
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+  'http://localhost:8082',
+  'http://127.0.0.1:8082',
   'https://localhost:3000',
   'https://localhost:3001',
-  'https://localhost:3002',
   // Dopuszczamy adresy LAN w trakcie developmentu (np. Expo Web na innym IP)
-  'http://192.168.10.99:8083',
+  'http://192.168.10.99:8081',
+  'http://192.168.10.99:8082',
   'http://192.168.10.99:3000'
 ];
 

@@ -54,6 +54,19 @@ const db = new sqlite3.Database(path.join(__dirname, 'database.db'), (err) => {
   }
 });
 
+// Endpoint health check API
+app.get('/api/health', (req, res) => {
+  db.get('SELECT 1', [], (err) => {
+    const dbOk = !err;
+    res.status(dbOk ? 200 : 500).json({
+      status: dbOk ? 'ok' : 'error',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      db: dbOk ? 'ok' : (err?.message || 'unknown')
+    });
+  });
+});
+
 // Inicjalizacja bazy danych
 function initializeDatabase() {
   // Tabela konfiguracji aplikacji (ustawienia ogólne)
@@ -437,7 +450,6 @@ function initializeDatabase() {
     catalog_number TEXT,
     inspection_date DATETIME,
     is_set INTEGER DEFAULT 0,
-    harness_serial TEXT,
     shock_absorber_serial TEXT,
     shock_absorber_name TEXT,
     shock_absorber_model TEXT,
@@ -468,7 +480,6 @@ function initializeDatabase() {
           ensureColumn('catalog_number', 'catalog_number TEXT');
           ensureColumn('inspection_date', 'inspection_date DATETIME');
           ensureColumn('is_set', 'is_set INTEGER DEFAULT 0');
-          ensureColumn('harness_serial', 'harness_serial TEXT');
           ensureColumn('shock_absorber_serial', 'shock_absorber_serial TEXT');
           ensureColumn('shock_absorber_name', 'shock_absorber_name TEXT');
           ensureColumn('shock_absorber_model', 'shock_absorber_model TEXT');
@@ -708,34 +719,14 @@ function initializeDatabase() {
     } else {
       console.log('Tabela role_permissions została utworzona lub już istnieje');
       
-      // Inicjalizacja domyślnych uprawnień dla ról
+      // Inicjalizacja domyślnych uprawnień dla ról (bez roli 'viewer')
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES'],
-        'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP'],
-        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP'],
-        'viewer': ['VIEW_USERS', 'VIEW_BHP']
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP','INVENTORY_VIEW', 'INVENTORY_SCAN'],
+        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'INVENTORY_VIEW', 'INVENTORY_SCAN'],
+        'hr': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS']
       };
-
-      // Sprawdź czy uprawnienia już istnieją
-      db.get('SELECT COUNT(*) as count FROM role_permissions', (err, row) => {
-        if (err) {
-          console.error('Błąd podczas sprawdzania uprawnień:', err.message);
-        } else if (row.count === 0) {
-          // Dodaj domyślne uprawnienia
-          Object.entries(defaultPermissions).forEach(([role, permissions]) => {
-            permissions.forEach(permission => {
-              db.run('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)', 
-                [role, permission], (err) => {
-                  if (err) {
-                    console.error(`Błąd podczas dodawania uprawnienia ${permission} dla roli ${role}:`, err.message);
-                  }
-                });
-            });
-          });
-          console.log('Domyślne uprawnienia ról zostały dodane');
-        }
-      });
     }
   });
   // ===== Tabele inwentaryzacji =====
@@ -1410,15 +1401,15 @@ app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res)
 
 // Dodawanie sprzętu BHP
 app.post('/api/bhp', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
-  const { inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status } = req.body;
+  const { inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status } = req.body;
 
   if (!inventory_number) {
     return res.status(400).json({ message: 'Wymagany numer ewidencyjny' });
   }
 
-  const query = `INSERT INTO bhp (inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status)
+  const query = `INSERT INTO bhp (inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const params = [inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set ? 1 : 0, harness_serial, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status || 'dostępne'];
+  const params = [inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set ? 1 : 0, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status || 'dostępne'];
 
   db.run(query, params, function(err) {
     if (err) {
@@ -1446,7 +1437,6 @@ app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req
     production_date,
     inspection_date,
     is_set,
-    harness_serial,
     shock_absorber_serial,
     shock_absorber_name,
     shock_absorber_model,
@@ -1478,7 +1468,6 @@ app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req
       production_date = COALESCE(?, production_date),
       inspection_date = COALESCE(?, inspection_date),
       is_set = COALESCE(?, is_set),
-      harness_serial = COALESCE(NULLIF(?, ''), harness_serial),
       shock_absorber_serial = COALESCE(NULLIF(?, ''), shock_absorber_serial),
       shock_absorber_name = COALESCE(NULLIF(?, ''), shock_absorber_name),
       shock_absorber_model = COALESCE(NULLIF(?, ''), shock_absorber_model),
@@ -1504,7 +1493,6 @@ app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req
     production_date,
     inspection_date,
     typeof is_set === 'number' ? is_set : (is_set ? 1 : 0),
-    harness_serial,
     shock_absorber_serial,
     shock_absorber_name,
     shock_absorber_model,
@@ -4067,7 +4055,13 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'DELETE_SERVICE_HISTORY',
     'MANAGE_EMPLOYEES',
     'VIEW_DATABASE',
-    'MANAGE_DATABASE'
+    'MANAGE_DATABASE',
+    'INVENTORY_VIEW',
+    'INVENTORY_MANAGE_SESSIONS',
+    'INVENTORY_SCAN',
+    'INVENTORY_ACCEPT_CORRECTION',
+    'INVENTORY_DELETE_CORRECTION',
+    'INVENTORY_EXPORT_CSV'
   ];
 
   res.json(availablePermissions);

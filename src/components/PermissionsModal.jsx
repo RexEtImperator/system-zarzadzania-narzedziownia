@@ -33,11 +33,6 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       name: 'Użytkownik',
       description: 'Dostęp do narzędzi i podstawowych funkcji',
       color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-    },
-    viewer: {
-      name: 'Obserwator',
-      description: 'Tylko odczyt danych',
-      color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
     }
   };
 
@@ -54,12 +49,20 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'SYSTEM_SETTINGS': 'Ustawienia systemowe',
     'VIEW_ADMIN': 'Panel administracyjny',
     'MANAGE_USERS': 'Zarządzanie użytkownikami',
+    'MANAGE_EMPLOYEES': 'Zarządzanie pracownikami',
     'VIEW_AUDIT_LOG': 'Dziennik audytu',
-    'VIEW_BHP': 'BHP – przeglądanie',
-    'MANAGE_BHP': 'BHP – zarządzanie',
+    'VIEW_BHP': 'BHP - przeglądanie',
+    'MANAGE_BHP': 'BHP - zarządzanie',
     'DELETE_ISSUE_HISTORY': 'Usuwanie historii wydań',
     'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania',
-    'VIEW_DATABASE': 'Podgląd bazy danych'
+    'MANAGE_DATABASE': 'Zarządzanie bazą danych',
+    'VIEW_DATABASE': 'Podgląd bazy danych',
+    'INVENTORY_VIEW': 'Inwentaryzacja - podgląd',
+    'INVENTORY_MANAGE_SESSIONS': 'Inwentaryzacja - zarządzanie sesjami',
+    'INVENTORY_SCAN': 'Inwentaryzacja - skanowanie',
+    'INVENTORY_ACCEPT_CORRECTION': 'Inwentaryzacja - zatwierdzanie korekt',
+    'INVENTORY_DELETE_CORRECTION': 'Inwentaryzacja - usuwanie korekt',
+    'INVENTORY_EXPORT_CSV': 'Inwentaryzacja - eksport CSV'
   };
 
   useEffect(() => {

@@ -14,25 +14,7 @@ import {
 import { ThemeProvider } from './contexts/ThemeContext';
 import PermissionsModal from './components/PermissionsModal';
 
-// Stałe uprawnień
-const PERMISSIONS = {
-  VIEW_TOOLS: 'view_tools',
-  MANAGE_TOOLS: 'manage_tools',
-  VIEW_EMPLOYEES: 'view_employees',
-  MANAGE_EMPLOYEES: 'manage_employees',
-  VIEW_ANALYTICS: 'view_analytics',
-  VIEW_ADMIN: 'view_admin',
-  MANAGE_USERS: 'manage_users',
-  SYSTEM_SETTINGS: 'system_settings',
-  VIEW_USERS: 'view_users',
-  VIEW_AUDIT_LOG: 'view_audit_log',
-  ACCESS_TOOLS: 'access_tools',
-  VIEW_BHP: 'view_bhp',
-  MANAGE_BHP: 'manage_bhp',
-  DELETE_ISSUE_HISTORY: 'delete_issue_history',
-  DELETE_SERVICE_HISTORY: 'delete_service_history',
-  VIEW_DATABASE: 'view_database'
-};
+import { PERMISSIONS, hasPermission } from './constants';
 
 // Stałe akcji audytu
 const AUDIT_ACTIONS = {
@@ -77,44 +59,6 @@ const DEFAULT_POSITIONS = [
   'Ślusarz',
   'Zewnętrzny'
 ];
-
-// Funkcja sprawdzania uprawnień
-const hasPermission = (user, permission) => {
-  if (!user) return false;
-  
-  const rolePermissions = {
-    administrator: Object.values(PERMISSIONS),
-    manager: [
-      PERMISSIONS.VIEW_TOOLS,
-      PERMISSIONS.MANAGE_TOOLS,
-      PERMISSIONS.VIEW_EMPLOYEES,
-      PERMISSIONS.MANAGE_EMPLOYEES,
-      PERMISSIONS.VIEW_ANALYTICS,
-      PERMISSIONS.VIEW_BHP,
-      PERMISSIONS.MANAGE_BHP
-    ],
-    employee: [
-      PERMISSIONS.VIEW_TOOLS,
-      PERMISSIONS.VIEW_EMPLOYEES,
-      PERMISSIONS.VIEW_BHP
-    ],
-    viewer: [
-      PERMISSIONS.VIEW_TOOLS,
-      PERMISSIONS.VIEW_EMPLOYEES,
-      PERMISSIONS.VIEW_ANALYTICS,
-      PERMISSIONS.VIEW_BHP
-    ],
-    user: [
-      PERMISSIONS.ACCESS_TOOLS,
-      PERMISSIONS.VIEW_USERS,
-      PERMISSIONS.VIEW_ANALYTICS,
-      PERMISSIONS.VIEW_AUDIT_LOG,
-      PERMISSIONS.VIEW_BHP
-    ]
-  };
-  
-  return rolePermissions[user.role]?.includes(permission) || false;
-};
 
 // Funkcja dodawania wpisu do dziennika audytu
 const addAuditLog = async (user, action, details) => {

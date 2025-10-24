@@ -875,7 +875,7 @@ app.post('/api/login', (req, res) => {
   console.log('Body:', req.body);
   console.log('Body type:', typeof req.body);
   
-  const { username, password } = req.body;
+  const { username, password} = req.body;
   
   console.log('Extracted username:', username);
   console.log('Extracted password:', password ? '[HIDDEN]' : 'undefined');

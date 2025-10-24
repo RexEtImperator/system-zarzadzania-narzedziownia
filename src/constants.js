@@ -69,7 +69,7 @@ export const USER_STATUS = {
   SUSPENDED: 'suspended'
 };
 
-// Statusy departamentów
+// Statusy działów
 export const DEPARTMENT_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive'

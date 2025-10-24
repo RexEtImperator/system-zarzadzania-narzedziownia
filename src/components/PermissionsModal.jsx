@@ -20,7 +20,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
     },
     manager: {
-      name: 'Menedżer',
+      name: 'Kierownik',
       description: 'Zarządzanie narzędziami, pracownikami i analityka',
       color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
     },
@@ -42,8 +42,9 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'CREATE_USERS': 'Tworzenie użytkowników',
     'EDIT_USERS': 'Edycja użytkowników',
     'DELETE_USERS': 'Usuwanie użytkowników',
+    'VIEW_EMPLOYEES': 'Przeglądanie pracowników',
     'VIEW_ANALYTICS': 'Przeglądanie analityki',
-    'ACCESS_TOOLS': 'Dostęp do narzędzi',
+    'VIEW_TOOLS': 'Przeglądanie narzędzi',
     'MANAGE_DEPARTMENTS': 'Zarządzanie działami',
     'MANAGE_POSITIONS': 'Zarządzanie stanowiskami',
     'SYSTEM_SETTINGS': 'Ustawienia systemowe',
@@ -54,6 +55,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'VIEW_BHP': 'BHP - przeglądanie',
     'MANAGE_BHP': 'BHP - zarządzanie',
     'DELETE_ISSUE_HISTORY': 'Usuwanie historii wydań',
+    'DELETE_RETURN_HISTORY': 'Usuwanie historii zwrotów',
     'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania',
     'MANAGE_DATABASE': 'Zarządzanie bazą danych',
     'VIEW_DATABASE': 'Podgląd bazy danych',
@@ -62,7 +64,8 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'INVENTORY_SCAN': 'Inwentaryzacja - skanowanie',
     'INVENTORY_ACCEPT_CORRECTION': 'Inwentaryzacja - zatwierdzanie korekt',
     'INVENTORY_DELETE_CORRECTION': 'Inwentaryzacja - usuwanie korekt',
-    'INVENTORY_EXPORT_CSV': 'Inwentaryzacja - eksport CSV'
+    'INVENTORY_EXPORT_CSV': 'Inwentaryzacja - eksport CSV',
+    'VIEW_TOOLS': 'Przeglądanie narzędzi',
   };
 
   useEffect(() => {

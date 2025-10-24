@@ -5,6 +5,7 @@ import EmployeeModal from './EmployeeModal';
 import { PERMISSIONS, hasPermission } from '../constants';
 
 const AUDIT_ACTIONS = {
+  EMPLOYEE_VIEW: 'EMPLOYEE_VIEW',
   EMPLOYEE_ADD: 'EMPLOYEE_ADD',
   EMPLOYEE_EDIT: 'EMPLOYEE_EDIT',
   EMPLOYEE_DELETE: 'EMPLOYEE_DELETE'

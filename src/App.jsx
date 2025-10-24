@@ -343,9 +343,7 @@ function AdminPanel({ user, onNavigate }) {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ustawienia</h1>
         <p className="text-slate-600 dark:text-slate-400">Zarządzaj systemem i konfiguracją</p>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
         {/* App Configuration */}
         {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
@@ -388,150 +386,170 @@ function AdminPanel({ user, onNavigate }) {
           </button>
         </div>
 
+        {/* Roles and permissions */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+              <span className="text-2xl">🎭</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
+            </div>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="dark:text-slate-300">👑 Administrator</span>
+              <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="dark:text-slate-300">👔 Kierownik</span>
+              <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="dark:text-slate-300">👷 Pracownik</span>
+              <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button 
+              onClick={() => setShowPermissionsModal(true)}
+              className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
+            >
+              Zarządzaj uprawnieniami
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Role Management - Osobny grid */}
-      {hasPermission(user, PERMISSIONS.MANAGE_USERS) && (
+      {/* Danger Zone */}
+      {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
         <div className="mt-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Danger Zone</h1>
+            <p className="text-slate-600 dark:text-slate-400">Bezpowrotne usunięcie danych</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Sekcja: Narzędzia */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎭</span>
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🗑️</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Narzędzia</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych narzędzi</p>
                 </div>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="dark:text-slate-300">👑 Administrator</span>
-                  <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="dark:text-slate-300">👔 Menedżer</span>
-                  <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="dark:text-slate-300">👷 Pracownik</span>
-                  <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="dark:text-slate-300">👤 Użytkownik</span>
-                  <span className="text-slate-600 dark:text-slate-400">Ograniczony dostęp</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="dark:text-slate-300">👁️ Obserwator</span>
-                  <span className="text-slate-600 dark:text-slate-400">Tylko odczyt</span>
-                </div>
-              </div>
-              <div className="mt-4">
-                <button 
-                  onClick={() => setShowPermissionsModal(true)}
-                  className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
-                >
-                  Zarządzaj uprawnieniami
-                </button>
-              </div>
-            </div>
-
-            {/* Data Management */}
-            {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">🗑️</span>
-                  </div>
+              <div className="flex-1"></div>
+              <div className="space-y-6">
+                {(hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) || hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY)) && (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dane systemu</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Zarządzanie danymi</p>
-                  </div>
-                </div>
-                <div className="flex-1"></div>
-
-                <div className="space-y-6">
-                  {/* Sekcja: Narzędzia */}
-                  {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
-                    <div>
-                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Narzędzia</h4>
-                      <div className="space-y-3">
+                    <div className="space-y-3">
+                      {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
                         <button
                           onClick={() => setShowDeleteToolIssuesConfirm(true)}
                           className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
                         >
                           Usuń historię wydań
                         </button>
+                      )}
+                      {hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY) && (
                         <button
                           onClick={() => setShowDeleteToolReturnsConfirm(true)}
                           className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
                         >
                           Usuń historię zwrotów
                         </button>
-                      </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Sekcja: Sprzęt BHP */}
-                  {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
-                    <div>
-                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Sprzęt BHP</h4>
-                      <div className="space-y-3">
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Sekcja: Sprzęt BHP */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🗑️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Sprzęt BHP</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych sprzętu BHP</p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                {(hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) || hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY)) && (
+                  <div>
+                    <div className="space-y-3">
+                      {hasPermission(user, PERMISSIONS.DELETE_ISSUE_HISTORY) && (
                         <button
                           onClick={() => setShowDeleteBhpIssuesConfirm(true)}
                           className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
                         >
                           Usuń historię wydań
                         </button>
+                      )}
+                      {hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY) && (
                         <button
                           onClick={() => setShowDeleteBhpReturnsConfirm(true)}
                           className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
                         >
                           Usuń historię zwrotów
                         </button>
-                      </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Serwisowanie */}
-                  {hasPermission(user, PERMISSIONS.DELETE_SERVICE_HISTORY) && (
-                    <div>
-                      <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Serwisowanie</h4>
-                      <button
-                        onClick={() => setShowDeleteServiceHistoryConfirm(true)}
-                        className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
-                      >
-                        Usuń historię serwisowania
-                      </button>
-                    </div>
-                  )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Serwisowanie */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🗑️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Serwisowanie</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych serwisowania</p>
                 </div>
               </div>
-            )}
-
-            {/* Delete Employees */}
-            {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">👥</span>
-                  </div>
+              <div className="space-y-6">
+                {hasPermission(user, PERMISSIONS.DELETE_SERVICE_HISTORY) && (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Usuń pracowników</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Usuń wszystkich pracowników</p>
+                    <button
+                      onClick={() => setShowDeleteServiceHistoryConfirm(true)}
+                      className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
+                    >
+                      Usuń historię serwisowania
+                    </button>
                   </div>
-                </div>
-                <div className="flex-1"></div>
-                <button 
-                  onClick={() => setShowDeleteEmployeesConfirm(true)}
-                  className="w-full bg-yellow-600 dark:bg-yellow-700 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-800 transition-colors"
-                >
-                  Usuń dane pracowników
-                </button>
+                )}
               </div>
+            </div>
+            {/* Pracownicy */}
+            {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🗑️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Pracownicy</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych pracowników</p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <button 
+                    onClick={() => setShowDeleteEmployeesConfirm(true)}
+                    className="w-full bg-yellow-600 dark:bg-yellow-700 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-800 transition-colors"
+                  >
+                    Usuń dane pracowników
+                  </button>
+                </div>
+              </div>
+            </div>
             )}
           </div>
         </div>

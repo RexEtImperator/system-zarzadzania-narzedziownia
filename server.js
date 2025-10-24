@@ -609,6 +609,24 @@ function initializeDatabase() {
       console.error('Błąd podczas tworzenia tabeli audit_logs:', err.message);
     } else {
       console.log('Tabela audit_logs została utworzona lub już istnieje');
+      // Migracja: dodaj brakujące kolumny w audit_logs
+      db.all("PRAGMA table_info(audit_logs)", (infoErr, columns) => {
+        if (infoErr) {
+          console.error('Błąd podczas sprawdzania struktury tabeli audit_logs:', infoErr.message);
+          return;
+        }
+        const columnNames = (columns || []).map(c => c.name);
+        if (!columnNames.includes('target_type')) {
+          db.run('ALTER TABLE audit_logs ADD COLUMN target_type TEXT', (alterErr) => {
+            if (alterErr) console.error('Błąd dodawania kolumny target_type:', alterErr.message);
+          });
+        }
+        if (!columnNames.includes('target_id')) {
+          db.run('ALTER TABLE audit_logs ADD COLUMN target_id TEXT', (alterErr) => {
+            if (alterErr) console.error('Błąd dodawania kolumny target_id:', alterErr.message);
+          });
+        }
+      });
     }
   });
 
@@ -721,11 +739,11 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról (bez roli 'viewer')
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'ACCESS_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
-        'employee': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_BHP','INVENTORY_VIEW', 'INVENTORY_SCAN'],
-        'user': ['ACCESS_TOOLS', 'VIEW_USERS', 'VIEW_ANALYTICS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'INVENTORY_VIEW', 'INVENTORY_SCAN'],
-        'hr': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS']
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'employee': ['VIEW_TOOLS', 'VIEW_BHP', 'VIEW_EMPLOYEES'],
+        'hr': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS'],
+        'user': []
       };
     }
   });
@@ -1913,7 +1931,7 @@ app.delete('/api/tools/history/issues', authenticateToken, requirePermission('DE
 });
 
 // Endpoint do usuwania historii ZWROTÓW narzędzi (tylko wpisy ze statusem "zwrócone")
-app.delete('/api/tools/history/returns', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+app.delete('/api/tools/history/returns', authenticateToken, requirePermission('DELETE_RETURN_HISTORY'), (req, res) => {
   console.log('Usuwanie historii ZWROTÓW narzędzi...');
 
   db.serialize(() => {
@@ -1943,7 +1961,7 @@ app.delete('/api/tools/history/returns', authenticateToken, requirePermission('D
           [
             req.user.id,
             req.user.username,
-            'DELETE_ISSUE_HISTORY',
+            'DELETE_RETURN_HISTORY',
             `Usunięto historię ZWROTÓW narzędzi (${deletedCount} rekordów)`
           ],
           (auditErr) => {
@@ -2030,7 +2048,7 @@ app.delete('/api/bhp/history/issues', authenticateToken, requirePermission('DELE
 });
 
 // Endpoint do usuwania historii ZWROTÓW sprzętu BHP
-app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
+app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DELETE_RETURN_HISTORY'), (req, res) => {
   console.log('Usuwanie historii ZWROTÓW BHP...');
 
   db.serialize(() => {
@@ -2060,7 +2078,7 @@ app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DEL
           [
             req.user.id,
             req.user.username,
-            'DELETE_ISSUE_HISTORY',
+            'DELETE_RETURN_HISTORY',
             `Usunięto historię ZWROTÓW BHP (${deletedCount} rekordów)`
           ],
           (auditErr) => {
@@ -2621,7 +2639,6 @@ app.delete('/api/positions/by-name/:name', authenticateToken, (req, res) => {
 });
 
 // ===== ENDPOINT STATYSTYK DASHBOARDU =====
-
 // Endpoint pobierania statystyk dla dashboardu
 app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   const queries = {
@@ -2656,7 +2673,6 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
 });
 
 // ===== ENDPOINTY SYSTEMU AUDYTU =====
-
 // Endpoint pobierania logów audytu
 app.get('/api/audit', authenticateToken, (req, res) => {
   const { page = 1, limit = 50, action, username, startDate, endDate } = req.query;
@@ -4042,7 +4058,7 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'EDIT_USERS',
     'DELETE_USERS',
     'VIEW_ANALYTICS',
-    'ACCESS_TOOLS',
+    'VIEW_TOOLS',
     'MANAGE_DEPARTMENTS',
     'MANAGE_POSITIONS',
     'SYSTEM_SETTINGS',
@@ -4052,6 +4068,7 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'VIEW_BHP',
     'MANAGE_BHP',
     'DELETE_ISSUE_HISTORY',
+    'DELETE_RETURN_HISTORY',
     'DELETE_SERVICE_HISTORY',
     'MANAGE_EMPLOYEES',
     'VIEW_DATABASE',
@@ -4187,8 +4204,8 @@ app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_D
         details: `DROP TABLE ${tableName}`
       };
       db.run(
-        'INSERT INTO audit_logs (user_id, action, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
-        [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+        "INSERT INTO audit_logs (user_id, username, action, target_type, target_id, details, timestamp) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+        [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
         (logErr) => {
           if (logErr) {
             console.error('Błąd podczas zapisywania do audit log:', logErr.message);
@@ -4496,8 +4513,8 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
       details: `CREATE TABLE ${name}`
     };
     db.run(
-      'INSERT INTO audit_logs (user_id, action, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
-      [auditData.user_id, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
+      "INSERT INTO audit_logs (user_id, username, action, target_type, target_id, details, timestamp) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+      [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
       (logErr) => {
         if (logErr) {
           console.error('Błąd podczas zapisywania do audit log:', logErr.message);

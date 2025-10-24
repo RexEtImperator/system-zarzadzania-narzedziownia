@@ -263,7 +263,6 @@ function InventoryScreen({ tools = [], user }) {
           toast.error(accErr?.message || 'Nie udało się zatwierdzić korekty');
         }
       }
-      // Odśwież listy po zapisie
       try {
         const diffs = await api.get(`/api/inventory/sessions/${selectedSessionId}/differences?t=${Date.now()}`);
         setDifferences(Array.isArray(diffs) ? diffs : []);
@@ -273,21 +272,18 @@ function InventoryScreen({ tools = [], user }) {
         const corr = Array.isArray(hist?.corrections) ? hist.corrections : Array.isArray(hist) ? hist : [];
         setCorrections(corr);
       } catch (_) {}
-      // Oznacz świeżo skorygowaną pozycję tylko gdy autozatwierdzenie nastąpiło
-      if (isAdmin && !autoAcceptDisabled) {
+      if (canAcceptCorrection && !autoAcceptDisabled) {
         setRecentCorrections(prev => [
           { toolId: corrToolId, sku: corrSku, at: Date.now() },
           ...prev
         ].filter(rc => Date.now() - rc.at < 60000));
       }
-      // Toast sukcesu zależny od autozatwierdzania
-      const successMsg = (isAdmin && !autoAcceptDisabled)
+      const successMsg = (canAcceptCorrection && !autoAcceptDisabled)
         ? 'Korekta została zapisana i zatwierdzona.'
         : 'Korekta została zapisana (oczekuje zatwierdzenia).';
       toast.success(successMsg);
       closeCorrectionModal();
     } catch (err) {
-      // Toast błędu
       toast.error(err?.message || 'Nie udało się dodać korekty');
     } finally {
       setCorrSubmitting(false);

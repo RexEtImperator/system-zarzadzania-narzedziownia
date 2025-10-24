@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PERMISSIONS, hasPermission } from '../constants';
-import { HomeIcon, UsersIcon, WrenchScrewdriverIcon, ChartBarIcon, Cog6ToothIcon, TagIcon, ClipboardDocumentListIcon, Cog8ToothIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UsersIcon, WrenchScrewdriverIcon, ChartBarIcon, Cog6ToothIcon, ClipboardDocumentListIcon, Cog8ToothIcon } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ 
   onNav, 
@@ -32,7 +32,7 @@ const Sidebar = ({
       id: 'tools',
       label: 'Narzędzia',
       icon: (<WrenchScrewdriverIcon className="w-5 h-5" aria-hidden="true" />),
-      permission: PERMISSIONS.ACCESS_TOOLS
+      permission: PERMISSIONS.VIEW_TOOLS
     },
     {
       id: 'analytics',

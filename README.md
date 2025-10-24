@@ -4,7 +4,7 @@
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
-System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wypożyczaniem narzędzi w firmie.
+System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wydawaniem/zwracaniem narzędzi przez pracowników w firmie.
 
 ## Opis projektu
 
@@ -17,7 +17,7 @@ Aplikacja umożliwia:
 - Zarządzanie działami i stanowiskami
 - System logowania oraz uprawnień użytkowników (RBAC)
 - Przeglądy BHP i terminy kontroli
-- Analityka i wykresy (trend, przegląd danych)
+- Analityka
 - Zarządzanie użytkownikami i rolami
 - Kopie zapasowe (backup) i podgląd plików kopii
 - Logi audytowe kluczowych akcji
@@ -131,7 +131,7 @@ Uwagi:
 ├── backups/                   # Zrzuty kopii zapasowych
 ├── backend/
 │   └── package.json           # Metadane/backend (pomocnicze)
-├── test_*.js                  # Skrypty testowe i narzędziowe (dev)
+├── check/debug_*.js                  # Skrypty testowe i narzędziowe (dev)
 ├── generate-ssl.js            # Generator certyfikatów dev
 ├── install-cert.bat           # Instalator certyfikatu w Windows
 ├── README.md                  # Dokumentacja
@@ -152,16 +152,6 @@ Uwagi:
   - Build produkcyjny: `npm run build` (wynik w katalogu `build/`)
   - Uwaga: frontend korzysta z portu `3001` (ustawiony w skrypcie `start`). Jeśli port jest zajęty, zwolnij go lub zmień port.
 
-### Zmiany UI w 1.4.0
-- Usunięto zakładkę „Etykiety” z nawigacji i trasy aplikacji.
-- Usunięto kafelki statystyk z górnej części ekranu „Analityka”.
-- Dashboard: zastąpiono kafelek „Stanowiska” kafelkiem „Pracownicy” z łączną liczbą.
-
-### Zmiany w 1.5.0
-- Administrator: dodano ekran „Podgląd bazy danych” (DbViewer) dostępny z menu użytkownika w TopBar.
-- Uprawnienia: nowe uprawnienie `VIEW_DATABASE` kontroluje dostęp do podglądu bazy.
-- Ustawienia → Dane systemowe: podział na „Narzędzia” i „Sprzęt BHP” oraz przyciski usuwania historii wydań/zwrotów (z potwierdzeniem).
-
 ## Funkcjonalności
 
 ### Konfiguracja aplikacji
@@ -174,12 +164,6 @@ Uwagi:
 - Przegląd statystyk narzędzi i pracowników
 - Szybkie wydanie i zwrot
 - Historia ostatnich aktywności
-
-## Zrzuty ekranu
-
-- Dashboard: ![Dashboard](./public/screenshots/dashboard.svg)
-- Narzędzia (lista): ![Narzędzia](./public/screenshots/tools.svg)
-- Pracownicy (lista): ![Pracownicy](./public/screenshots/employees.svg)
 
 ## Diagram procesu wypożyczenia/zwrotu
 
@@ -209,8 +193,7 @@ flowchart LR
 
 ### Zarządzanie pracownikami
 - Dodawanie nowych pracowników
-- Zarządzanie działami i stanowiskami
-- Przypisywanie uprawnień
+- Przypisywanie działu i stanowiska
 
 ### System wydań
 - Proces wydania i zwrotu narzędzi/sprzętu BHP
@@ -223,6 +206,7 @@ flowchart LR
 
 ### Działy i stanowiska
 - Zarządzanie strukturą organizacyjną: działy i stanowiska
+- Przypisanie działu do stanowiska
 - Przypisanie stanowisk do pracowników
 
 ### BHP (przeglądy)
@@ -235,7 +219,7 @@ flowchart LR
 
 ### Skaner kodów
 - Skanowanie kodów QR i kreskowych (kamera urządzenia)
-- Generowanie i wykorzystanie kodów w procesach wypożyczeń
+- Generowanie i wykorzystanie kodów w procesach wydań
 
 ### Konfiguracja / Backup
 - Podgląd ostatniej kopii zapasowej i listy plików
@@ -247,6 +231,7 @@ flowchart LR
 
 ### Powiadomienia
 - Toasty informacyjne/sukcesu/błędu dla operacji (React Toastify)
+- 
 
 ## Licencja
 
@@ -254,22 +239,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.5.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.7.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.5.0
-
-### Zmiany w 1.6.0
-- ConfirmationModal: pełne wsparcie trybu ciemnego (dark mode) w tle, panelu, nagłówkach, treści i przyciskach.
-- Dziennik audytu: zastąpiono `window.confirm` modalem potwierdzenia przy usuwaniu logów (spójny UI, wsparcie dark mode).
-- API audytu: naprawiono endpoint usuwania logów — frontend używa `DELETE /api/audit` zgodnego z backendem.
-- Dokumentacja: zaktualizowano README i CHANGELOG dla wersji 1.6.0.
-
-### Zmiany w 1.7.0
-- Stan magazynowy: dostosowanie tabeli do mobile — ukryto kolumny `SKU`, `Min`, `Max` w widoku mobilnym; szczegóły (SKU/Min/Max) przeniesiono do podglądu w komórce `Nazwa`.
-- Dziennik audytu: dostosowanie tabeli do mobile — ukryto kolumny `Użytkownik`, `Szczegóły`, `IP` oraz `Akcja`; dodano znacznik „Akcja” w podglądzie komórki `Data i czas` wraz z Użytkownikiem, IP i Szczegółami.
-- UI: poprawiona czytelność i responsywność tabel na urządzeniach mobilnych.
-- Dokumentacja: aktualizacja README i CHANGELOG dla wersji 1.7.0.
+System Zarządzania Narzędziownią - wersja 1.7.0

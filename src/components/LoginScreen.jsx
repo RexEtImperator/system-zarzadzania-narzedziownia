@@ -46,7 +46,7 @@ const LoginScreen = ({ onLogin }) => {
             Zaloguj się do systemu
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">
-            System zarządzania pracownikami
+            System zarządzania narzędziownią
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -86,7 +86,6 @@ const LoginScreen = ({ onLogin }) => {
                 />
               </div>
             </div>
-
               {error && (
               <div className="mt-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 transition-colors duration-200">
                 <div className="flex items-center">
@@ -99,7 +98,6 @@ const LoginScreen = ({ onLogin }) => {
                 </div>
               </div>
             )}
-
             <div className="mt-6">
               <button
                 type="submit"

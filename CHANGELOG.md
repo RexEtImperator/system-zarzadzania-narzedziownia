@@ -78,8 +78,6 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 ### Techniczne
 - Bezpieczeństwo: wymóg uprawnienia `VIEW_DATABASE` do korzystania z API podglądu bazy; walidacja nazw tabel.
-- Dokumentacja: zaktualizowano README (sekcja 1.5.0, badge i link do wydania).
-- Wersja: podbicie `package.json` (root i backend) do `1.5.0`.
 
 [1.5.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0
 
@@ -93,21 +91,13 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 ### Backend
 - Audyt: ujednolicenie endpointu usuwania logów — korzystanie z `DELETE /api/audit`.
 
-### Techniczne
-- Dokumentacja: aktualizacja README i CHANGELOG dla wersji 1.6.0.
-- Wersja: podbicie `package.json` (root i backend) do `1.6.0`.
-
 [1.6.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0
 
 ## [1.7.0] - 2025-10-22
 
 ### Dodane / Zmienione
 - Stan magazynowy (Inventory): widok mobilny — ukryto kolumny `SKU`, `Min`, `Max`; przeniesiono szczegóły do podglądu w komórce `Nazwa`.
-- Dziennik audytu (Audit Log): widok mobilny — ukryto `Użytkownik`, `Szczegóły`, `IP` oraz `Akcja`; dodano chip „Akcja” w podglądzie komórki `Data i czas` wraz z Użytkownikiem, IP i Szczegółami.
+- Dziennik audytu (Audit Log): widok mobilny — ukryto `Użytkownik`, `Data i czas`, `IP` oraz `Akcja`; dodano chip „Akcja” w podglądzie komórki `Szczegóły` wraz z Użytkownikiem, IP i Szczegółami.
 - UI: poprawiona responsywność tabel na telefonach, spójne style elementów mobilnego podglądu.
-
-### Techniczne
-- Dokumentacja: zaktualizowane README (sekcja 1.7.0) i CHANGELOG.
-- Wersja: podbicie `package.json` (root i backend) do `1.7.0`.
 
 [1.7.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0

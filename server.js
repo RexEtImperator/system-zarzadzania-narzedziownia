@@ -79,6 +79,9 @@ function initializeDatabase() {
     date_format TEXT,
     backup_frequency TEXT,
     last_backup_at DATETIME,
+    tools_code_prefix TEXT,
+    bhp_code_prefix TEXT,
+    tool_category_prefixes TEXT,
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
@@ -98,6 +101,78 @@ function initializeDatabase() {
           if (!columnNames.includes('last_backup_at')) {
             db.run('ALTER TABLE app_config ADD COLUMN last_backup_at DATETIME', (err) => {
               if (err) console.error('Błąd dodawania kolumny last_backup_at:', err.message);
+            });
+          }
+          if (!columnNames.includes('tools_code_prefix')) {
+            db.run('ALTER TABLE app_config ADD COLUMN tools_code_prefix TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny tools_code_prefix:', err.message);
+            });
+          }
+          if (!columnNames.includes('bhp_code_prefix')) {
+            db.run('ALTER TABLE app_config ADD COLUMN bhp_code_prefix TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny bhp_code_prefix:', err.message);
+            });
+          }
+          if (!columnNames.includes('tool_category_prefixes')) {
+            db.run('ALTER TABLE app_config ADD COLUMN tool_category_prefixes TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny tool_category_prefixes:', err.message);
+            });
+          }
+          // Migracja: usuń legacy kolumny code_prefix i default_item_name, jeśli istnieją
+          if (columnNames.includes('code_prefix') || columnNames.includes('default_item_name')) {
+            console.log('Rozpoczynam migrację app_config: usunięcie code_prefix i default_item_name');
+            db.serialize(() => {
+              db.run('BEGIN TRANSACTION');
+              db.run(`CREATE TABLE IF NOT EXISTS app_config_new (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                app_name TEXT NOT NULL,
+                company_name TEXT,
+                timezone TEXT,
+                language TEXT,
+                date_format TEXT,
+                backup_frequency TEXT,
+                last_backup_at DATETIME,
+                tools_code_prefix TEXT,
+                bhp_code_prefix TEXT,
+                tool_category_prefixes TEXT,
+                updated_at DATETIME DEFAULT (datetime('now'))
+              )`, (err1) => {
+                if (err1) {
+                  console.error('Błąd tworzenia app_config_new:', err1.message);
+                  db.run('ROLLBACK');
+                  return;
+                }
+                db.run(`INSERT INTO app_config_new (id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes, updated_at)
+                        SELECT id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes, updated_at
+                        FROM app_config WHERE id = 1`, (err2) => {
+                  if (err2) {
+                    console.error('Błąd kopiowania danych do app_config_new:', err2.message);
+                    db.run('ROLLBACK');
+                    return;
+                  }
+                  db.run('DROP TABLE app_config', (err3) => {
+                    if (err3) {
+                      console.error('Błąd usuwania starej tabeli app_config:', err3.message);
+                      db.run('ROLLBACK');
+                      return;
+                    }
+                    db.run('ALTER TABLE app_config_new RENAME TO app_config', (err4) => {
+                      if (err4) {
+                        console.error('Błąd zmiany nazwy app_config_new na app_config:', err4.message);
+                        db.run('ROLLBACK');
+                        return;
+                      }
+                      db.run('COMMIT', (err5) => {
+                        if (err5) {
+                          console.error('Błąd zatwierdzania migracji app_config:', err5.message);
+                        } else {
+                          console.log('Migracja app_config zakończona pomyślnie.');
+                        }
+                      });
+                    });
+                  });
+                });
+              });
             });
           }
         }
@@ -342,6 +417,23 @@ function initializeDatabase() {
           if (!columnNames.includes('inspection_date')) {
             db.run('ALTER TABLE tools ADD COLUMN inspection_date DATETIME', (err) => {
               if (err) console.error('Błąd dodawania kolumny inspection_date:', err.message);
+            });
+          }
+
+          // Atrybuty dla kategorii Elektronarzędzia
+          if (!columnNames.includes('manufacturer')) {
+            db.run('ALTER TABLE tools ADD COLUMN manufacturer TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny manufacturer:', err.message);
+            });
+          }
+          if (!columnNames.includes('model')) {
+            db.run('ALTER TABLE tools ADD COLUMN model TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny model:', err.message);
+            });
+          }
+          if (!columnNames.includes('production_year')) {
+            db.run('ALTER TABLE tools ADD COLUMN production_year INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny production_year:', err.message);
             });
           }
 
@@ -739,8 +831,8 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról (bez roli 'viewer')
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'INVENTORY_VIEW', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
         'employee': ['VIEW_TOOLS', 'VIEW_BHP', 'VIEW_EMPLOYEES'],
         'hr': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS'],
         'user': []
@@ -1117,9 +1209,42 @@ app.get('/api/tools', authenticateToken, (req, res) => {
   });
 });
 
+// Endpoint sugestii dla narzędzi (distinct producent/model/rok produkcji) dla podanej kategorii
+app.get('/api/tools/suggestions', authenticateToken, (req, res) => {
+  const rawCategory = (req.query.category || '').trim();
+  if (!rawCategory) {
+    return res.status(400).json({ message: 'Parametr category jest wymagany' });
+  }
+  const sqlManufacturer = 'SELECT DISTINCT manufacturer FROM tools WHERE manufacturer IS NOT NULL AND TRIM(manufacturer) <> "" AND LOWER(category) = LOWER(?) ORDER BY manufacturer COLLATE NOCASE';
+  const sqlModel = 'SELECT DISTINCT model FROM tools WHERE model IS NOT NULL AND TRIM(model) <> "" AND LOWER(category) = LOWER(?) ORDER BY model COLLATE NOCASE';
+  const sqlYear = 'SELECT DISTINCT production_year FROM tools WHERE production_year IS NOT NULL AND LOWER(category) = LOWER(?) ORDER BY production_year ASC';
+
+  const out = { manufacturer: [], model: [], production_year: [] };
+
+  db.all(sqlManufacturer, [rawCategory], (errM, rowsM) => {
+    if (errM) {
+      return res.status(500).json({ message: 'Błąd serwera', error: errM.message });
+    }
+    out.manufacturer = (rowsM || []).map(r => r.manufacturer).filter(v => typeof v === 'string');
+    db.all(sqlModel, [rawCategory], (errMo, rowsMo) => {
+      if (errMo) {
+        return res.status(500).json({ message: 'Błąd serwera', error: errMo.message });
+      }
+      out.model = (rowsMo || []).map(r => r.model).filter(v => typeof v === 'string');
+      db.all(sqlYear, [rawCategory], (errY, rowsY) => {
+        if (errY) {
+          return res.status(500).json({ message: 'Błąd serwera', error: errY.message });
+        }
+        out.production_year = (rowsY || []).map(r => r.production_year).filter(v => v !== null && v !== undefined);
+        res.json(out);
+      });
+    });
+  });
+});
+
 // Endpoint dodawania narzędzia
 app.post('/api/tools', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable, manufacturer, model, production_year } = req.body;
 
   if (!name || !sku) {
     return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
@@ -1139,9 +1264,18 @@ app.post('/api/tools', authenticateToken, (req, res) => {
     return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
   }
 
+  // Normalizuj rok produkcji: może być pusty lub liczba całkowita
+  let prodYearSan = null;
+  if (typeof production_year !== 'undefined' && production_year !== null && String(production_year).trim() !== '') {
+    const parsed = parseInt(production_year, 10);
+    if (!Number.isNaN(parsed)) {
+      prodYearSan = parsed;
+    }
+  }
+
   db.run(
-    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0],
+    'INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable, manufacturer, model, production_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0, manufacturer || null, model || null, prodYearSan],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
@@ -1166,7 +1300,7 @@ app.post('/api/tools', authenticateToken, (req, res) => {
 
 // Endpoint aktualizacji narzędzia
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
-  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date, min_stock, max_stock, is_consumable } = req.body;
+  const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date, min_stock, max_stock, is_consumable, manufacturer, model, production_year } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
@@ -1187,9 +1321,17 @@ app.put('/api/tools/:id', authenticateToken, (req, res) => {
     return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
   }
 
+  let prodYearSan = null;
+  if (typeof production_year !== 'undefined' && production_year !== null && String(production_year).trim() !== '') {
+    const parsed = parseInt(production_year, 10);
+    if (!Number.isNaN(parsed)) {
+      prodYearSan = parsed;
+    }
+  }
+
   db.run(
-    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, inspection_date = ?, min_stock = ?, max_stock = ?, is_consumable = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0, status || 'dostępne', id],
+    'UPDATE tools SET name = ?, sku = ?, quantity = ?, location = ?, category = ?, description = ?, barcode = ?, qr_code = ?, serial_number = ?, serial_unreadable = ?, inventory_number = ?, inspection_date = ?, min_stock = ?, max_stock = ?, is_consumable = ?, status = ?, manufacturer = ?, model = ?, production_year = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, sku, quantity || 1, location, category, description, barcode || sku, qr_code || sku, serialProvided ? serial_number : null, unreadableFlag ? 1 : 0, inventory_number || null, inspection_date || null, minStockSan, maxStockSan, is_consumable ? 1 : 0, status || 'dostępne', manufacturer || null, model || null, prodYearSan, id],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
@@ -2957,13 +3099,19 @@ if (multer) {
 
 // Pobieranie ustawień ogólnych (publiczne)
 app.get('/api/config/general', (req, res) => {
-  db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
+  db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
       console.error('Błąd podczas pobierania ustawień ogólnych:', err.message);
       return res.status(500).json({ message: 'Błąd serwera', error: err.message });
     }
     if (!row) {
       return res.status(404).json({ message: 'Ustawienia nie zostały znalezione' });
+    }
+    let toolCategoryPrefixes = {};
+    try {
+      toolCategoryPrefixes = row.tool_category_prefixes ? JSON.parse(row.tool_category_prefixes) : {};
+    } catch (_) {
+      toolCategoryPrefixes = {};
     }
     res.json({
       appName: row.app_name,
@@ -2972,7 +3120,10 @@ app.get('/api/config/general', (req, res) => {
       language: row.language,
       dateFormat: row.date_format,
       backupFrequency: row.backup_frequency || 'daily',
-      lastBackupAt: row.last_backup_at || null
+      lastBackupAt: row.last_backup_at || null,
+      toolsCodePrefix: row.tools_code_prefix || '',
+      bhpCodePrefix: row.bhp_code_prefix || '',
+      toolCategoryPrefixes
     });
   });
 });
@@ -3129,7 +3280,7 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
     return res.status(403).json({ message: 'Brak uprawnień do aktualizacji ustawień' });
   }
 
-  const { appName, companyName, timezone, language, dateFormat, backupFrequency } = req.body || {};
+  const { appName, companyName, timezone, language, dateFormat, backupFrequency, toolsCodePrefix, bhpCodePrefix, toolCategoryPrefixes } = req.body || {};
 
   if (!appName || !timezone || !language || !dateFormat) {
     return res.status(400).json({ message: 'Brak wymaganych pól: appName, timezone, language, dateFormat' });
@@ -3137,20 +3288,35 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
 
   const query = `
     UPDATE app_config 
-    SET app_name = ?, company_name = ?, timezone = ?, language = ?, date_format = ?, backup_frequency = COALESCE(?, backup_frequency), updated_at = datetime('now')
+    SET app_name = ?, company_name = ?, timezone = ?, language = ?, date_format = ?, backup_frequency = COALESCE(?, backup_frequency), tools_code_prefix = COALESCE(?, tools_code_prefix), bhp_code_prefix = COALESCE(?, bhp_code_prefix), tool_category_prefixes = COALESCE(?, tool_category_prefixes), updated_at = datetime('now')
     WHERE id = 1
   `;
  
-  db.run(query, [appName, companyName || null, timezone, language, dateFormat, backupFrequency || null], function(err) {
+  let tcpJson = null;
+  try {
+    if (toolCategoryPrefixes && typeof toolCategoryPrefixes === 'object') {
+      tcpJson = JSON.stringify(toolCategoryPrefixes);
+    }
+  } catch (_) {
+    tcpJson = null;
+  }
+
+  db.run(query, [appName, companyName || null, timezone, language, dateFormat, backupFrequency || null, toolsCodePrefix || null, bhpCodePrefix || null, tcpJson || null], function(err) {
     if (err) {
       console.error('Błąd podczas aktualizacji ustawień ogólnych:', err.message);
       return res.status(500).json({ message: 'Błąd serwera', error: err.message });
     }
 
     // Zwróć zaktualizowane ustawienia
-    db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
+    db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes FROM app_config WHERE id = 1', [], (err, row) => {
       if (err) {
         return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+      let toolCategoryPrefixes = {};
+      try {
+        toolCategoryPrefixes = row.tool_category_prefixes ? JSON.parse(row.tool_category_prefixes) : {};
+      } catch (_) {
+        toolCategoryPrefixes = {};
       }
       res.json({
         appName: row.app_name,
@@ -3159,7 +3325,10 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
         language: row.language,
         dateFormat: row.date_format,
         backupFrequency: row.backup_frequency || 'daily',
-        lastBackupAt: row.last_backup_at || null
+        lastBackupAt: row.last_backup_at || null,
+        toolsCodePrefix: row.tools_code_prefix || '',
+        bhpCodePrefix: row.bhp_code_prefix || '',
+        toolCategoryPrefixes
       });
     });
   });
@@ -4054,16 +4223,17 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
 
   const availablePermissions = [
     'VIEW_USERS',
-    'CREATE_USERS', 
+    'CREATE_USERS',
+    'MANAGE_USERS',
     'EDIT_USERS',
     'DELETE_USERS',
     'VIEW_ANALYTICS',
     'VIEW_TOOLS',
+    'VIEW_LABELS',
     'MANAGE_DEPARTMENTS',
     'MANAGE_POSITIONS',
     'SYSTEM_SETTINGS',
     'VIEW_ADMIN',
-    'MANAGE_USERS',
     'VIEW_AUDIT_LOG',
     'VIEW_BHP',
     'MANAGE_BHP',
@@ -4073,7 +4243,7 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'MANAGE_EMPLOYEES',
     'VIEW_DATABASE',
     'MANAGE_DATABASE',
-    'INVENTORY_VIEW',
+    'VIEW_INVENTORY',
     'INVENTORY_MANAGE_SESSIONS',
     'INVENTORY_SCAN',
     'INVENTORY_ACCEPT_CORRECTION',

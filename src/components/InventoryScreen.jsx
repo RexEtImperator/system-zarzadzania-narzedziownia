@@ -134,9 +134,16 @@ function InventoryScreen({ tools = [], user }) {
       setAutoAcceptDisabled(v === '1' || v === 'true');
     } catch (_) {}
   }, []);
+  const canViewInventory = hasPermission(user, PERMISSIONS.VIEW_INVENTORY);
+
   useEffect(() => {
+    if (!canViewInventory) {
+      setSessions([]);
+      setSelectedSessionId(null);
+      return;
+    }
     fetchSessions();
-  }, []);
+  }, [canViewInventory]);
 
   // Zapamiętuj/odtwarzaj wybraną sesję w localStorage
   useEffect(() => {
@@ -166,6 +173,10 @@ function InventoryScreen({ tools = [], user }) {
   // Pobierz różnice po zmianie wybranej sesji
   useEffect(() => {
     const fetchDiffs = async () => {
+      if (!canViewInventory) {
+        setDifferences([]);
+        return;
+      }
       if (!selectedSessionId) {
         setDifferences([]);
         return;
@@ -184,6 +195,10 @@ function InventoryScreen({ tools = [], user }) {
     };
 
     const fetchHistory = async () => {
+      if (!canViewInventory) {
+        setCorrections([]);
+        return;
+      }
       if (!selectedSessionId) {
         setCorrections([]);
         return;
@@ -204,7 +219,19 @@ function InventoryScreen({ tools = [], user }) {
 
     fetchDiffs();
     fetchHistory();
-  }, [selectedSessionId]);
+  }, [selectedSessionId, canViewInventory]);
+
+  // Bramka uprawnień: jeśli brak VIEW_INVENTORY, pokaż komunikat i nie renderuj reszty UI
+  if (!canViewInventory) {
+    return (
+      <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
+          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do przeglądania inwentaryzacji (VIEW_INVENTORY).</p>
+        </div>
+      </div>
+    );
+  }
 
   const openCorrectionModal = (row) => {
     // Ustal ID narzędzia z możliwych pól lub dopasuj po SKU/nazwie

@@ -2,6 +2,41 @@
 
 Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
+## [Unreleased]
+
+[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/1.8.0...HEAD
+
+## [1.8.0] - 2025-11-04
+
+### Dodane / Zmienione
+- Kody narzędzi: wsparcie „Prefiksów per kategoria” (`toolCategoryPrefixes`) w konfiguracji ogólnej.
+  - UI: sekcja „Kody qr/kreskowe” umożliwia przypisanie prefiksów dla każdej kategorii.
+  - Zastosowanie: `ToolsScreen` i `LabelsManager` generują kody z priorytetem kategorii, następnie `toolsCodePrefix`.
+- Powiadomienia: ujednolicenie wzorca toastr na ekranie „Konfiguracja aplikacji”.
+  - Globalnie: `ToastContainer` z `autoClose=2500ms`, ukrytym paskiem postępu, motywem `colored` i spójnym stylem.
+  - Lokalnie: helpery `notifySuccess`/`notifyError` w `AppConfigScreen.jsx` dla backupu, logo i kategorii.
+- UI: poprawki w podglądzie konfiguracji, usunięto stary panel inline sukcesu po zapisie — teraz toast.
+ - Narzędzia: sortowanie tabeli po numerze ewidencyjnym rosnąco; puste wartości na końcu.
+ - Elektronarzędzia: endpoint sugestii `GET /api/tools/suggestions?category=Elektronarzędzia` (unikalne producent/model/rok).
+ - ToolsScreen: podpowiedzi producenta/modelu/roku zasilane z backendu; fallback do danych z frontu, jeśli API niedostępne.
+ - Szczegóły narzędzia: dodane pola „Producent”, „Model”, „Rok produkcji” dla kategorii „Elektronarzędzia”.
+ - Eksporty PDF/XLSX: lista narzędzi i eksport szczegółów zawierają pola Producent/Model/Rok produkcji.
+ - README: doprecyzowanie uruchamiania dev (proxy, alternatywny port) i dokumentacja endpointu sugestii.
+
+### Usunięte
+- Legacy pola konfiguracji: `codePrefix` (ogólny prefiks) oraz `defaultItemName`.
+  - Frontend: usunięte z `AppConfigScreen` i przestano je odczytywać/zapisywać.
+  - Backend: endpointy `GET/PUT /api/config/general` nie zwracają ani nie przyjmują tych pól.
+  - Skrypty: `scripts/normalize_tools_codes.js` używa wyłącznie `tools_code_prefix` (bez fallbacku do `code_prefix`).
+
+### Naprawione
+- Narzędzia: `ReferenceError: toolCategoryPrefixes is not defined` — przeniesiono `getCategoryPrefix` do wnętrza komponentu, aby korzystał z jego stanu.
+
+### Techniczne
+- Wydajność: sortowanie numerów ewidencyjnych przy użyciu `Intl.Collator('pl', { numeric: true })` dla naturalnego porządku liczb w stringach.
+
+[1.8.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0
+
 ## [1.1.0] - 2025-10-03
 
 ### Dodane / Zmienione

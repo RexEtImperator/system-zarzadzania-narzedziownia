@@ -9,6 +9,7 @@ import {
   PositionManagementScreen,
   AppConfigScreen,
   InventoryScreen,
+  LabelsManager,
   DbViewerScreen
 } from './components';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -151,8 +152,9 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
     { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
     { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
-    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.ACCESS_TOOLS },
+    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.VIEW_INVENTORY },
     { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
+    { id: 'labels', label: 'Etykiety', icon: '🔖', permission: PERMISSIONS.VIEW_LABELS },
     { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
     { id: 'admin', label: 'Ustawienia', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
   ];
@@ -873,6 +875,7 @@ function App() {
             {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
             {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
             {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
+            {currentScreen === 'labels' && <LabelsManager user={user} />}
             {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
             {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
             {currentScreen === 'audit' && <AuditLogScreen user={user} />}
@@ -896,14 +899,17 @@ function App() {
         
         <ToastContainer
           position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
+          autoClose={2500}
+          hideProgressBar={true}
           newestOnTop={false}
           closeOnClick
           rtl={false}
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          theme="colored"
+          toastClassName="rounded-lg shadow-md"
+          bodyClassName="text-sm"
         />
       </div>
     </ThemeProvider>

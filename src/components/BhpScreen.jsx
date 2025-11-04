@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../api';
 import { toast } from 'react-toastify';
-import { PERMISSIONS } from '../constants';
+import { PERMISSIONS, hasPermission } from '../constants';
+import BarcodeScannerComponent from './BarcodeScanner';
+import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 
 function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const formatDateForInput = (value) => {
@@ -71,6 +74,21 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeIssueId, setActiveIssueId] = useState('');
   const [sortBy, setSortBy] = useState('inspection');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [bhpCodePrefix, setBhpCodePrefix] = useState('');
+
+  // Wczytaj codePrefix z konfiguracji aplikacji
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const cfg = await api.get('/api/config/general');
+        setBhpCodePrefix(cfg?.bhpCodePrefix || '');
+      } catch (err) {
+        console.error('Błąd ładowania konfiguracji:', err);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // Podpowiedzi z istniejących pozycji BHP (bez numerów seryjnych i ewidencyjnych)
   const uniqueValues = (field) => {
@@ -457,13 +475,24 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
     downloadBlob(`bhp_${base}_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
   };
 
+  const canViewBhp = hasPermission(user, PERMISSIONS.VIEW_BHP);
+
   useEffect(() => {
+    if (!canViewBhp) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     fetchItems();
-  }, []);
+  }, [canViewBhp]);
 
   const fetchItems = async () => {
     try {
       setLoading(true);
+      if (!canViewBhp) {
+        setItems([]);
+        return;
+      }
       const result = await api.get('/api/bhp');
       setItems(result || []);
       notifyInspections(result || []);
@@ -474,6 +503,18 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       setLoading(false);
     }
   };
+
+  // Bramka uprawnień: jeśli brak VIEW_BHP, pokaż komunikat i nie renderuj reszty UI
+  if (!canViewBhp) {
+    return (
+      <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
+          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do przeglądania BHP (VIEW_BHP).</p>
+        </div>
+      </div>
+    );
+  }
 
   const notifiedRef = useRef(new Set());
   // Odmiana jednostki dni: 1 dzień, pozostałe dni
@@ -548,6 +589,254 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       });
     }
     setShowModal(true);
+  };
+
+  // --- Skaner kodów dla numeru ewidencyjnego ---
+  const handleScanResult = (text) => {
+    setFormData(prev => ({ ...prev, inventory_number: text || '' }));
+    setShowBarcodeScanner(false);
+  };
+  const handleScanError = (error) => {
+    console.error('Scan error:', error);
+    setShowBarcodeScanner(false);
+  };
+
+  // --- Generatory QR i kodu kreskowego oraz podglądy ---
+  const generateQRCode = async (text, width = 400) => {
+    try {
+      return await QRCode.toDataURL(text, {
+        width,
+        margin: 1,
+        color: { dark: '#000000', light: '#FFFFFF' },
+        errorCorrectionLevel: 'H',
+        quality: 1
+      });
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return null;
+    }
+  };
+
+  const generateBarcode = (text) => {
+    try {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, text, {
+        format: 'CODE128',
+        width: 3,
+        height: 120,
+        fontSize: 16,
+        margin: 10,
+        font: 'Arial',
+        fontOptions: 'bold'
+      });
+      return canvas.toDataURL('image/png', 1.0);
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+      return null;
+    }
+  };
+
+  const QRCodeDisplay = ({ text }) => {
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
+    useEffect(() => {
+      const run = async () => {
+        if (!text) { setQrCodeUrl(''); return; }
+        try {
+          const url = await QRCode.toDataURL(text, {
+            width: 300,
+            margin: 1,
+            color: { dark: '#000000', light: '#FFFFFF' },
+            errorCorrectionLevel: 'H',
+            quality: 1
+          });
+          setQrCodeUrl(url);
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+          setQrCodeUrl('');
+        }
+      };
+      run();
+    }, [text]);
+    if (!qrCodeUrl) return <div>Generowanie kodu QR...</div>;
+    return (
+      <img src={qrCodeUrl} alt="QR Code" className="w-32 h-32 border border-slate-200 rounded" style={{ imageRendering: 'crisp-edges' }} />
+    );
+  };
+
+  const BarcodeDisplay = ({ text }) => {
+    const [barcodeUrl, setBarcodeUrl] = useState('');
+    useEffect(() => {
+      const run = () => {
+        if (!text) { setBarcodeUrl(''); return; }
+        try {
+          const canvas = document.createElement('canvas');
+          JsBarcode(canvas, text, {
+            format: 'CODE128',
+            width: 4,
+            height: 100,
+            fontSize: 16,
+            margin: 10,
+            font: 'Arial',
+            fontOptions: 'bold'
+          });
+          setBarcodeUrl(canvas.toDataURL('image/png', 1.0));
+        } catch (error) {
+          console.error('Error generating barcode:', error);
+          setBarcodeUrl('');
+        }
+      };
+      run();
+    }, [text]);
+    if (!barcodeUrl) return <div>Generowanie kodu kreskowego...</div>;
+    return (
+      <img src={barcodeUrl} alt="Barcode" className="border border-slate-200 rounded" style={{ imageRendering: 'crisp-edges' }} />
+    );
+  };
+
+  const computeCodeText = (inv) => {
+    const base = (inv || '').toString();
+    const prefix = (bhpCodePrefix || '').toString();
+    if (!prefix) return base;
+    if (base.startsWith(prefix)) return base;
+    return `${prefix}-${base}`;
+  };
+
+  // Wygeneruj numer ewidencyjny zgodnie z prefiksem
+  const generateInventoryWithPrefix = () => {
+    const prefix = (bhpCodePrefix || '').toString();
+    const current = (formData.inventory_number || '').toString().trim();
+    const suffix = current || Date.now().toString(36).toUpperCase().slice(-6);
+    const next = prefix ? (current.startsWith(prefix) ? current : `${prefix}-${suffix}`) : suffix;
+    setFormData(prev => ({ ...prev, inventory_number: next }));
+  };
+
+  const downloadBhpLabel = async (item) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 4;
+      canvas.width = 400 * scale;
+      canvas.height = 300 * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000000';
+      ctx.font = `bold ${26 * scale}px Arial`;
+      ctx.textAlign = 'center';
+      const title = [item.manufacturer, item.model].filter(Boolean).join(' ');
+      ctx.fillText(title || 'Sprzęt BHP', canvas.width / 2, 40 * scale);
+      ctx.font = `${18 * scale}px Arial`;
+      ctx.fillText(`Nr ew.: ${item.inventory_number || ''}`, canvas.width / 2, 70 * scale);
+      const codeText = computeCodeText(item.inventory_number || '');
+      const qrCodeUrl = await generateQRCode(codeText, 400);
+      if (qrCodeUrl) {
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          ctx.drawImage(qrImg, 20 * scale, 90 * scale, 160 * scale, 160 * scale);
+          const barcodeUrl = generateBarcode(codeText);
+          if (barcodeUrl) {
+            const barcodeImg = new Image();
+            barcodeImg.onload = () => {
+              ctx.drawImage(barcodeImg, 200 * scale, 90 * scale, 200 * scale, 100 * scale);
+              ctx.font = `${14 * scale}px Arial`;
+              ctx.textAlign = 'center';
+              ctx.fillText('Zeskanuj kod aby sprawdzić status', canvas.width / 2, 280 * scale);
+              const link = document.createElement('a');
+              link.download = `etykieta-bhp-${item.inventory_number || 'pozycja'}.png`;
+              link.href = canvas.toDataURL('image/png', 1.0);
+              link.click();
+            };
+            barcodeImg.src = barcodeUrl;
+          }
+        };
+        qrImg.src = qrCodeUrl;
+      }
+    } catch (error) {
+      console.error('Error generating BHP label:', error);
+      alert('Wystąpił błąd podczas generowania etykiety');
+    }
+  };
+
+  const downloadBhpQrLabel = async (item) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 4;
+      canvas.width = 400 * scale;
+      canvas.height = 300 * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${26 * scale}px Arial`;
+      const title = [item.manufacturer, item.model].filter(Boolean).join(' ');
+      ctx.fillText(title || 'Sprzęt BHP', canvas.width / 2, 40 * scale);
+      ctx.font = `${18 * scale}px Arial`;
+      ctx.fillText(`Nr ew.: ${item.inventory_number || ''}`, canvas.width / 2, 70 * scale);
+      const codeText = computeCodeText(item.inventory_number || '');
+      const qrCodeUrl = await generateQRCode(codeText, 800);
+      if (qrCodeUrl) {
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          const size = 200 * scale;
+          const x = (canvas.width - size) / 2;
+          const y = 90 * scale;
+          ctx.drawImage(qrImg, x, y, size, size);
+          const link = document.createElement('a');
+          link.download = `etykieta-qr-bhp-${item.inventory_number || 'pozycja'}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+        };
+        qrImg.src = qrCodeUrl;
+      }
+    } catch (error) {
+      console.error('Error generating BHP QR label:', error);
+      alert('Wystąpił błąd podczas generowania etykiety (QR)');
+    }
+  };
+
+  const downloadBhpBarcodeLabel = async (item) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const scale = 4;
+      canvas.width = 400 * scale;
+      canvas.height = 300 * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${26 * scale}px Arial`;
+      const title = [item.manufacturer, item.model].filter(Boolean).join(' ');
+      ctx.fillText(title || 'Sprzęt BHP', canvas.width / 2, 40 * scale);
+      ctx.font = `${18 * scale}px Arial`;
+      ctx.fillText(`Nr ew.: ${item.inventory_number || ''}`, canvas.width / 2, 70 * scale);
+      const codeText = computeCodeText(item.inventory_number || '');
+      const barcodeUrl = generateBarcode(codeText);
+      if (barcodeUrl) {
+        const barcodeImg = new Image();
+        barcodeImg.onload = () => {
+          const w = 300 * scale;
+          const h = 110 * scale;
+          const x = (canvas.width - w) / 2;
+          const y = 110 * scale;
+          ctx.drawImage(barcodeImg, x, y, w, h);
+          const link = document.createElement('a');
+          link.download = `etykieta-kreskowy-bhp-${item.inventory_number || 'pozycja'}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+        };
+        barcodeImg.src = barcodeUrl;
+      }
+    } catch (error) {
+      console.error('Error generating BHP barcode label:', error);
+      alert('Wystąpił błąd podczas generowania etykiety (kod kreskowy)');
+    }
   };
 
   const saveItem = async (e) => {
@@ -888,7 +1177,19 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   <div className="font-medium">{item.manufacturer || '-'} {item.model ? `— ${item.model}` : ''}</div>
                   {item.is_set ? (
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Zestaw: amortyzator {item.shock_absorber_name || '-'} {item.shock_absorber_model || ''} • nr {item.shock_absorber_serial || '-'} • kat. {item.shock_absorber_catalog_number || '-'}
+                      {(() => {
+                        const parts = [];
+                        const hasShock = !!(item.shock_absorber_name || item.shock_absorber_model || item.shock_absorber_serial || item.shock_absorber_catalog_number);
+                        const hasSrd = !!(item.srd_manufacturer || item.srd_model || item.srd_serial_number || item.srd_catalog_number);
+                        if (hasShock) {
+                          parts.push(`Amortyzator ${item.shock_absorber_name || '-'} ${item.shock_absorber_model || ''} • nr ${item.shock_absorber_serial || '-'} • kat. ${item.shock_absorber_catalog_number || '-'}`.trim());
+                        }
+                        if (hasSrd) {
+                          parts.push(`Urządzenie samohamowne ${item.srd_manufacturer || '-'} ${item.srd_model || ''} • nr ${item.srd_serial_number || '-'} • kat. ${item.srd_catalog_number || '-'}`.trim());
+                        }
+                        const summary = parts.length ? parts.join(' | ') : '-';
+                        return `Zestaw: ${summary}`;
+                      })()}
                     </div>
                   ) : null}
                   {item.assigned_employee_first_name || item.assigned_employee_last_name ? (
@@ -1020,7 +1321,31 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nr ewidencyjny *</label>
-                  <input type="text" value={formData.inventory_number} onChange={(e) => setFormData({ ...formData, inventory_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.inventory_number}
+                      onChange={(e) => setFormData({ ...formData, inventory_number: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBarcodeScanner(true)}
+                      className="px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      title="Skanuj kod"
+                    >
+                      📷
+                    </button>
+                    <button
+                      type="button"
+                      onClick={generateInventoryWithPrefix}
+                      className="px-3 py-2 bg-slate-600 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-700 dark:hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                      title="Generuj kod z prefiksem"
+                    >
+                      ⚙️
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Producent</label>
@@ -1258,6 +1583,45 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     ))
                   )}
                 </div>
+                {/* QR i Kod kreskowy */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Kod QR</h3>
+                    <div className="flex justify-center">
+                      <QRCodeDisplay text={computeCodeText(detailsItem.inventory_number)} />
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => downloadBhpQrLabel(detailsItem)}
+                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        Pobierz etykietę (tylko QR)
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Kod kreskowy</h3>
+                    <div className="flex justify-center">
+                      <BarcodeDisplay text={computeCodeText(detailsItem.inventory_number)} />
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => downloadBhpBarcodeLabel(detailsItem)}
+                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        Pobierz etykietę (tylko kod kreskowy)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => downloadBhpLabel(detailsItem)}
+                    className="w-full bg-indigo-600 dark:bg-indigo-700 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-800 transition-colors"
+                  >
+                    Pobierz etykietę (QR + kod kreskowy)
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1313,6 +1677,15 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
           </div>
         </div>
       )}
+
+      {/* Komponent skanera kodów */}
+      <BarcodeScannerComponent
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={handleScanResult}
+        onError={handleScanError}
+        displayQuantity={false}
+      />
     </div>
   );
 }

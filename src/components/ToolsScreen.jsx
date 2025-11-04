@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import api from '../api';
 import BarcodeScanner from './BarcodeScanner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
+import { PERMISSIONS, hasPermission } from '../constants';
 
-function ToolsScreen({ initialSearchTerm = '' }) {
+function ToolsScreen({ initialSearchTerm = '', user }) {
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -35,6 +36,72 @@ function ToolsScreen({ initialSearchTerm = '' }) {
   const [serviceTool, setServiceTool] = useState(null);
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [serviceOrderNumber, setServiceOrderNumber] = useState('');
+  // Prefiks dla kodów narzędzi
+  const [toolsCodePrefix, setToolsCodePrefix] = useState('');
+
+  // Sugestie z backendu dla Elektronarzędzia; fallback do danych wczytanych na froncie
+  const [elektronarzedziaSuggestions, setElektronarzedziaSuggestions] = useState({ manufacturer: [], model: [], production_year: [] });
+  const manufacturerSuggestions = useMemo(() => {
+    if ((elektronarzedziaSuggestions.manufacturer || []).length > 0) return elektronarzedziaSuggestions.manufacturer;
+    const s = new Set();
+    (tools || [])
+      .filter(t => (t?.category || '').trim().toLowerCase() === 'elektronarzędzia')
+      .forEach(t => {
+        const v = (t?.manufacturer || '').trim();
+        if (v) s.add(v);
+      });
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [tools, elektronarzedziaSuggestions]);
+
+  const modelSuggestions = useMemo(() => {
+    if ((elektronarzedziaSuggestions.model || []).length > 0) return elektronarzedziaSuggestions.model;
+    const s = new Set();
+    (tools || [])
+      .filter(t => (t?.category || '').trim().toLowerCase() === 'elektronarzędzia')
+      .forEach(t => {
+        const v = (t?.model || '').trim();
+        if (v) s.add(v);
+      });
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [tools, elektronarzedziaSuggestions]);
+
+  const yearSuggestions = useMemo(() => {
+    if ((elektronarzedziaSuggestions.production_year || []).length > 0) return elektronarzedziaSuggestions.production_year.map(String).sort((a, b) => Number(a) - Number(b));
+    const s = new Set();
+    (tools || [])
+      .filter(t => (t?.category || '').trim().toLowerCase() === 'elektronarzędzia')
+      .forEach(t => {
+        const yRaw = t?.production_year;
+        if (typeof yRaw !== 'undefined' && yRaw !== null && String(yRaw).trim() !== '') {
+          const y = parseInt(String(yRaw), 10);
+          if (!Number.isNaN(y) && y >= 1900 && y <= (new Date().getFullYear() + 1)) {
+            s.add(String(y));
+          }
+        }
+      });
+    return Array.from(s).sort((a, b) => Number(a) - Number(b));
+  }, [tools, elektronarzedziaSuggestions]);
+
+  // Pobierz sugestie z backendu, gdy modal jest otwarty i kategoria to Elektronarzędzia
+  useEffect(() => {
+    const cat = (formData.category || '').trim().toLowerCase();
+    if (showModal && cat === 'elektronarzędzia') {
+      (async () => {
+        try {
+          const data = await api.get('/api/tools/suggestions?category=Elektronarzędzia');
+          const safe = data && typeof data === 'object' ? data : {};
+          setElektronarzedziaSuggestions({
+            manufacturer: Array.isArray(safe.manufacturer) ? safe.manufacturer : [],
+            model: Array.isArray(safe.model) ? safe.model : [],
+            production_year: Array.isArray(safe.production_year) ? safe.production_year : []
+          });
+        } catch (e) {
+          console.warn('Nie udało się pobrać sugestii z backendu, używam danych lokalnych');
+        }
+      })();
+    }
+  }, [showModal, formData.category]);
+  const [toolCategoryPrefixes, setToolCategoryPrefixes] = useState({});
 
   // Powiadomienia o nadchodzących przeglądach dla narzędzi spawalniczych
   const notifiedUpcomingRef = useRef(new Set());
@@ -97,9 +164,31 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Sort tools by inventory number ascending (empty values last)
+  const sortedTools = useMemo(() => {
+    const collator = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
+    return [...filteredTools].sort((a, b) => {
+      const aInv = String(a.inventory_number || '').trim();
+      const bInv = String(b.inventory_number || '').trim();
+      const aEmpty = aInv.length === 0;
+      const bEmpty = bInv.length === 0;
+      if (aEmpty && bEmpty) return 0;
+      if (aEmpty) return 1; // empty last
+      if (bEmpty) return -1; // empty last
+      return collator.compare(aInv, bInv);
+    });
+  }, [filteredTools]);
+
+  const canViewTools = hasPermission(user, PERMISSIONS.VIEW_TOOLS);
+
   useEffect(() => {
+    if (!canViewTools) {
+      setLoading(false);
+      setTools([]);
+      return;
+    }
     fetchTools();
-  }, []);
+  }, [canViewTools]);
 
   // Po załadowaniu narzędzi, raz wyświetl toasty nadchodzących przeglądów dla kategorii Spawalnicze
   useEffect(() => {
@@ -112,9 +201,26 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     }
   }, [tools]);
 
+  // Załaduj prefiks kodów z konfiguracji aplikacji
+  useEffect(() => {
+    const loadPrefixes = async () => {
+      try {
+        if (!canViewTools) return;
+        const cfg = await api.get('/api/config/general');
+        const tPrefix = cfg?.toolsCodePrefix || '';
+        setToolsCodePrefix(tPrefix || '');
+        setToolCategoryPrefixes(cfg?.toolCategoryPrefixes || {});
+      } catch (err) {
+        console.warn('Nie udało się załadować prefiksu narzędzi', err);
+      }
+    };
+    loadPrefixes();
+  }, [canViewTools]);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+        if (!canViewTools) return;
         const resp = await api.get('/api/categories');
         const names = Array.isArray(resp) ? resp.map(c => c.name).filter(Boolean) : [];
         setAvailableCategories(names);
@@ -125,7 +231,19 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       }
     };
     fetchCategories();
-  }, []);
+  }, [canViewTools]);
+
+  // Bramka uprawnień: jeśli brak VIEW_TOOLS, pokaż komunikat i nie renderuj reszty UI
+  if (!canViewTools) {
+    return (
+      <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
+          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do przeglądania narzędzi (VIEW_TOOLS).</p>
+        </div>
+      </div>
+    );
+  }
 
   // Ustaw wstępny filtr z deep-linka, jeśli przekazano
   useEffect(() => {
@@ -243,12 +361,20 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       }
     }
     
-    // Sprawdzenie duplikatu SKU na submit
-    const sku = (formData.sku || '').trim();
-    if (sku) {
+    // Sprawdzenie duplikatu SKU na submit (po normalizacji z prefiksem)
+    const normSku = (() => {
+      const base = (formData.sku || '').toString().trim();
+      const prefix = (toolsCodePrefix || '').toString();
+      if (!base) return '';
+      if (!prefix) return base;
+      if (base.startsWith(`${prefix}-`)) return base;
+      if (base.startsWith(prefix)) return `${prefix}-${base.slice(prefix.length)}`;
+      return `${prefix}-${base}`;
+    })();
+    if (normSku) {
       const conflictSku = (tools || []).some(t => (
         t?.sku &&
-        String(t.sku).toLowerCase() === sku.toLowerCase() &&
+        String(t.sku).toLowerCase() === normSku.toLowerCase() &&
         t.id !== (editingTool?.id)
       ));
       if (conflictSku) {
@@ -304,6 +430,39 @@ function ToolsScreen({ initialSearchTerm = '' }) {
         dataToSubmit.sku = `${namePrefix}${timestamp}`;
       }
 
+      // Znormalizuj SKU do formatu PREFIX-<wartość> (jeśli jest prefiks)
+      {
+        const baseSku = (dataToSubmit.sku || '').toString().trim();
+        const prefix = (toolsCodePrefix || '').toString();
+        if (baseSku && prefix) {
+          if (baseSku.startsWith(`${prefix}-`)) {
+            dataToSubmit.sku = baseSku;
+          } else if (baseSku.startsWith(prefix)) {
+            dataToSubmit.sku = `${prefix}-${baseSku.slice(prefix.length)}`;
+          } else {
+            dataToSubmit.sku = `${prefix}-${baseSku}`;
+          }
+        }
+      }
+
+      // Ustal treść kodu (z prefiksem) i zapisz jako barcode/qr_code — format PREFIX-<wartość>
+      {
+        const baseSku = (dataToSubmit.sku || '').toString();
+        const prefix = (toolsCodePrefix || '').toString();
+        let codeValue = baseSku;
+        if (prefix) {
+          if (baseSku.startsWith(`${prefix}-`)) {
+            codeValue = baseSku;
+          } else if (baseSku.startsWith(prefix)) {
+            codeValue = `${prefix}-${baseSku.slice(prefix.length)}`;
+          } else {
+            codeValue = `${prefix}-${baseSku}`;
+          }
+        }
+        dataToSubmit.barcode = codeValue;
+        dataToSubmit.qr_code = codeValue;
+      }
+
       if (editingTool) {
         await api.put(`/api/tools/${editingTool.id}`, dataToSubmit);
         setTools(prevTools => 
@@ -349,6 +508,15 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     setEditingTool(tool);
     setFormData(tool ? { 
       ...tool, 
+      // Znormalizuj SKU w modalu do formatu z prefiksem, aby użytkownik widział pełny kod
+      sku: (() => {
+        const base = (tool.sku || '').toString();
+        const prefix = getCategoryPrefix(tool.category);
+        if (!prefix) return base;
+        if (base.startsWith(`${prefix}-`)) return base;
+        if (base.startsWith(prefix)) return `${prefix}-${base.slice(prefix.length)}`;
+        return `${prefix}-${base}`;
+      })(),
       serial_unreadable: !!tool.serial_unreadable, 
       is_consumable: !!tool.is_consumable,
       min_stock: typeof tool.min_stock !== 'undefined' && tool.min_stock !== null ? tool.min_stock : '',
@@ -368,7 +536,10 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       inspection_date: '',
       is_consumable: false,
       min_stock: '',
-      max_stock: ''
+      max_stock: '',
+      manufacturer: '',
+      model: '',
+      production_year: ''
     });
     setErrors({});
     setShowModal(true);
@@ -391,7 +562,10 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       inspection_date: '',
       is_consumable: false,
       min_stock: '',
-      max_stock: ''
+      max_stock: '',
+      manufacturer: '',
+      model: '',
+      production_year: ''
     });
     setErrors({});
   };
@@ -480,6 +654,44 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     setShowBarcodeScanner(false);
   };
 
+  // Zwraca efektywny prefiks dla danej kategorii (per-kategoria > tools > ogólny)
+  const getCategoryPrefix = (categoryName) => {
+    const byCat = (toolCategoryPrefixes || {})[categoryName || ''];
+    if (byCat) return byCat.toString();
+    if (toolsCodePrefix) return toolsCodePrefix.toString();
+    return '';
+  };
+
+  // Oblicz treść kodu do QR/kreskowego z uwzględnieniem prefiksu
+  // Normalizuje format do: PREFIX-<wartość> i unika podwajania prefiksu
+  const getToolCodeText = (tool) => {
+    const base = (tool?.sku || '').toString();
+    const prefix = getCategoryPrefix(tool?.category);
+    if (!prefix) return base;
+    if (base.startsWith(`${prefix}-`)) return base;
+    if (base.startsWith(prefix)) return `${prefix}-${base.slice(prefix.length)}`;
+    return `${prefix}-${base}`;
+  };
+
+  // Wygeneruj SKU zgodnie z prefiksem, w formacie PREFIX-<wartość>
+  const generateSkuWithPrefix = () => {
+    const prefix = getCategoryPrefix(formData.category);
+    const current = (formData.sku || '').toString().trim();
+    const randomPart = Date.now().toString(36).toUpperCase().slice(-6);
+    const suffix = current || randomPart;
+    let next = suffix;
+    if (prefix) {
+      if (current.startsWith(`${prefix}-`)) {
+        next = current;
+      } else if (current.startsWith(prefix)) {
+        next = `${prefix}-${current.slice(prefix.length)}`;
+      } else {
+        next = `${prefix}-${suffix}`;
+      }
+    }
+    setFormData(prev => ({ ...prev, sku: next }));
+  };
+
   // Generate QR Code
   const generateQRCode = async (text, width = 400) => {
     try {
@@ -555,14 +767,15 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       ctx.fillText(`SKU: ${tool.sku}`, canvas.width / 2, 70 * scale);
       
       // Generate and draw QR code
-      const qrCodeUrl = await generateQRCode(tool.sku, 400);
+      const qrContent = getToolCodeText(tool);
+      const qrCodeUrl = await generateQRCode(qrContent, 400);
       if (qrCodeUrl) {
         const qrImg = new Image();
         qrImg.onload = () => {
           ctx.drawImage(qrImg, 20 * scale, 90 * scale, 160 * scale, 160 * scale);
           
           // Generate and draw barcode
-          const barcodeUrl = generateBarcode(tool.sku);
+          const barcodeUrl = generateBarcode(qrContent);
           if (barcodeUrl) {
             const barcodeImg = new Image();
             barcodeImg.onload = () => {
@@ -617,7 +830,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       ctx.font = `${18 * scale}px Arial`;
       ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
 
-      const qrCodeUrl = await generateQRCode(tool.sku || '', 800);
+      const qrCodeUrl = await generateQRCode(getToolCodeText(tool) || '', 800);
       if (qrCodeUrl) {
         const qrImg = new Image();
         qrImg.onload = () => {
@@ -666,7 +879,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       ctx.font = `${18 * scale}px Arial`;
       ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
 
-      const barcodeUrl = generateBarcode(tool.sku || '');
+      const barcodeUrl = generateBarcode(getToolCodeText(tool) || '');
       if (barcodeUrl) {
         const barcodeImg = new Image();
         barcodeImg.onload = () => {
@@ -710,6 +923,9 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       'Nazwa',
       'Numer fabryczny',
       'Kategoria',
+      'Producent',
+      'Model',
+      'Rok Produkcji',
       'Status',
       'Lokalizacja',
       'SKU',
@@ -721,14 +937,18 @@ function ToolsScreen({ initialSearchTerm = '' }) {
 
     const tableRows = itemsArr.map(item => {
       const isSpawalnicze = String(item.category || '').trim().toLowerCase() === 'spawalnicze';
+      const isElektronarzedzia = String(item.category || '').trim().toLowerCase() === 'elektronarzędzia';
       const insp = (isSpawalnicze && item.inspection_date) ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '';
       const cells = [
         `<td>${item.name || ''}</td>`,
         `<td>${item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')}</td>`,
         `<td>${item.category || ''}</td>`,
+        `<td>${isElektronarzedzia ? (item.manufacturer || '') : ''}</td>`,
+        `<td>${isElektronarzedzia ? (item.model || '') : ''}</td>`,
+        `<td>${isElektronarzedzia ? (item.production_year ?? '') : ''}</td>`,
         `<td>${item.status || ''}</td>`,
         `<td>${item.location || ''}</td>`,
-        `<td>${item.sku || ''}</td>`,
+        `<td>${getToolCodeText(item) || ''}</td>`,
         `<td>${item.quantity ?? ''}</td>`,
         `<td>${item.description || ''}</td>`,
         `<td>${insp}</td>`
@@ -776,6 +996,9 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       'Nazwa',
       'Numer fabryczny',
       'Kategoria',
+      'Producent',
+      'Model',
+      'Rok Produkcji',
       'Status',
       'Lokalizacja',
       'SKU',
@@ -785,14 +1008,18 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     ];
     const rows = itemsArr.map(item => {
       const isSpawalnicze = String(item.category || '').trim().toLowerCase() === 'spawalnicze';
+      const isElektronarzedzia = String(item.category || '').trim().toLowerCase() === 'elektronarzędzia';
       const insp = (isSpawalnicze && item.inspection_date) ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '';
       return [
         item.name || '',
         (item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')),
         item.category || '',
+        isElektronarzedzia ? (item.manufacturer || '') : '',
+        isElektronarzedzia ? (item.model || '') : '',
+        isElektronarzedzia ? (item.production_year ?? '') : '',
         item.status || '',
         item.location || '',
-        item.sku || '',
+        getToolCodeText(item) || '',
         item.quantity ?? '',
         item.description || '',
         insp
@@ -815,6 +1042,11 @@ function ToolsScreen({ initialSearchTerm = '' }) {
       ['SKU', selectedTool.sku || '-'],
       ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '-')],
       ['Kategoria', selectedTool.category || '-'],
+      ...(String(selectedTool.category || '').trim().toLowerCase() === 'elektronarzędzia' ? [
+        ['Producent', selectedTool.manufacturer || '-'],
+        ['Model', selectedTool.model || '-'],
+        ['Rok produkcji', (typeof selectedTool.production_year !== 'undefined' && selectedTool.production_year !== null) ? String(selectedTool.production_year) : '-']
+      ] : []),
       ...(String(selectedTool.category || '').trim().toLowerCase() === 'spawalnicze' && selectedTool.inspection_date ? [[
         'Data przeglądu', new Date(selectedTool.inspection_date).toLocaleDateString('pl-PL')
       ]] : []),
@@ -874,9 +1106,14 @@ function ToolsScreen({ initialSearchTerm = '' }) {
     const headers = ['Pole', 'Wartość'];
     const fields = [
       ['Nazwa', selectedTool.name || ''],
-      ['SKU', selectedTool.sku || ''],
+      ['SKU', getToolCodeText(selectedTool) || ''],
       ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '')],
       ['Kategoria', selectedTool.category || ''],
+      ...(String(selectedTool.category || '').trim().toLowerCase() === 'elektronarzędzia' ? [
+        ['Producent', selectedTool.manufacturer || ''],
+        ['Model', selectedTool.model || ''],
+        ['Rok produkcji', (typeof selectedTool.production_year !== 'undefined' && selectedTool.production_year !== null) ? String(selectedTool.production_year) : '' ]
+      ] : []),
       ...(String(selectedTool.category || '').trim().toLowerCase() === 'spawalnicze' && selectedTool.inspection_date ? [[
         'Data przeglądu', new Date(selectedTool.inspection_date).toLocaleDateString('pl-PL')
       ]] : []),
@@ -1111,7 +1348,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
-                {filteredTools.map((tool) => (
+                {sortedTools.map((tool) => (
                   <tr 
                     key={tool.id} 
                     className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
@@ -1141,7 +1378,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                       })()}
                     </td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.location || '-'}</td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.sku || '-'}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{getToolCodeText(tool) || '-'}</td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
@@ -1172,7 +1409,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
 
           {/* Mobile Card View */}
           <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
-            {filteredTools.map((tool) => (
+            {sortedTools.map((tool) => (
               <div 
                 key={tool.id} 
                 className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800"
@@ -1218,7 +1455,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
-                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.sku || '-'}</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{getToolCodeText(tool) || '-'}</span>
                   </div>
                 </div>
                 
@@ -1382,6 +1619,14 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                       >
                         📷
                       </button>
+                      <button
+                        type="button"
+                        onClick={generateSkuWithPrefix}
+                        className="px-3 py-2 bg-slate-600 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-700 dark:hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                        title="Generuj kod z prefiksem"
+                      >
+                        ⚙️
+                      </button>
                     </div>
                     {errors.sku && (
                       <p className="text-red-600 dark:text-red-400 text-sm mt-1 sharp-text">{errors.sku}</p>
@@ -1506,6 +1751,78 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
                       />
+                    </div>
+                  );
+                })()}
+
+                {/* Elektronarzędzia tile: Producent/Model/Rok Produkcji */}
+                {(() => {
+                  const cat = (formData.category || '').trim().toLowerCase();
+                  if (cat !== 'elektronarzędzia') return null;
+                  const currentYear = new Date().getFullYear();
+                  return (
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 p-4">
+                      <div className="mb-2">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 sharp-text">Dane techniczne</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Producent</label>
+                          <input
+                            type="text"
+                            name="manufacturer"
+                            value={formData.manufacturer || ''}
+                            onChange={handleInputChange}
+                            list="manufacturer-suggestions"
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
+                            placeholder="Np. Bosch, Makita, DeWalt"
+                          />
+                          <datalist id="manufacturer-suggestions">
+                            {manufacturerSuggestions.map(opt => (
+                              <option key={`mf-${opt}`} value={opt} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Model</label>
+                          <input
+                            type="text"
+                            name="model"
+                            value={formData.model || ''}
+                            onChange={handleInputChange}
+                            list="model-suggestions"
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
+                            placeholder="Np. GSR 18V-55"
+                          />
+                          <datalist id="model-suggestions">
+                            {modelSuggestions.map(opt => (
+                              <option key={`md-${opt}`} value={opt} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Rok Produkcji</label>
+                          <input
+                            type="number"
+                            name="production_year"
+                            value={formData.production_year || ''}
+                            onChange={handleInputChange}
+                            list="year-suggestions"
+                            min={1900}
+                            max={currentYear + 1}
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100 sharp-text"
+                            placeholder="Np. 2024"
+                          />
+                          <datalist id="year-suggestions">
+                            {yearSuggestions.map(opt => (
+                              <option key={`yr-${opt}`} value={opt} />
+                            ))}
+                          </datalist>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 sharp-text">Skorzystaj z podpowiedzi aby szybko wybrać wcześniej użyte wartości.</p>
                     </div>
                   );
                 })()}
@@ -1689,12 +2006,28 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
-                        <span className="text-slate-900 dark:text-slate-100 font-mono sharp-text">{selectedTool.sku}</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-mono sharp-text">{getToolCodeText(selectedTool)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-slate-400 sharp-text">Kategoria:</span>
                         <span className="text-slate-900 dark:text-slate-100 sharp-text">{selectedTool.category || '-'}</span>
                       </div>
+                      {String(selectedTool.category || '').trim().toLowerCase() === 'elektronarzędzia' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 dark:text-slate-400 sharp-text">Producent:</span>
+                            <span className="text-slate-900 dark:text-slate-100 sharp-text">{selectedTool.manufacturer || '-'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 dark:text-slate-400 sharp-text">Model:</span>
+                            <span className="text-slate-900 dark:text-slate-100 sharp-text">{selectedTool.model || '-'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 dark:text-slate-400 sharp-text">Rok produkcji:</span>
+                            <span className="text-slate-900 dark:text-slate-100 sharp-text">{(typeof selectedTool.production_year !== 'undefined' && selectedTool.production_year !== null) ? String(selectedTool.production_year) : '-'}</span>
+                          </div>
+                        </>
+                      )}
                       {String(selectedTool.category || '').trim().toLowerCase() === 'spawalnicze' && (
                         <div className="flex justify-between">
                           <span className="text-slate-500 dark:text-slate-400 sharp-text">Data przeglądu:</span>
@@ -1761,7 +2094,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod QR</h3>
                     <div className="flex justify-center">
-                      <QRCodeDisplay text={selectedTool.sku} />
+                      <QRCodeDisplay text={getToolCodeText(selectedTool)} />
                     </div>
                     <div className="pt-2">
                       <button
@@ -1776,7 +2109,7 @@ function ToolsScreen({ initialSearchTerm = '' }) {
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod kreskowy</h3>
                     <div className="flex justify-center">
-                      <BarcodeDisplay text={selectedTool.sku} />
+                      <BarcodeDisplay text={getToolCodeText(selectedTool)} />
                     </div>
                     <div className="pt-2">
                       <button

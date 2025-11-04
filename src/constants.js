@@ -32,6 +32,9 @@ export const PERMISSIONS = {
   // Widok i zarządzanie narzędziami
   VIEW_TOOLS: 'view_tools',
   MANAGE_TOOLS: 'manage_tools',
+  
+  // Etykiety
+  VIEW_LABELS: 'view_labels',
 
   // Pracownicy
   VIEW_EMPLOYEES: 'view_employees',
@@ -42,7 +45,7 @@ export const PERMISSIONS = {
   MANAGE_BHP: 'manage_bhp',
 
   // Inwentaryzacja
-  INVENTORY_VIEW: 'inventory_view',
+  VIEW_INVENTORY: 'view_inventory',
   INVENTORY_MANAGE_SESSIONS: 'inventory_manage_sessions',
   INVENTORY_SCAN: 'inventory_scan',
   INVENTORY_ACCEPT_CORRECTION: 'inventory_accept_correction',
@@ -196,6 +199,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.EDIT_USERS,
       PERMISSIONS.VIEW_ANALYTICS,
       PERMISSIONS.VIEW_TOOLS,
+      PERMISSIONS.VIEW_LABELS,
       PERMISSIONS.MANAGE_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
       PERMISSIONS.MANAGE_EMPLOYEES,
@@ -203,7 +207,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.MANAGE_POSITIONS,
       PERMISSIONS.VIEW_BHP,
       PERMISSIONS.MANAGE_BHP,
-      PERMISSIONS.INVENTORY_VIEW,
+      PERMISSIONS.VIEW_INVENTORY,
       PERMISSIONS.INVENTORY_MANAGE_SESSIONS,
       PERMISSIONS.INVENTORY_SCAN,
       PERMISSIONS.INVENTORY_ACCEPT_CORRECTION,

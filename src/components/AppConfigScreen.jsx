@@ -17,7 +17,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
       companyName: 'Moja Firma',
       timezone: 'Europe/Warsaw',
       language: 'pl',
-      dateFormat: 'DD/MM/YYYY'
+      dateFormat: 'DD/MM/YYYY',
+      // Prefiksy dla kodów
+      toolsCodePrefix: '',
+      bhpCodePrefix: '',
+      toolCategoryPrefixes: {}
     },
     security: {
       sessionTimeout: 30,
@@ -65,6 +69,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [logoDeleteFilename, setLogoDeleteFilename] = useState(null);
   const [logoDeleteLoading, setLogoDeleteLoading] = useState(false);
 
+  // Ujednolicone helpery toastr dla tej sekcji konfiguracji
+  const notifySuccess = (message) => toast.success(message, { autoClose: 2500, hideProgressBar: true });
+  const notifyError = (message) => toast.error(message, { autoClose: 2500, hideProgressBar: true });
+
   useEffect(() => {
     loadConfig();
     loadLogoHistory();
@@ -82,7 +90,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
           companyName: general.companyName ?? prev.general.companyName,
           timezone: general.timezone || prev.general.timezone,
           language: general.language || prev.general.language,
-          dateFormat: general.dateFormat || prev.general.dateFormat
+          dateFormat: general.dateFormat || prev.general.dateFormat,
+          toolsCodePrefix: general.toolsCodePrefix ?? prev.general.toolsCodePrefix,
+          bhpCodePrefix: general.bhpCodePrefix ?? prev.general.bhpCodePrefix,
+          toolCategoryPrefixes: general.toolCategoryPrefixes || {}
         },
         notifications: {
           ...prev.notifications,
@@ -116,13 +127,20 @@ const AppConfigScreen = ({ apiClient, user }) => {
         timezone: config.general.timezone,
         language: config.general.language,
         dateFormat: config.general.dateFormat,
-        backupFrequency: config.notifications.backupFrequency
+        backupFrequency: config.notifications.backupFrequency,
+        // Prefiksy
+        toolsCodePrefix: config.general.toolsCodePrefix,
+        bhpCodePrefix: config.general.bhpCodePrefix,
+        toolCategoryPrefixes: config.general.toolCategoryPrefixes
       });
       
+      // Toastr
+      notifySuccess('Konfiguracja została zapisana pomyślnie!');
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => setSaved(false), 2500);
     } catch (error) {
       console.error('Błąd podczas zapisywania konfiguracji:', error);
+      notifyError('Nie udało się zapisać konfiguracji');
     } finally {
       setLoading(false);
     }
@@ -146,6 +164,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
     { id: 'departments', name: 'Działy', icon: '🏢' },
     { id: 'positions', name: 'Stanowiska', icon: '👔' },
     { id: 'categories', name: 'Kategorie', icon: '🏷️' },
+    { id: 'codes', name: 'Kody qr/kreskowe', icon: '🔖' },
     { id: 'backup', name: 'Backup', icon: '💾' }
   ];
 
@@ -157,11 +176,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
       return;
     }
     if (file.type !== 'image/png') {
-      toast.error('Dozwolone są tylko pliki PNG');
+      notifyError('Dozwolone są tylko pliki PNG');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Plik jest za duży (maks. 2MB)');
+      notifyError('Plik jest za duży (maks. 2MB)');
       return;
     }
     const previewUrl = URL.createObjectURL(file);
@@ -174,7 +193,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
         w < MIN_LOGO_WIDTH || h < MIN_LOGO_HEIGHT ||
         w > MAX_LOGO_WIDTH || h > MAX_LOGO_HEIGHT
       ) {
-        toast.error(`Wymiary logo poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${w}x${h}`);
+        notifyError(`Wymiary logo poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${w}x${h}`);
         URL.revokeObjectURL(previewUrl);
         return;
       }
@@ -182,7 +201,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       setLogoPreview(previewUrl);
     };
     img.onerror = () => {
-      toast.error('Nieprawidłowy plik obrazu');
+      notifyError('Nieprawidłowy plik obrazu');
       URL.revokeObjectURL(previewUrl);
     };
     img.src = previewUrl;
@@ -190,7 +209,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
   const handleLogoUpload = async () => {
     if (!logoFile) {
-      toast.error('Wybierz plik logo (PNG)');
+      notifyError('Wybierz plik logo (PNG)');
       return;
     }
     try {
@@ -198,7 +217,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       const formData = new FormData();
       formData.append('logo', logoFile);
       const resp = await apiClient.postForm('/api/config/logo', formData);
-      toast.success('Logo zostało zaktualizowane');
+      notifySuccess('Logo zostało zaktualizowane');
       setLogoTs((resp && resp.timestamp) || Date.now());
       setLogoFile(null);
       setLogoPreview(null);
@@ -214,7 +233,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
           msg = error.message || msg;
         }
       }
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setLoading(false);
     }
@@ -225,14 +244,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setLoading(true);
       await apiClient.post('/api/config/logo/rollback', { filename });
-      toast.success('Przywrócono wybraną wersję logo');
+      notifySuccess('Przywrócono wybraną wersję logo');
       setLogoTs(Date.now());
     } catch (error) {
       let msg = 'Błąd przywracania wersji';
       if (error && typeof error.message === 'string') {
         try { const parsed = JSON.parse(error.message); msg = parsed.error || parsed.message || msg; } catch (_) { msg = error.message || msg; }
       }
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setLoading(false);
     }
@@ -243,14 +262,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setLogoDeleteLoading(true);
       await apiClient.delete(`/api/config/logo/${encodeURIComponent(filename)}`);
-      toast.success('Wersja logo została usunięta');
+      notifySuccess('Wersja logo została usunięta');
       await loadLogoHistory();
     } catch (error) {
       let msg = 'Błąd usuwania wersji logo';
       if (error && typeof error.message === 'string') {
         try { const parsed = JSON.parse(error.message); msg = parsed.error || parsed.message || msg; } catch (_) { msg = error.message || msg; }
       }
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setLogoDeleteLoading(false);
       setShowLogoDeleteModal(false);
@@ -633,6 +652,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
             />
           </div>
 
+          {/* Sekcja konfiguracji kodów przeniesiona do zakładki 'Kody qr/kreskowe' */}
+
           {config.features.enableDataExport && (
             <div className="mt-6">
               <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">Inne ustawienia</h4>
@@ -666,6 +687,80 @@ const AppConfigScreen = ({ apiClient, user }) => {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCodesTab = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Konfiguracja kodów qr/kreskowych</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Prefiks kodów dla Narzędzi
+            </label>
+            <input
+              type="text"
+              placeholder="np. TOOL-"
+              value={config.general.toolsCodePrefix}
+              onChange={(e) => updateConfig('general', 'toolsCodePrefix', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Prefiks kodów dla BHP
+            </label>
+            <input
+              type="text"
+              placeholder="np. BHP-"
+              value={config.general.bhpCodePrefix}
+              onChange={(e) => updateConfig('general', 'bhpCodePrefix', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="pt-2">
+        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Prefiksy per kategoria narzędzia</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Możesz zdefiniować różne prefiksy dla konkretnych kategorii.</p>
+        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+          {categoriesLoading ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie kategorii...</div>
+          ) : (categories || []).length === 0 ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400">Brak kategorii</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {categories.map(cat => (
+                <div key={cat.id} className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{cat.name}</label>
+                  <input
+                    type="text"
+                    placeholder="np. OSSR-"
+                    value={(config.general.toolCategoryPrefixes?.[cat.name]) || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setConfig(prev => ({
+                        ...prev,
+                        general: {
+                          ...prev.general,
+                          toolCategoryPrefixes: {
+                            ...(prev.general.toolCategoryPrefixes || {}),
+                            [cat.name]: val
+                          }
+                        }
+                      }));
+                    }}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{cat.tool_count ? `${cat.tool_count} narzędzi` : '—'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">Prefiks per kategoria ma pierwszeństwo nad prefiksem ogólnym dla narzędzi.</div>
         </div>
       </div>
     </div>
@@ -708,13 +803,13 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setBackupLoading(true);
       await apiClient.post('/api/backup/run', {});
-      toast.success('Kopia zapasowa wykonana');
+      notifySuccess('Kopia zapasowa wykonana');
       // Odśwież informacje po udanym backupie
       await loadConfig();
       await loadBackups();
     } catch (err) {
       const msg = err?.message || 'Nie udało się wykonać kopii zapasowej';
-      toast.error(msg);
+      notifyError(msg);
     } finally {
       setBackupLoading(false);
     }
@@ -788,17 +883,17 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const addCategory = async () => {
     const name = (catNewName || '').trim();
     if (!name) {
-      toast.error('Podaj nazwę kategorii');
+      notifyError('Podaj nazwę kategorii');
       return;
     }
     try {
       const created = await apiClient.post('/api/categories', { name });
       setCategories(prev => [...prev, { id: created.id, name: created.name }]);
       setCatNewName('');
-      toast.success('Dodano kategorię');
+      notifySuccess('Dodano kategorię');
     } catch (err) {
       const msg = err?.message || 'Nie udało się dodać kategorii';
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
@@ -817,17 +912,17 @@ const AppConfigScreen = ({ apiClient, user }) => {
     const name = (catEditingName || '').trim();
     if (!id) return;
     if (!name) {
-      toast.error('Nazwa nie może być pusta');
+      notifyError('Nazwa nie może być pusta');
       return;
     }
     try {
       const updated = await apiClient.put(`/api/categories/${id}`, { name });
       setCategories(prev => prev.map(c => c.id === id ? { id, name: updated.name || name } : c));
       cancelEditCategory();
-      toast.success('Zaktualizowano kategorię');
+      notifySuccess('Zaktualizowano kategorię');
     } catch (err) {
       const msg = err?.message || 'Nie udało się zaktualizować kategorii';
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
@@ -837,10 +932,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       await apiClient.delete(`/api/categories/${cat.id}`);
       setCategories(prev => prev.filter(c => c.id !== cat.id));
-      toast.success('Usunięto kategorię');
+      notifySuccess('Usunięto kategorię');
     } catch (err) {
       const msg = err?.message || 'Nie udało się usunąć kategorii';
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
@@ -943,6 +1038,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
         return <PositionManagementScreen apiClient={apiClient} />;
       case 'categories':
         return renderCategoriesTab();
+      case 'codes':
+        return renderCodesTab();
       case 'backup':
         return renderBackupTab();
       default:
@@ -981,22 +1078,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
           )}
         </button>
       </div>
-
-      {/* Success Message */}
-      {saved && (
-        <div className="rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 transition-colors duration-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <CheckCircleIcon className="h-5 w-5 text-green-400 dark:text-green-300" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                Konfiguracja została zapisana pomyślnie!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Tabs - vertical left panel (sticky on tall screens), content on the right */}
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">

@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.7.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0)
+[![Wersja](https://img.shields.io/badge/version-1.8.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
@@ -146,7 +146,7 @@ Uwagi:
 - Dev (backend + frontend):
   - `npm run dev`
   - Backend: `http://localhost:3000`
-  - Frontend: `https://localhost:3001`
+  - Frontend: `https://localhost:3001` (proxy do `/api` -> `http://localhost:3000`)
   - Tylko backend: `npm run server`
   - Tylko frontend: `npm start`
   - Build produkcyjny: `npm run build` (wynik w katalogu `build/`)
@@ -231,7 +231,36 @@ flowchart LR
 
 ### Powiadomienia
 - Toasty informacyjne/sukcesu/błędu dla operacji (React Toastify)
-- 
+- Globalna konfiguracja: `ToastContainer` z `autoClose=2500ms`, ukrytym paskiem postępu, motywem `colored` i spójnym stylem.
+- Ujednolicone helpery na ekranie „Konfiguracja” (`notifySuccess`/`notifyError`).
+
+### Prefiksy kodów
+- Prefiks dla narzędzi (`toolsCodePrefix`).
+- Prefiksy per kategoria narzędzia (`toolCategoryPrefixes`) konfigurowalne w zakładce „Kody qr/kreskowe”.
+- Logika w UI: prefiks kategorii ma pierwszeństwo nad prefiksem narzędzi.
+
+Uwaga: od wersji 1.8.0 usunięto przestarzałe pola `codePrefix` (ogólny prefiks) oraz `defaultItemName`. Frontend i backend nie korzystają z nich.
+
+### Narzędzia — nowe funkcje
+- Sortowanie tabeli po numerze ewidencyjnym rosnąco (puste wartości na końcu).
+- Elektronarzędzia: podpowiedzi pól „Producent”, „Model”, „Rok produkcji” zasilane z backendu (endpoint sugestii) z bezpiecznym fallbackiem do danych wczytanych na froncie.
+- Szczegóły narzędzia: wyświetlanie „Producent”, „Model”, „Rok produkcji” dla kategorii „Elektronarzędzia”.
+- Eksporty PDF/XLSX: lista i szczegóły zawierają pola „Producent”, „Model”, „Rok produkcji”.
+
+### API — endpoint sugestii (Elektronarzędzia)
+- `GET /api/tools/suggestions?category=Elektronarzędzia`
+  - Zwraca:
+    - `manufacturers`: tablica unikalnych producentów
+    - `models`: tablica unikalnych modeli
+    - `years`: tablica unikalnych lat produkcji (liczby)
+  - Przykład odpowiedzi:
+    ```json
+    {
+      "manufacturers": ["Bosch", "Makita"],
+      "models": ["GSR 12V", "DHP482"],
+      "years": [2020, 2021, 2022]
+    }
+    ```
 
 ## Licencja
 
@@ -239,10 +268,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.7.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.8.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.7.0
+System Zarządzania Narzędziownią - wersja 1.8.0

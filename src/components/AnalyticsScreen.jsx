@@ -10,6 +10,8 @@ function AnalyticsScreen({ tools, employees, user }) {
   const issuedTools = tools?.filter(tool => tool.status === 'wydane').length || 0;
   const totalEmployees = employees?.length || 0;
 
+  const canViewAnalytics = hasPermission(user, PERMISSIONS.VIEW_ANALYTICS);
+  
   const [bhpItems, setBhpItems] = useState([]);
   const [bhpLoading, setBhpLoading] = useState(false);
   const [bhpPermissionDenied, setBhpPermissionDenied] = useState(false);
@@ -147,7 +149,7 @@ function AnalyticsScreen({ tools, employees, user }) {
     const fetchBhp = async () => {
       try {
         // Jeśli brak uprawnień do BHP, nie wywołuj API i pokaż informację
-        if (!hasPermission(user, PERMISSIONS.VIEW_BHP)) {
+        if (!canViewAnalytics || !hasPermission(user, PERMISSIONS.VIEW_BHP)) {
           if (mounted) {
             setBhpPermissionDenied(true);
             setBhpItems([]);
@@ -174,12 +176,16 @@ function AnalyticsScreen({ tools, employees, user }) {
     };
     fetchBhp();
     return () => { mounted = false; };
-  }, []);
+  }, [canViewAnalytics]);
 
   useEffect(() => {
     let mounted = true;
     const fetchService = async () => {
       try {
+        if (!canViewAnalytics) {
+          if (mounted) setServiceSummary({ in_service: [], recent_events: [] });
+          return;
+        }
         setServiceLoading(true);
         const res = await api.get('/api/service-history/summary');
         if (mounted) {
@@ -199,7 +205,19 @@ function AnalyticsScreen({ tools, employees, user }) {
     };
     fetchService();
     return () => { mounted = false; };
-  }, []);
+  }, [canViewAnalytics]);
+
+  // Bramka uprawnień: jeśli brak VIEW_ANALYTICS, pokaż komunikat i nie renderuj reszty UI
+  if (!canViewAnalytics) {
+    return (
+      <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
+          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do analityki (VIEW_ANALYTICS).</p>
+        </div>
+      </div>
+    );
+  }
 
   const parseDateFlexible = (val) => {
     if (!val) return null;

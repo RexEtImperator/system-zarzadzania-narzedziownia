@@ -180,6 +180,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   }, [filteredTools]);
 
   const canViewTools = hasPermission(user, PERMISSIONS.VIEW_TOOLS);
+  const canManageTools = hasPermission(user, PERMISSIONS.MANAGE_TOOLS);
 
   useEffect(() => {
     if (!canViewTools) {
@@ -410,6 +411,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -505,6 +510,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const handleOpenModal = (tool = null) => {
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     setEditingTool(tool);
     setFormData(tool ? { 
       ...tool, 
@@ -571,6 +580,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const handleDelete = async (toolId) => {
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     if (!window.confirm('Czy na pewno chcesz usunąć to narzędzie?')) {
       return;
     }
@@ -590,6 +603,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const handleOpenServiceModal = (tool) => {
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     setServiceTool(tool);
     setServiceQuantity(1);
     setServiceOrderNumber(tool?.service_order_number || '');
@@ -604,6 +621,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const handleConfirmService = async () => {
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     if (!serviceTool) return;
     const maxQty = (serviceTool.quantity || 0) - (serviceTool.service_quantity || 0);
     if (serviceQuantity < 1 || serviceQuantity > maxQty) {
@@ -626,6 +647,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const handleServiceReceive = async () => {
+    if (!canManageTools) {
+      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      return;
+    }
     if (!selectedTool) return;
     const current = selectedTool.service_quantity || 0;
     if (current <= 0) {
@@ -920,6 +945,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     const itemsArr = filteredTools || [];
 
     const headerCells = [
+      'Nr ewidencyjny',
       'Nazwa',
       'Numer fabryczny',
       'Kategoria',
@@ -940,6 +966,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const isElektronarzedzia = String(item.category || '').trim().toLowerCase() === 'elektronarzędzia';
       const insp = (isSpawalnicze && item.inspection_date) ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '';
       const cells = [
+        `<td>${item.inventory_number || ''}</td>`,
         `<td>${item.name || ''}</td>`,
         `<td>${item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')}</td>`,
         `<td>${item.category || ''}</td>`,
@@ -993,6 +1020,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const exportListToXLSX = () => {
     const itemsArr = filteredTools || [];
     const headers = [
+      'Nr ewidencyjny',
       'Nazwa',
       'Numer fabryczny',
       'Kategoria',
@@ -1011,6 +1039,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const isElektronarzedzia = String(item.category || '').trim().toLowerCase() === 'elektronarzędzia';
       const insp = (isSpawalnicze && item.inspection_date) ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '';
       return [
+        item.inventory_number || '',
         item.name || '',
         (item.serial_unreadable ? 'nieczytelny' : (item.serial_number || '')),
         item.category || '',
@@ -1038,6 +1067,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     if (!selectedTool) return;
     const stamp = new Date().toLocaleString('pl-PL');
     const rows = [
+      ['Nr ewidencyjny', selectedTool.inventory_number || '-'],
       ['Nazwa', selectedTool.name || '-'],
       ['SKU', selectedTool.sku || '-'],
       ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '-')],
@@ -1105,6 +1135,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     if (!selectedTool) return;
     const headers = ['Pole', 'Wartość'];
     const fields = [
+      ['Nr ewidencyjny', selectedTool.inventory_number || ''],
       ['Nazwa', selectedTool.name || ''],
       ['SKU', getToolCodeText(selectedTool) || ''],
       ['Numer fabryczny', selectedTool.serial_unreadable ? 'nieczytelny' : (selectedTool.serial_number || '')],
@@ -1239,12 +1270,14 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sharp-text">Zarządzanie narzędziami</h1>
           <p className="text-slate-600 dark:text-slate-400 sharp-text">Dodawaj, edytuj i śledź narzędzia w systemie</p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors sharp-text"
-        >
-          Dodaj narzędzie
-        </button>
+        {canManageTools && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors sharp-text"
+          >
+            Dodaj narzędzie
+          </button>
+        )}
       </div>
 
       {/* Search and Filter Section */}
@@ -1380,26 +1413,28 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.location || '-'}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{getToolCodeText(tool) || '-'}</td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleOpenServiceModal(tool)}
-                          className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 text-sm font-medium sharp-text"
-                        >
-                          Serwis
-                        </button>
-                        <button
-                          onClick={() => handleOpenModal(tool)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium sharp-text"
-                        >
-                          Edytuj
-                        </button>
-                        <button
-                          onClick={() => handleDelete(tool.id)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium sharp-text"
-                        >
-                          Usuń
-                        </button>
-                      </div>
+                      {canManageTools && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleOpenServiceModal(tool)}
+                            className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 text-sm font-medium sharp-text"
+                          >
+                            Serwis
+                          </button>
+                          <button
+                            onClick={() => handleOpenModal(tool)}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium sharp-text"
+                          >
+                            Edytuj
+                          </button>
+                          <button
+                            onClick={() => handleDelete(tool.id)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium sharp-text"
+                          >
+                            Usuń
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1460,24 +1495,28 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 </div>
                 
                 <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-600" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleOpenServiceModal(tool)}
-                    className="flex-1 bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-300 py-2 px-3 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-800 transition-colors text-sm font-medium sharp-text"
-                  >
-                    Serwis
-                  </button>
-                  <button
-                    onClick={() => handleOpenModal(tool)}
-                    className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium sharp-text"
-                  >
-                    Edytuj
-                  </button>
-                  <button
-                    onClick={() => handleDelete(tool.id)}
-                    className="flex-1 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 py-2 px-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors text-sm font-medium sharp-text"
-                  >
-                    Usuń
-                  </button>
+                  {canManageTools && (
+                    <>
+                      <button
+                        onClick={() => handleOpenServiceModal(tool)}
+                        className="flex-1 bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-300 py-2 px-3 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-800 transition-colors text-sm font-medium sharp-text"
+                      >
+                        Serwis
+                      </button>
+                      <button
+                        onClick={() => handleOpenModal(tool)}
+                        className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium sharp-text"
+                      >
+                        Edytuj
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tool.id)}
+                        className="flex-1 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 py-2 px-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors text-sm font-medium sharp-text"
+                      >
+                        Usuń
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -2075,12 +2114,14 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                           <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 sharp-text">Data wysłania: {new Date(selectedTool.service_sent_at).toLocaleString()}</p>
                         )}
                         <div className="pt-2">
-                          <button
-                            onClick={handleServiceReceive}
-                            className="px-3 py-1.5 bg-green-600 dark:bg-green-700 text-white rounded-lg text-sm hover:bg-green-700 dark:hover:bg-green-800 sharp-text"
-                          >
-                            Odebrano
-                          </button>
+                          {canManageTools && (
+                            <button
+                              onClick={handleServiceReceive}
+                              className="px-3 py-1.5 bg-green-600 dark:bg-green-700 text-white rounded-lg text-sm hover:bg-green-700 dark:hover:bg-green-800 sharp-text"
+                            >
+                              Odebrano
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

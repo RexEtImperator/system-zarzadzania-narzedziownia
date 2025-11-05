@@ -1,6 +1,6 @@
 {
   "name": "system-zarzadzania-narzedziownia-frontend",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Frontend dla systemu zarządzania narzędziownią",
   "proxy": "http://localhost:3000",
   "main": "app.js",
@@ -23,6 +23,7 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "http-proxy-middleware": "^2.0.9",
+    "ipp": "^1.1.0",
     "jsbarcode": "^3.12.1",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.1",

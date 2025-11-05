@@ -4,7 +4,29 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/1.8.0...HEAD
+[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/1.9.0...HEAD
+
+## [1.9.0] - 2025-11-05
+
+### Dodane / Zmienione
+- Dashboard: modal „Szybkie wydanie narzędzia” obsługuje multi-skanowanie i wydanie wsadowe.
+  - Lista pozycji z edytowalnymi ilościami, przycisk „Usuń” i szybkie dodawanie znalezionych narzędzi.
+  - Integracja skanera kodów: zeskanowane kody automatycznie dodawane do listy.
+  - Walidacje dostępności i wybór pracownika przed akcją wsadową.
+- Etykiety — Edytor osobnych szablonów: przeciąganie elementów „Tytuł”, „SKU” i „Informacja” w podglądzie.
+- Etykiety — skalowanie tekstów: automatyczna skala dla rozmiarów 51×32, 70×40 oraz 110×40 mm (podgląd).
+- Rozmiary etykiet: zmiana opcji `110×60 mm` na `110×40 mm` we wszystkich edytorach i w eksporcie.
+- Eksport etykiet: eksport PNG odpowiada dokładnie wybranemu rozmiarowi („Rozmiar etykiety”); spójne skalowanie elementów.
+
+### Naprawione
+- Etykiety — kod kreskowy: niezgodność rozmiaru pomiędzy podglądem a pobraną etykietą w „Edytorze osobnych szablonów”.
+  - Ujednolicono obliczanie szerokości/wysokości i skalowanie, z zachowaniem marginesów i czcionek.
+
+### Techniczne
+- Wersja: podbicie `package.json` (root i backend) do `1.9.0`.
+- Dokumentacja: README zaktualizowany (badge, link do wydania, sekcja nowości 1.9.0).
+
+[1.9.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.9.0
 
 ## [1.8.0] - 2025-11-04
 

@@ -5,6 +5,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
+let ipp;
+try {
+  ipp = require('ipp');
+} catch (_) {
+  ipp = null;
+}
 
 // Inicjalizacja aplikacji Express
 const app = express();
@@ -4855,4 +4862,73 @@ app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
       res.json({ message: 'Kategoria została usunięta (by-name)', deleted: true });
     });
   });
+});
+
+// Print API: wysyłanie zadań do drukarek sieciowych (IPP lub Zebra RAW 9100)
+app.post('/api/print', authenticateToken, async (req, res) => {
+  try {
+    const { protocol = 'ipp', printerUrl, contentType = 'image/png', dataBase64, zpl, copies = 1, jobName = 'SZN Label' } = req.body || {};
+    if (!printerUrl) {
+      return res.status(400).json({ message: 'Brak pola printerUrl' });
+    }
+    if (protocol === 'ipp') {
+      if (!ipp) {
+        return res.status(500).json({ message: 'Moduł ipp nie jest zainstalowany. Uruchom npm install ipp.' });
+      }
+      try {
+        const printer = ipp.Printer(printerUrl);
+        const dataBuf = Buffer.from(String(dataBase64 || ''), 'base64');
+        const msg = {
+          'operation': 'Print-Job',
+          'requestId': 1,
+          'attributes': {
+            'requesting-user-name': 'szn',
+            'job-name': jobName,
+            'document-format': contentType
+          },
+          'data': dataBuf
+        };
+        printer.execute('Print-Job', msg, (err, ret) => {
+          if (err) {
+            return res.status(500).json({ message: err.message || 'Błąd IPP' });
+          }
+          return res.json({ status: 'ok', jobId: ret && ret['job-id'] });
+        });
+      } catch (e) {
+        return res.status(500).json({ message: e.message || 'Wyjątek IPP' });
+      }
+    } else if (protocol === 'zebra_raw') {
+      try {
+        const u = new URL(printerUrl);
+        const host = u.hostname;
+        const port = Number(u.port) || 9100;
+        const client = new net.Socket();
+        const payload = zpl ? Buffer.from(zpl, 'utf8') : Buffer.from(String(dataBase64 || ''), 'base64');
+        let responded = false;
+        client.on('error', (err) => {
+          if (!responded) {
+            responded = true;
+            res.status(500).json({ message: err.message || 'Błąd połączenia RAW' });
+          }
+        });
+        client.connect(port, host, () => {
+          client.write(payload);
+          client.end();
+        });
+        client.on('close', () => {
+          if (!responded) {
+            responded = true;
+            res.json({ status: 'ok' });
+          }
+        });
+      } catch (e) {
+        return res.status(500).json({ message: e.message || 'Wyjątek RAW Zebra' });
+      }
+    } else {
+      return res.status(400).json({ message: `Nieobsługiwany protokół: ${protocol}` });
+    }
+  } catch (error) {
+    console.error('Print API error:', error);
+    return res.status(500).json({ message: 'Nieoczekiwany błąd Print API' });
+  }
 });

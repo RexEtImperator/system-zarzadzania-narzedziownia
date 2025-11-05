@@ -34,6 +34,8 @@ const DashboardScreen = ({ user }) => {
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
+  // Multi-skanowanie: lista pozycji do wydania
+  const [quickIssueItems, setQuickIssueItems] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -183,6 +185,105 @@ const DashboardScreen = ({ user }) => {
       searchToolByCode(value);
     } else {
       setFoundTool(null);
+    }
+  };
+
+  // Dodaj znalezione narzędzie do listy pozycji (domyślnie ilość = 1)
+  const addFoundToolToList = () => {
+    if (!foundTool) return;
+    if (foundTool.status !== 'dostępne') {
+      toast.error('Narzędzie nie jest dostępne');
+      return;
+    }
+    const existsIdx = quickIssueItems.findIndex(it => it.tool?.id === foundTool.id);
+    if (existsIdx >= 0) {
+      // Zwiększ ilość, gdy już istnieje
+      const next = quickIssueItems.map((it, idx) => idx === existsIdx ? { ...it, quantity: (it.quantity || 1) + 1 } : it);
+      setQuickIssueItems(next);
+    } else {
+      setQuickIssueItems(prev => [...prev, { tool: foundTool, quantity: 1 }]);
+    }
+    // Wyczyść bieżące wyszukiwanie
+    setFoundTool(null);
+    setSearchCode('');
+  };
+
+  // Dodaj po kodzie (używane przez skaner)
+  const addByCode = async (code) => {
+    try {
+      const response = await api.get(`/api/tools/search?code=${encodeURIComponent(code.trim())}`);
+      const tool = response || null;
+      if (!tool) {
+        toast.error(`Nie znaleziono narzędzia dla kodu: ${code}`);
+        return;
+      }
+      if (tool.status !== 'dostępne') {
+        toast.error(`Niedostępne: ${tool.name} (SKU: ${tool.sku})`);
+        return;
+      }
+      const existsIdx = quickIssueItems.findIndex(it => it.tool?.id === tool.id);
+      if (existsIdx >= 0) {
+        const next = quickIssueItems.map((it, idx) => idx === existsIdx ? { ...it, quantity: (it.quantity || 1) + 1 } : it);
+        setQuickIssueItems(next);
+      } else {
+        setQuickIssueItems(prev => [...prev, { tool, quantity: 1 }]);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Błąd dodawania po kodzie');
+    }
+  };
+
+  const removeItem = (idx) => {
+    setQuickIssueItems(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateItemQty = (idx, qty) => {
+    const q = Math.max(1, parseInt(qty || 1, 10));
+    setQuickIssueItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: q } : it));
+  };
+
+  const clearItems = () => setQuickIssueItems([]);
+
+  // Wydanie wsadowe wszystkich pozycji z listy
+  const handleQuickIssueBatch = async () => {
+    if (!selectedEmployee) {
+      alert('Wybierz pracownika');
+      return;
+    }
+    if (quickIssueItems.length === 0) {
+      alert('Lista pozycji jest pusta');
+      return;
+    }
+    try {
+      let successCount = 0;
+      for (const item of quickIssueItems) {
+        const tool = item.tool;
+        const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
+        try {
+          await api.post(`/api/tools/${tool.id}/issue`, {
+            employee_id: parseInt(selectedEmployee),
+            quantity
+          });
+          successCount += 1;
+        } catch (e) {
+          const msg = e?.response?.data?.message || `Błąd wydania: ${tool?.name || 'narzędzie'}`;
+          toast.error(msg);
+        }
+      }
+      const employee = employees.find(emp => emp.id.toString() === selectedEmployee);
+      const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'pracownikowi';
+      toast.success(`Wydano ${successCount}/${quickIssueItems.length} pozycji ${employeeName}`);
+      // Zamknij modal i wyczyść
+      setShowQuickIssueModal(false);
+      setSearchCode('');
+      setFoundTool(null);
+      setSelectedEmployee('');
+      clearItems();
+      // Odśwież dane dashboard
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Błąd wsadowego wydawania:', error);
+      alert(error?.response?.data?.message || 'Błąd podczas wydawania narzędzi');
     }
   };
 
@@ -810,15 +911,60 @@ const DashboardScreen = ({ user }) => {
                         <p className="text-sm text-green-600 dark:text-green-400">Status: {foundTool.status}</p>
                         <p className="text-sm text-green-600 dark:text-green-400">Lokalizacja: {foundTool.location}</p>
                       </div>
-                      <div className="text-2xl">
-                        {foundTool.status === 'dostępne' ? '✅' : '❌'}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-2xl">{foundTool.status === 'dostępne' ? '✅' : '❌'}</span>
+                        {foundTool.status === 'dostępne' && (
+                          <button
+                            type="button"
+                            onClick={addFoundToolToList}
+                            className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+                          >
+                            Dodaj
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Employee Selection - pokazuje się tylko gdy narzędzie zostało znalezione i jest dostępne */}
-                {foundTool && foundTool.status === 'dostępne' && (
+                {/* Lista pozycji do wydania */}
+                {quickIssueItems.length > 0 && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pozycje do wydania</label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {quickIssueItems.map((it, idx) => (
+                        <div key={it.tool?.id || idx} className="flex items-center justify-between p-2 border rounded-md bg-white dark:bg-gray-700 dark:border-gray-600">
+                          <div className="mr-3">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{it.tool?.name}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-300">SKU: {it.tool?.sku}</div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="number"
+                              min={1}
+                              value={it.quantity}
+                              onChange={(e) => updateItemQty(idx, e.target.value)}
+                              className="w-20 px-2 py-1 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeItem(idx)}
+                              className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md"
+                            >
+                              Usuń
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <button type="button" onClick={clearItems} className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">Wyczyść listę</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Wybór pracownika - pokazuje się gdy są pozycje na liście */}
+                {quickIssueItems.length > 0 && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Wybierz pracownika
@@ -845,7 +991,7 @@ const DashboardScreen = ({ user }) => {
                   </div>
                 )}
                 
-                {searchCode.length >= 3 && !searchLoading && !foundTool && (
+                {searchCode.length >= 3 && !searchLoading && !foundTool && quickIssueItems.length === 0 && (
                   <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700">
                     <p className="text-sm text-red-600 dark:text-red-400">
                       Nie znaleziono narzędzia o kodzie: {searchCode}
@@ -861,21 +1007,20 @@ const DashboardScreen = ({ user }) => {
                     setSearchCode('');
                     setFoundTool(null);
                     setSelectedEmployee('');
+                    clearItems();
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
                 >
                   Anuluj
                 </button>
                 <button
-                  onClick={handleQuickIssue}
-                  disabled={!foundTool || foundTool.status !== 'dostępne' || !selectedEmployee}
+                  onClick={handleQuickIssueBatch}
+                  disabled={quickIssueItems.length === 0 || !selectedEmployee}
                   className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                    foundTool && foundTool.status === 'dostępne' && selectedEmployee
-                      ? 'bg-indigo-600 hover:bg-indigo-700'
-                      : 'bg-gray-400 cursor-not-allowed'
+                    quickIssueItems.length > 0 && selectedEmployee ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  Wydaj narzędzie
+                  Wydaj pozycje
                 </button>
               </div>
             </div>
@@ -976,10 +1121,12 @@ const DashboardScreen = ({ user }) => {
         <BarcodeScanner
           isOpen={showBarcodeScanner}
           onClose={() => setShowBarcodeScanner(false)}
-          onScan={(code) => {
-            setSearchCode(code);
-            searchToolByCode(code);
-            setShowBarcodeScanner(false);
+          onScan={async (code) => {
+            try {
+              await addByCode(code);
+            } finally {
+              setShowBarcodeScanner(false);
+            }
           }}
           onError={handleScanError}
         />

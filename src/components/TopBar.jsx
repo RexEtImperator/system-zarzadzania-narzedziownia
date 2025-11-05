@@ -372,7 +372,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
           >
             <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-white">
-                {user?.username?.charAt(0).toUpperCase() || 'U'}
+                {user?.full_name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="hidden md:block text-left">
@@ -398,7 +398,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
                     <span className="text-base font-medium text-white">
-                      {user?.username?.charAt(0).toUpperCase() || 'U'}
+                      {user?.full_name?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
@@ -418,7 +418,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                 </div>
                 <div className="text-sm text-gray-900 dark:text-white font-medium transition-colors duration-200">
                   {user?.role === 'administrator' ? 'Administrator' : 
-                   user?.role === 'manager' ? 'Menedżer' : 
+                   user?.role === 'manager' ? 'Kierownik' : 
                    user?.role === 'user' ? 'Użytkownik' : 
                    user?.role || 'Nieznana'}
                 </div>

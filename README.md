@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.8.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0)
+[![Wersja](https://img.shields.io/badge/version-1.9.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.9.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
@@ -98,17 +98,23 @@ Uwagi:
 ```
 ├── .github/
 │   └── workflows/
-│       └── ci.yml             # Pipeline CI (build/test)
+│       ├── ci.yml             # Pipeline CI (build/test)
+│       └── release.yml        # Workflow publikacji wydań
+├── .nvmrc                     # Wersja Node używana lokalnie
+├── backend/
+│   └── package.json           # Metadane/backend (pomocnicze)
+├── backups/                   # Zrzuty kopii zapasowych
 ├── public/                    # Pliki statyczne
 │   ├── index.html
 │   ├── favicon.ico
 │   ├── localhost.crt          # Certyfikat dev (HTTPS frontend)
+│   ├── logo*.png/svg          # Ikony
 │   └── logos/                 # Zasoby graficzne
-├── ssl/                       # Klucze/certyfikaty lokalne
-│   ├── localhost.crt
-│   └── localhost.key
+├── scripts/
+│   └── normalize_tools_codes.js  # Normalizacja kodów narzędzi
 ├── src/                       # Kod źródłowy frontendu (React)
 │   ├── App.jsx                # Główny komponent aplikacji
+│   ├── App.test.jsx           # Testy jednostkowe App
 │   ├── api.js                 # Klient API + tokeny
 │   ├── constants.js           # Stałe aplikacji
 │   ├── index.js               # Punkt wejścia
@@ -121,17 +127,43 @@ Uwagi:
 │   └── components/            # Ekrany i komponenty UI
 │       ├── DashboardScreen.jsx
 │       ├── ToolsScreen.jsx
-│       ├── EmployeesScreen.jsx
+│       ├── InventoryScreen.jsx
+│       ├── LabelsManager.jsx
 │       ├── BhpScreen.jsx
+│       ├── EmployeesScreen.jsx
+│       ├── EmployeeModal.jsx
 │       ├── AppConfigScreen.jsx
+│       ├── PositionManagementScreen.jsx
+│       ├── PermissionsModal.jsx
+│       ├── AnalyticsScreen.jsx
+│       ├── AuditLogScreen.jsx
+│       ├── DbViewerScreen.jsx
+│       ├── LoginScreen.jsx
+│       ├── MobileHeader.jsx
+│       ├── BarcodeScanner.jsx
 │       ├── Sidebar.jsx
 │       ├── TopBar.jsx
-│       └── ...                # Pozostałe komponenty (modale, skanery, itd.)
+│       ├── UserManagementScreen.jsx
+│       ├── UserSettingsScreen.jsx
+│       └── index.js           # Rejestr eksportów komponentów
+├── ssl/                       # Klucze/certyfikaty lokalne
+│   ├── localhost.crt
+│   └── localhost.key
 ├── server.js                  # Serwer Express (API, proxy, backupy)
-├── backups/                   # Zrzuty kopii zapasowych
-├── backend/
-│   └── package.json           # Metadane/backend (pomocnicze)
-├── check/debug_*.js                  # Skrypty testowe i narzędziowe (dev)
+├── app.js                     # Wejście aplikacji serwera (skrypty narzędziowe)
+├── tailwind.config.js         # Konfiguracja Tailwind CSS
+├── mobile-cert-install.md     # Instrukcja instalacji certyfikatu na telefonach
+├── check_all_tools_status.js  # Skrypt diagnostyczny
+├── check_database.js          # Sprawdzenie połączenia z bazą
+├── check_database_counts.js   # Licznik rekordów w bazie
+├── check_database_schema.js   # Weryfikacja schematu bazy
+├── check_employee_ids.js      # Kontrola spójności ID pracowników
+├── debug_all_issues.js        # Diagnostyka wydań/zwrotów
+├── debug_cors.js              # Diagnostyka CORS
+├── debug_login.js             # Diagnostyka logowania
+├── debug_receive.js           # Diagnostyka przyjęć
+├── debug_token.js             # Diagnostyka tokenów
+├── dump_db.js                 # Zrzut bazy danych
 ├── generate-ssl.js            # Generator certyfikatów dev
 ├── install-cert.bat           # Instalator certyfikatu w Windows
 ├── README.md                  # Dokumentacja
@@ -165,7 +197,7 @@ Uwagi:
 - Szybkie wydanie i zwrot
 - Historia ostatnich aktywności
 
-## Diagram procesu wypożyczenia/zwrotu
+## Diagram procesu wydania/zwrotu
 
 ```mermaid
 flowchart LR
@@ -187,7 +219,8 @@ flowchart LR
 
 ### Zarządzanie sprzętem BHP
 - Dodawanie nowych sprzętów
-- Edycja istniejących sprzętów
+- Edycja istniejących sprzętów\
+- Terminy przeglądów danego sprzętu z przypomnieniem i oznaczeniem 'Po terminie'
 - Śledzenie statusu (dostępne/wydane)
 - Historia wydań i zwrotów
 
@@ -241,6 +274,11 @@ flowchart LR
 
 Uwaga: od wersji 1.8.0 usunięto przestarzałe pola `codePrefix` (ogólny prefiks) oraz `defaultItemName`. Frontend i backend nie korzystają z nich.
 
+#### Nowości w 1.9.0
+- Dashboard → „Szybkie wydanie narzędzia”: obsługa multi-skanowania i wydania wsadowego (lista pozycji z ilościami, integracja skanera, walidacje dostępności).
+- Etykiety → „Edytor osobnych szablonów”: przeciąganie Tytułu/SKU/Informacji w podglądzie oraz automatyczne skalowanie tekstów dla rozmiarów 51×32, 70×40 i 110×60 mm.
+- Etykiety: eksport PNG zgodny dokładnie z wybranym rozmiarem etykiety; poprawiona zgodność rozmiaru kodu kreskowego pomiędzy podglądem a eksportem.
+
 ### Narzędzia — nowe funkcje
 - Sortowanie tabeli po numerze ewidencyjnym rosnąco (puste wartości na końcu).
 - Elektronarzędzia: podpowiedzi pól „Producent”, „Model”, „Rok produkcji” zasilane z backendu (endpoint sugestii) z bezpiecznym fallbackiem do danych wczytanych na froncie.
@@ -268,10 +306,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.8.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.9.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.9.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.8.0
+System Zarządzania Narzędziownią - wersja 1.9.0

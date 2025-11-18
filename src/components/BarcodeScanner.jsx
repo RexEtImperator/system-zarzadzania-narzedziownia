@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { ShieldExclamationIcon, LockClosedIcon, LightBulbIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import BarcodeScanner from 'react-qr-barcode-scanner';
 
@@ -28,6 +29,7 @@ const BarcodeScannerComponent = ({
   onError,
   displayQuantity
 }) => {
+  const { t } = useLanguage();
   const [hasPermission, setHasPermission] = useState(null);
   const [stopStream, setStopStream] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
@@ -77,7 +79,7 @@ const BarcodeScannerComponent = ({
           console.error('getUserMedia nie jest dostępne w tej przeglądarce');
           setIsSupported(false);
           if (onError) {
-            onError("Twoja przeglądarka nie obsługuje dostępu do kamery. Spróbuj użyć nowszej wersji przeglądarki lub innej przeglądarki (Chrome, Firefox, Safari).");
+            onError(t('scanner.browserNotSupported.message'));
           }
           return false;
         }
@@ -106,7 +108,7 @@ const BarcodeScannerComponent = ({
         console.error('getUserMedia nie jest dostępne');
         setIsSupported(false);
         if (onError) {
-          onError("Funkcja dostępu do kamery nie jest dostępna w tej przeglądarce. Spróbuj użyć nowszej przeglądarki.");
+          onError(t('scanner.browserNotSupported.message'));
         }
         return false;
       }
@@ -171,27 +173,27 @@ const BarcodeScannerComponent = ({
     if (error.name === "NotAllowedError") {
       setHasPermission(false);
       if (onError) {
-        onError("Brak dostępu do kamery. Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.");
+        onError(t('scanner.errors.permissionDenied'));
       }
     } else if (error.name === "NotFoundError") {
       if (onError) {
-        onError("Nie znaleziono kamery. Upewnij się, że urządzenie ma kamerę.");
+        onError(t('scanner.errors.notFound'));
       }
     } else if (error.name === "NotSupportedError") {
       if (onError) {
-        onError("Przeglądarka nie obsługuje dostępu do kamery. Spróbuj użyć innej przeglądarki.");
+        onError(t('scanner.errors.notSupported'));
       }
     } else if (error.name === "NotReadableError") {
       if (onError) {
-        onError("Kamera jest używana przez inną aplikację. Zamknij inne aplikacje używające kamery.");
+        onError(t('scanner.errors.notReadable'));
       }
     } else if (error.name === "OverconstrainedError") {
       if (onError) {
-        onError("Nie można uruchomić kamery z wybranymi ustawieniami. Spróbuj ponownie.");
+        onError(t('scanner.errors.overconstrained'));
       }
     } else {
       if (onError) {
-        onError(`Wystąpił błąd podczas uruchamiania kamery: ${error.message || 'Nieznany błąd'}`);
+        onError(t('scanner.errors.generic', { message: error.message || 'Unknown error' }));
       }
     }
   };
@@ -219,7 +221,7 @@ const BarcodeScannerComponent = ({
       <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            Skanuj kod kreskowy
+            {t('scanner.title')}
           </h3>
           <button
             onClick={handleClose}
@@ -235,25 +237,25 @@ const BarcodeScannerComponent = ({
               <ShieldExclamationIcon className="w-16 h-16 mx-auto mb-4" aria-hidden="true" />
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">
-              Przeglądarka nie obsługuje kamery
+              {t('scanner.browserNotSupported.title')}
             </h4>
             <p className="text-gray-700 mb-4">
-              Twoja przeglądarka nie obsługuje skanowania kodów. 
+              {t('scanner.browserNotSupported.message')}
             </p>
             <div className="text-sm text-gray-600 mb-4">
-              <p className="mb-2">Spróbuj:</p>
+              <p className="mb-2">{t('scanner.browserNotSupported.tipsTitle')}</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Użyć nowszej wersji przeglądarki</li>
-                <li>Przełączyć się na Chrome, Firefox lub Safari</li>
-                <li>Sprawdzić czy używasz HTTPS (wymagane dla kamery)</li>
-                <li>Wprowadzić kod ręcznie</li>
+                <li>{t('scanner.browserNotSupported.tips.useNewer')}</li>
+                <li>{t('scanner.browserNotSupported.tips.switchBrowser')}</li>
+                <li>{t('scanner.browserNotSupported.tips.useHttps')}</li>
+                <li>{t('scanner.browserNotSupported.tips.enterManually')}</li>
               </ul>
             </div>
             <button
               onClick={handleClose}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
             >
-              Zamknij
+              {t('scanner.close')}
             </button>
           </div>
         ) : hasPermission === false ? (
@@ -262,13 +264,13 @@ const BarcodeScannerComponent = ({
               <LockClosedIcon className="w-16 h-16 mx-auto mb-4" aria-hidden="true" />
             </div>
             <p className="text-gray-700 mb-4">
-              Brak dostępu do kamery. Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.
+              {t('scanner.permissionDenied')}
             </p>
             <button
               onClick={handleClose}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
             >
-              Zamknij
+              {t('scanner.close')}
             </button>
           </div>
         ) : (
@@ -345,10 +347,10 @@ const BarcodeScannerComponent = ({
                     {isScanning ? (
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span>Skanowanie...</span>
+                        <span>{t('scanner.overlay.scanning')}</span>
                       </div>
                     ) : (
-                      <span>Gotowy do skanowania</span>
+                      <span>{t('scanner.overlay.ready')}</span>
                     )}
                   </div>
                 </div>
@@ -358,9 +360,9 @@ const BarcodeScannerComponent = ({
             {/* Ostatnio zeskanowany kod */}
             {lastScannedCode && (
               <div className="mb-3 text-center text-sm text-gray-700">
-                Ostatni kod: <span className="font-mono">{lastScannedCode}</span>
+                {t('scanner.lastCode')}: <span className="font-mono">{lastScannedCode}</span>
                 {typeof displayQuantity !== 'undefined' && displayQuantity !== null && (
-                  <span className="ml-2">| Ilość: <span className="font-semibold">{displayQuantity}</span></span>
+                  <span className="ml-2">| {t('scanner.quantity')}: <span className="font-semibold">{displayQuantity}</span></span>
                 )}
               </div>
             )}
@@ -371,14 +373,14 @@ const BarcodeScannerComponent = ({
                 className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded"
               >
                 <LightBulbIcon className="w-5 h-5" aria-hidden="true" />
-                <span>{torchEnabled ? 'Wyłącz' : 'Włącz'} latarkę</span>
+                <span>{torchEnabled ? t('scanner.torch.off') : t('scanner.torch.on')}</span>
               </button>
 
               <button
                 onClick={handleClose}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
               >
-                Anuluj
+                {t('scanner.buttons.cancel')}
               </button>
             </div>
 
@@ -386,13 +388,13 @@ const BarcodeScannerComponent = ({
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-center mb-2">
                   <InformationCircleIcon className="w-5 h-5 text-blue-500 mr-2" aria-hidden="true" />
-                  <span className="font-medium text-blue-700">Wskazówki skanowania</span>
+                  <span className="font-medium text-blue-700">{t('scanner.tips.title')}</span>
                 </div>
                 <ul className="text-xs text-blue-600 space-y-1">
-                  <li>• Trzymaj telefon stabilnie nad kodem</li>
-                  <li>• Upewnij się, że kod jest dobrze oświetlony</li>
-                  <li>• Kod powinien wypełniać ramkę skanowania</li>
-                  <li>• Poczekaj na automatyczne rozpoznanie</li>
+                  <li>• {t('scanner.tips.holdSteady')}</li>
+                  <li>• {t('scanner.tips.wellLit')}</li>
+                  <li>• {t('scanner.tips.fillFrame')}</li>
+                  <li>• {t('scanner.tips.waitRecognition')}</li>
                 </ul>
               </div>
               
@@ -400,18 +402,18 @@ const BarcodeScannerComponent = ({
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-center mb-2">
                   <LightBulbIcon className="w-5 h-5 text-yellow-600 mr-2" aria-hidden="true" />
-                  <span className="font-medium text-yellow-700">Naklejki z drukarki etykiet</span>
+                  <span className="font-medium text-yellow-700">{t('scanner.tips.labels.title')}</span>
                 </div>
                 <ul className="text-xs text-yellow-700 space-y-1">
-                  <li>• Unikaj odbić światła - nachyl telefon lekko</li>
-                  <li>• Trzymaj telefon bliżej (5-10 cm od naklejki)</li>
-                  <li>• Włącz latarkę dla lepszego kontrastu</li>
-                  <li>• Poczekaj 2-3 sekundy na rozpoznanie</li>
-                  <li>• Sprawdź czy naklejka nie jest uszkodzona</li>
+                  <li>• {t('scanner.tips.labels.avoidGlare')}</li>
+                  <li>• {t('scanner.tips.labels.closerDistance')}</li>
+                  <li>• {t('scanner.tips.labels.useTorch')}</li>
+                  <li>• {t('scanner.tips.labels.waitSeconds')}</li>
+                  <li>• {t('scanner.tips.labels.checkSticker')}</li>
                 </ul>
               </div>
               
-              <p>Skieruj kamerę na kod kreskowy lub kod QR</p>
+              <p>{t('scanner.tips.finalInstruction')}</p>
             </div>
           </div>
         )}

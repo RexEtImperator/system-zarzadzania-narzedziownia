@@ -3,8 +3,11 @@ import * as XLSX from 'xlsx';
 import api from '../api';
 import { formatDateOnly } from '../utils/dateUtils';
 import { PERMISSIONS, hasPermission } from '../constants';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function AnalyticsScreen({ tools, employees, user }) {
+  const { t, language } = useLanguage();
+  const localeMap = { pl: 'pl-PL', en: 'en-GB', de: 'de-DE' };
   const totalTools = tools?.length || 0;
   const availableTools = tools?.filter(tool => tool.status === 'dostępne').length || 0;
   const issuedTools = tools?.filter(tool => tool.status === 'wydane').length || 0;
@@ -31,7 +34,7 @@ function AnalyticsScreen({ tools, employees, user }) {
   }, [serviceSummary, pageSize]);
 
   const exportServiceHistoryToPDF = () => {
-    const stamp = new Date().toLocaleString('pl-PL');
+    const stamp = new Date().toLocaleString(localeMap[language] || undefined);
     const inServiceRows = (serviceSummary.in_service || []).map(item => ([
       item.name || '-',
       item.sku || '-',
@@ -42,37 +45,37 @@ function AnalyticsScreen({ tools, employees, user }) {
     const recentRows = (serviceSummary.recent_events || []).map(ev => ([
       ev.name || '-',
       ev.sku || '-',
-      (ev.action === 'sent' ? 'Wysłano' : 'Odebrano'),
+      (ev.action === 'sent' ? t('analytics.serviceHistory.action.sent') : t('analytics.serviceHistory.action.received')),
       (ev.quantity ?? '-') + ' szt.',
       ev.order_number || '-',
       ev.created_at ? formatDateOnly(ev.created_at) : '-'
     ]));
 
     const inServiceTable = `
-      <h2>Aktualnie w serwisie</h2>
+      <h2>${t('analytics.serviceHistory.inService')}</h2>
       <table>
         <thead><tr>
-          <th>Narzędzie</th><th>SKU</th><th>Ilość</th><th>Nr zlecenia</th><th>Wysłano</th>
+          <th>${t('analytics.serviceHistory.headers.tool')}</th><th>${t('analytics.serviceHistory.headers.sku')}</th><th>${t('analytics.serviceHistory.headers.quantity')}</th><th>${t('analytics.serviceHistory.headers.orderNumber')}</th><th>${t('analytics.serviceHistory.headers.sent')}</th>
         </tr></thead>
         <tbody>
-          ${inServiceRows.map(r => `<tr>${r.map(c => `<td>${String(c)}</td>`).join('')}</tr>`).join('') || '<tr><td colspan="5">Brak danych</td></tr>'}
+          ${inServiceRows.map(r => `<tr>${r.map(c => `<td>${String(c)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="5">${t('analytics.serviceHistory.noData')}</td></tr>`}
         </tbody>
       </table>`;
 
     const recentTable = `
-      <h2>Ostatnie zdarzenia</h2>
+      <h2>${t('analytics.serviceHistory.recentEvents')}</h2>
       <table>
         <thead><tr>
-          <th>Narzędzie</th><th>SKU</th><th>Akcja</th><th>Ilość</th><th>Nr zlecenia</th><th>Data</th>
+          <th>${t('analytics.serviceHistory.headers.tool')}</th><th>${t('analytics.serviceHistory.headers.sku')}</th><th>${t('analytics.serviceHistory.headers.action')}</th><th>${t('analytics.serviceHistory.headers.quantity')}</th><th>${t('analytics.serviceHistory.headers.orderNumber')}</th><th>${t('analytics.serviceHistory.headers.date')}</th>
         </tr></thead>
         <tbody>
-          ${recentRows.map(r => `<tr>${r.map(c => `<td>${String(c)}</td>`).join('')}</tr>`).join('') || '<tr><td colspan="6">Brak danych</td></tr>'}
+          ${recentRows.map(r => `<tr>${r.map(c => `<td>${String(c)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="6">${t('analytics.serviceHistory.noData')}</td></tr>`}
         </tbody>
       </table>`;
 
     const html = `
       <html><head><meta charset=\"utf-8\" />
-      <title>Historia serwisowania — Analityka</title>
+      <title>${t('analytics.serviceHistory.title')}</title>
       <style>
         body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
         h1 { font-size: 18px; margin: 0 0 8px; }
@@ -86,8 +89,8 @@ function AnalyticsScreen({ tools, employees, user }) {
       </style>
       </head>
       <body>
-        <h1>Historia serwisowania</h1>
-        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <h1>${t('analytics.serviceHistory.title')}</h1>
+        <div class=\"meta\">${t('analytics.serviceHistory.generatedAt')}: ${stamp}</div>
         ${inServiceTable}
         ${recentTable}
       </body></html>`;
@@ -113,7 +116,7 @@ function AnalyticsScreen({ tools, employees, user }) {
   };
 
   const exportServiceHistoryToXLSX = () => {
-    const inServiceHeaders = ['Narzędzie', 'SKU', 'Ilość', 'Nr zlecenia', 'Wysłano'];
+    const inServiceHeaders = [t('analytics.serviceHistory.headers.tool'), t('analytics.serviceHistory.headers.sku'), t('analytics.serviceHistory.headers.quantity'), t('analytics.serviceHistory.headers.orderNumber'), t('analytics.serviceHistory.headers.sent')];
     const inServiceRows = (serviceSummary.in_service || []).map(item => [
       item.name || '',
       item.sku || '',
@@ -123,11 +126,11 @@ function AnalyticsScreen({ tools, employees, user }) {
     ]);
     const inServiceAoA = [inServiceHeaders, ...inServiceRows];
 
-    const recentHeaders = ['Narzędzie', 'SKU', 'Akcja', 'Ilość', 'Nr zlecenia', 'Data'];
+    const recentHeaders = [t('analytics.serviceHistory.headers.tool'), t('analytics.serviceHistory.headers.sku'), t('analytics.serviceHistory.headers.action'), t('analytics.serviceHistory.headers.quantity'), t('analytics.serviceHistory.headers.orderNumber'), t('analytics.serviceHistory.headers.date')];
     const recentRows = (serviceSummary.recent_events || []).map(ev => [
       ev.name || '',
       ev.sku || '',
-      ev.action === 'sent' ? 'Wysłano' : 'Odebrano',
+      ev.action === 'sent' ? t('analytics.serviceHistory.action.sent') : t('analytics.serviceHistory.action.received'),
       ev.quantity ?? '',
       ev.order_number || '',
       ev.created_at ? formatDateOnly(ev.created_at) : ''
@@ -137,11 +140,11 @@ function AnalyticsScreen({ tools, employees, user }) {
     const wb = XLSX.utils.book_new();
     const wsInService = XLSX.utils.aoa_to_sheet(inServiceAoA);
     const wsRecent = XLSX.utils.aoa_to_sheet(recentAoA);
-    XLSX.utils.book_append_sheet(wb, wsInService, 'W serwisie');
-    XLSX.utils.book_append_sheet(wb, wsRecent, 'Zdarzenia');
+    XLSX.utils.book_append_sheet(wb, wsInService, t('analytics.serviceHistory.inService'));
+    XLSX.utils.book_append_sheet(wb, wsRecent, t('analytics.serviceHistory.recentEvents'));
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-    downloadBlob(`historia_serwisu_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
+    downloadBlob(`service_history_${stamp}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', wbout);
   };
 
   useEffect(() => {
@@ -212,8 +215,8 @@ function AnalyticsScreen({ tools, employees, user }) {
     return (
       <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
-          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do analityki (VIEW_ANALYTICS).</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.permissions.title')}</h3>
+          <p className="text-slate-600 dark:text-slate-400">{t('analytics.permissions.viewAnalyticsDenied')}</p>
         </div>
       </div>
     );
@@ -282,21 +285,21 @@ function AnalyticsScreen({ tools, employees, user }) {
   return (
    <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
      <div className="mb-6">
-       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analityka</h1>
-       <p className="text-slate-600 dark:text-slate-400">Przegląd statystyk i raportów systemu</p>
+       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.title')}</h1>
+       <p className="text-slate-600 dark:text-slate-400">{t('analytics.subtitle')}</p>
      </div>
 
      <div className="mt-8">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Nadchodzące przeglądy</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('analytics.upcomingInspections')}</h3>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 dark:bg-red-900/30">
-                <span className="text-xs font-medium text-red-700 dark:text-red-300">Przeterminowane</span>
+                <span className="text-xs font-medium text-red-700 dark:text-red-300">{t('analytics.overdue')}</span>
                 <span className="text-xs font-bold text-red-700 dark:text-red-300">{overdueInspections.length}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Nadchodzące (&lt;30 dni)</span>
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{t('analytics.upcomingUnder30')}</span>
                 <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{upcomingInspections.length}</span>
               </div>
             </div>
@@ -304,18 +307,18 @@ function AnalyticsScreen({ tools, employees, user }) {
 
           {bhpPermissionDenied && (
             <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/40 text-slate-700 dark:text-slate-300">
-              Brak uprawnień do sekcji BHP (VIEW_BHP). Wyświetlamy tylko dane z modułu Narzędzia.
+              {t('analytics.bhpPermissionDenied')}
             </div>
           )}
 
           {bhpLoading ? (
-            <div className="text-sm text-slate-600 dark:text-slate-400">Ładowanie danych przeglądów...</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.loadingInspections')}</div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Przeterminowane (Narzędzia)</h4>
+                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.overdueTools')}</h4>
                 {overdueTools.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak przeterminowanych przeglądów narzędzi.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.noOverdueTools')}</p>
                 ) : (
                   <ul className="space-y-2">
                     {overdueTools.slice(0, 10).map(item => (
@@ -323,12 +326,12 @@ function AnalyticsScreen({ tools, employees, user }) {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
-                            <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">Narzędzia</span>
+                            <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">{t('analytics.chip.tools')}</span>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Przegląd: {formatDateOnly(item.inspection_date)}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sent')}: {formatDateOnly(item.inspection_date)}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{Math.abs(item.daysTo)} dni po terminie</span>
+                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{t('analytics.phrases.daysOverdue', { count: Math.abs(item.daysTo) })}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -340,7 +343,7 @@ function AnalyticsScreen({ tools, employees, user }) {
                             }}
                             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                           >
-                            Szczegóły
+                            {t('common.details')}
                           </button>
                         </div>
                       </li>
@@ -348,9 +351,9 @@ function AnalyticsScreen({ tools, employees, user }) {
                   </ul>
                 )}
 
-                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">Przeterminowane (BHP)</h4>
+                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">{t('analytics.overdueBhp')}</h4>
                 {overdueBhp.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak przeterminowanych przeglądów BHP.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.noOverdueBhp')}</p>
                 ) : (
                   <ul className="space-y-2">
                     {overdueBhp.slice(0, 10).map(item => (
@@ -358,12 +361,12 @@ function AnalyticsScreen({ tools, employees, user }) {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
-                            <span className="px-2 py-0.5 text-xs rounded-full border bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700">BHP</span>
+                            <span className="px-2 py-0.5 text-xs rounded-full border bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700">{t('analytics.chip.bhp')}</span>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Przegląd: {formatDateOnly(item.inspection_date)}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sent')}: {formatDateOnly(item.inspection_date)}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{Math.abs(item.daysTo)} dni po terminie</span>
+                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{t('analytics.phrases.daysOverdue', { count: Math.abs(item.daysTo) })}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -375,7 +378,7 @@ function AnalyticsScreen({ tools, employees, user }) {
                             }}
                             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                           >
-                            Szczegóły
+                            {t('common.details')}
                           </button>
                         </div>
                       </li>
@@ -385,9 +388,9 @@ function AnalyticsScreen({ tools, employees, user }) {
               </div>
 
               <div>
-                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">Nadchodzące (&lt;30 dni)</h4>
+                <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.upcoming')}</h4>
                 {upcomingInspections.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak nadchodzących przeglądów w ciągu 30 dni.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.noUpcoming')}</p>
                 ) : (
                   <ul className="space-y-2">
                     {upcomingInspections.slice(0, 10).map(item => (
@@ -395,12 +398,12 @@ function AnalyticsScreen({ tools, employees, user }) {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
-                            <span className={`px-2 py-0.5 text-xs rounded-full border ${item.source === 'bhp' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'}`}>{item.source === 'bhp' ? 'BHP' : 'Narzędzia'}</span>
+                            <span className={`px-2 py-0.5 text-xs rounded-full border ${item.source === 'bhp' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'}`}>{item.source === 'bhp' ? t('analytics.chip.bhp') : t('analytics.chip.tools')}</span>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Przegląd: {formatDateOnly(item.inspection_date)}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sent')}: {formatDateOnly(item.inspection_date)}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">za {item.daysTo} dni</span>
+                          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{t('analytics.phrases.inDays', { count: item.daysTo })}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -412,7 +415,7 @@ function AnalyticsScreen({ tools, employees, user }) {
                             }}
                             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                           >
-                            Szczegóły
+                            {t('common.details')}
                           </button>
                         </div>
                       </li>
@@ -430,28 +433,28 @@ function AnalyticsScreen({ tools, employees, user }) {
       <div className="mt-8">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Historia serwisowania</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('analytics.serviceHistory.title')}</h3>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={exportServiceHistoryToPDF}
                 className="px-3 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
               >
-                Eksport PDF
+                {t('analytics.serviceHistory.exportPDF')}
               </button>
               <button
                 type="button"
                 onClick={exportServiceHistoryToXLSX}
                 className="px-3 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
               >
-                Eksport XLSX
+                {t('analytics.serviceHistory.exportXLSX')}
               </button>
             </div>
           </div>
 
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-slate-600 dark:text-slate-400">
-              Rozmiar strony:
+              {t('analytics.serviceHistory.rowsCount')}:
               <select
                 className="ml-2 px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
                 value={pageSize}
@@ -463,18 +466,18 @@ function AnalyticsScreen({ tools, employees, user }) {
               </select>
             </div>
             <div className="text-xs text-slate-600 dark:text-slate-400">
-              Łącznie: {(serviceSummary.in_service?.length || 0) + (serviceSummary.recent_events?.length || 0)} pozycji
+              {t('analytics.serviceHistory.total', { count: (serviceSummary.in_service?.length || 0) + (serviceSummary.recent_events?.length || 0) })}
             </div>
           </div>
 
           {serviceLoading ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">Ładowanie danych serwisowych...</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.loadingService')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">W serwisie</h5>
+                <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">{t('analytics.serviceHistory.inService')}</h5>
                 {serviceSummary.in_service.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak narzędzi aktualnie w serwisie.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.serviceHistory.noInService')}</p>
                 ) : (
                   <ul className="space-y-2">
                     {(() => {
@@ -487,15 +490,15 @@ function AnalyticsScreen({ tools, employees, user }) {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">SKU: <span className="font-mono">{item.sku}</span></p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sku')}: <span className="font-mono">{item.sku}</span></p>
                             </div>
                             <div className="text-right">
                               <p className="text-sm text-slate-700 dark:text-slate-200">{item.service_quantity} szt.</p>
                               {item.service_order_number && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Zlecenie: <span className="font-mono">{item.service_order_number}</span></p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.orderNumber')}: <span className="font-mono">{item.service_order_number}</span></p>
                               )}
                               {item.service_sent_at && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Wysłano: {formatDateOnly(item.service_sent_at)}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sent')}: {formatDateOnly(item.service_sent_at)}</p>
                               )}
                             </div>
                           </div>
@@ -512,10 +515,10 @@ function AnalyticsScreen({ tools, employees, user }) {
                       onClick={() => setSvcPage(p => Math.max(1, p - 1))}
                       disabled={svcPage <= 1}
                     >
-                      Poprzednia
+                      {t('analytics.pagination.prev')}
                     </button>
                     <span className="text-xs text-slate-600 dark:text-slate-400">
-                      Strona {svcPage} z {Math.max(1, Math.ceil(serviceSummary.in_service.length / pageSize))}
+                      {t('analytics.pagination.page')} {svcPage} {t('analytics.pagination.of')} {Math.max(1, Math.ceil(serviceSummary.in_service.length / pageSize))}
                     </span>
                     <button
                       type="button"
@@ -523,15 +526,15 @@ function AnalyticsScreen({ tools, employees, user }) {
                       onClick={() => setSvcPage(p => Math.min(Math.max(1, Math.ceil(serviceSummary.in_service.length / pageSize)), p + 1))}
                       disabled={svcPage >= Math.ceil(serviceSummary.in_service.length / pageSize)}
                     >
-                      Następna
+                      {t('analytics.pagination.next')}
                     </button>
                   </div>
                 )}
               </div>
               <div>
-                <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Ostatnie zdarzenia</h5>
+                <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">{t('analytics.serviceHistory.recentEvents')}</h5>
                 {serviceSummary.recent_events.length === 0 ? (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Brak zdarzeń serwisowych.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.serviceHistory.noRecentEvents')}</p>
                 ) : (
                   <ul className="space-y-2">
                     {(() => {
@@ -544,15 +547,15 @@ function AnalyticsScreen({ tools, employees, user }) {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{ev.name}</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">SKU: <span className="font-mono">{ev.sku}</span></p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.sku')}: <span className="font-mono">{ev.sku}</span></p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-slate-700 dark:text-slate-200">{ev.action === 'sent' ? 'Wysłano' : 'Odebrano'}: {ev.quantity} szt.</p>
+                              <p className="text-sm text-slate-700 dark:text-slate-200">{t(ev.action === 'sent' ? 'analytics.serviceHistory.action.sent' : 'analytics.serviceHistory.action.received')}: {ev.quantity} szt.</p>
                               {ev.order_number && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Zlecenie: <span className="font-mono">{ev.order_number}</span></p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.orderNumber')}: <span className="font-mono">{ev.order_number}</span></p>
                               )}
                               {ev.created_at && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Data: {formatDateOnly(ev.created_at)}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{t('analytics.serviceHistory.headers.date')}: {formatDateOnly(ev.created_at)}</p>
                               )}
                             </div>
                           </div>
@@ -569,10 +572,10 @@ function AnalyticsScreen({ tools, employees, user }) {
                       onClick={() => setEventsPage(p => Math.max(1, p - 1))}
                       disabled={eventsPage <= 1}
                     >
-                      Poprzednia
+                      {t('analytics.pagination.prev')}
                     </button>
                     <span className="text-xs text-slate-600 dark:text-slate-400">
-                      Strona {eventsPage} z {Math.max(1, Math.ceil(serviceSummary.recent_events.length / pageSize))}
+                      {t('analytics.pagination.page')} {eventsPage} {t('analytics.pagination.of')} {Math.max(1, Math.ceil(serviceSummary.recent_events.length / pageSize))}
                     </span>
                     <button
                       type="button"
@@ -580,7 +583,7 @@ function AnalyticsScreen({ tools, employees, user }) {
                       onClick={() => setEventsPage(p => Math.min(Math.max(1, Math.ceil(serviceSummary.recent_events.length / pageSize)), p + 1))}
                       disabled={eventsPage >= Math.ceil(serviceSummary.recent_events.length / pageSize)}
                     >
-                      Następna
+                      {t('analytics.pagination.next')}
                     </button>
                   </div>
                 )}

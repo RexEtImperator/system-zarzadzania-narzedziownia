@@ -12,6 +12,7 @@ const EmployeeModal = ({
     firstName: '',
     lastName: '',
     phone: '',
+    email: '',
     departmentId: '',
     positionId: '',
     brandNumber: '',
@@ -26,6 +27,7 @@ const EmployeeModal = ({
         firstName: employee.firstName || '',
         lastName: employee.lastName || '',
         phone: employee.phone || '',
+        email: employee.email || '',
         departmentId: employee.departmentId || '',
         positionId: employee.positionId || '',
         brandNumber: employee.brandNumber || '',
@@ -36,6 +38,7 @@ const EmployeeModal = ({
         firstName: '',
         lastName: '',
         phone: '',
+        email: '',
         departmentId: '',
         positionId: '',
         brandNumber: '',
@@ -172,6 +175,21 @@ const EmployeeModal = ({
                         value={formData.phone}
                         onChange={handleChange}
                         placeholder="np. 500 600 700"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
+                      />
+                    </div>
+
+                  <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                        E-mail
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        id="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="np. jan.kowalski@example.com"
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>

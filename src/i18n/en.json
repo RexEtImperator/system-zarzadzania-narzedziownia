@@ -1,0 +1,854 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "tools": "Tools",
+    "bhp": "BHP",
+    "inventory": "Inventory",
+    "employees": "Employees",
+    "labels": "Labels",
+    "analytics": "Analytics",
+    "admin": "Settings",
+    "report": "Report"
+  },
+  "screens": {
+    "dashboard": "Dashboard",
+    "tools": "Tools",
+    "bhp": "BHP",
+    "employees": "Employees",
+    "analytics": "Analytics",
+    "labels": "Labels",
+    "admin": "Settings",
+    "user-management": "User Management",
+    "config": "Configuration",
+    "audit": "Audit Log",
+    "user-settings": "User Settings",
+    "report": "Reports",
+    "defaultTitle": "Tool Management System"
+  },
+  "common": {
+    "days": "days",
+    "loading": "Loading…",
+    "noData": "No data.",
+    "selectEmployee": "Select an employee to view data.",
+    "error": "An error occurred.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "remove": "Remove",
+    "clearList": "Clear list",
+    "saveChanges": "Save changes",
+    "saving": "Saving...",
+    "details": "Details"
+  },
+  "Theme": {
+    "useThemeProvider": "useTheme must be used within ThemeProvider"
+  },
+  "loading": {
+    "tables": "Loading tables…",
+    "departments": "Loading departments…",
+    "categories": "Loading categories…",
+    "differences": "Loading differences…",
+    "history": "Loading history…",
+    "sessions": "Loading sessions…",
+    "data": "Loading data…",
+    "issuedTools": "Loading issued tools…",
+    "employees": "Loading employees…"
+  },
+  "noData": {
+    "categories": "No categories",
+    "sessions": "No sessions",
+    "tables": "No tables",
+    "issuedTools": "No issued tools"
+  },
+  "reports": {
+    "title": "Report an issue",
+    "description": "Choose type and fill in details",
+    "tabs": {
+      "form": "Form",
+      "reported": "Reported",
+      "bhpIssued": "Issued BHP"
+    },
+    "type": {
+      "label": "Report type",
+      "employee": "Employee",
+      "tool": "Issued tool",
+      "bhpIssued": "Issued BHP",
+      "bhp": "BHP",
+      "other": "Other"
+    },
+    "employee": { "label": "Employee" },
+    "employeeManual": { "label": "Employee (enter name)", "placeholder": "Full name of the person the report concerns" },
+    "tool": { "label": "Tool" },
+    "bhpIssued": { "label": "Issued BHP equipment:" },
+    "bhp": { "label": "BHP category", "placeholder": "e.g. Risk assessment, inspection, accident" },
+    "other": { "label": "Subject", "placeholder": "Short subject" },
+    "details": { "label": "Description", "placeholder": "Describe event or irregularity details" },
+    "severity": {
+      "label": "Priority",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "attachments": {
+      "label": "Attachments (photos)",
+      "hint": "You can add several photos as attachments"
+    },
+    "issuedTools": {
+      "loading": "Loading issued tools…",
+      "selectEmployee": "Select an employee to see issued tools.",
+      "none": "No issued tools."
+    },
+    "issuedBhp": {
+      "loading": "Loading issued BHP equipment…",
+      "selectEmployee": "Select an employee to see issued BHP equipment.",
+      "none": "No issued BHP equipment."
+    },
+    "filters": {
+      "type": "Filter: type",
+      "severity": "Filter: priority",
+      "status": "Filter: status"
+    },
+    "list": {
+      "type": "Type",
+      "subject": "Subject / Details",
+      "severity": "Priority",
+      "status": "Status",
+      "created": "Created",
+      "attachments": "Attachments",
+      "actions": "Actions"
+    },
+    "status": {
+      "accepted": "Accepted",
+      "checking": "Checking",
+      "resolved": "Resolved"
+    },
+    "submit": "Submit report",
+    "delete": {
+      "title": "Delete report",
+      "confirm": "Delete",
+      "aria": "Delete report",
+      "messageWithTarget": "Are you sure you want to delete the report \"{subject}\" (ID: {id})? This operation is irreversible.",
+      "messageGeneric": "Are you sure you want to delete this report? This operation is irreversible."
+    },
+    "toast": {
+      "success": "Report submitted",
+      "error": "Failed to submit report",
+      "fetchError": "Failed to fetch reports",
+      "statusUpdated": "Report status updated",
+      "statusError": "Failed to update status"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "subtitle": "Stock overview, consumables, and sessions",
+    "permissions": {
+      "title": "No permissions",
+      "viewInventoryDenied": "You do not have permission to view inventory (VIEW_INVENTORY)."
+    },
+    "sessions": {
+      "title": "Inventory sessions",
+      "newNamePlaceholder": "New session name",
+      "notesPlaceholder": "Notes (optional)",
+      "creating": "Creating…",
+      "createBtn": "New session",
+      "headers": {
+        "name": "Name",
+        "status": "Status",
+        "counted": "Counted items",
+        "startedAt": "Start date",
+        "finishedAt": "End date"
+      },
+      "details": {
+        "status": "Status",
+        "counted": "Counted",
+        "start": "Start",
+        "end": "End"
+      },
+      "select": "Select",
+      "pause": "Pause",
+      "end": "End",
+      "resume": "Resume",
+      "delete": "Delete",
+      "selected": "Selected session",
+      "errors": {
+        "onlyAdminCreate": "Only administrators can create sessions",
+        "nameRequired": "Enter a session name",
+        "createFailed": "Failed to create session",
+        "onlyAdminStatus": "Only administrators can change session status",
+        "statusFailed": "Changing status failed",
+        "onlyAdminDelete": "Only administrators can delete sessions",
+        "onlyEndedDelete": "Only ended sessions can be deleted"
+      },
+      "modaldelete": {
+        "confirm": "Are you sure you want to permanently delete session \"{{name}}\"?",
+        "success": "Session was permanently deleted.",
+        "failed": "Deleting session failed"
+      }
+    },
+    "scan": {
+      "qtyPlaceholder": "Quantity",
+      "open": "Scan",
+      "last": "Last counted",
+      "errors": {
+        "noSession": "No selected session",
+        "failed": "Scan error"
+      },
+      "success": {
+        "counted": "Counted"
+      }
+    },
+    "diffs": {
+      "title": "Stock differences",
+      "filterPlaceholder": "Filter by name or SKU",
+      "minAbsPlaceholder": "Min. |difference|",
+      "exporting": "Exporting…",
+      "exportCsv": "Export CSV",
+      "autoAcceptDisabled": "Do not auto-accept",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "systemQty": "System qty",
+        "countedQty": "Counted qty",
+        "difference": "Difference"
+      },
+      "addCorrection": "Add correction",
+      "empty": "No differences to display",
+      "correctedTag": "Corrected"
+    },
+    "history": {
+      "title": "Corrections history",
+      "pendingOnly": "Pending only",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "difference": "Difference",
+        "reason": "Reason",
+        "status": "Status",
+        "created": "Created",
+        "acceptedBy": "Approved by",
+        "acceptedAt": "Approved at"
+      },
+      "status": {
+        "accepted": "Accepted",
+        "pending": "Pending"
+      },
+      "accept": {
+        "title": "Approve correction",
+        "aria": "Approve correction",
+        "acceptedLabel": "Accepted"
+      },
+      "delete": {
+        "title": "Delete correction",
+        "aria": "Delete correction"
+      },
+      "empty": "No corrections to display"
+    },
+    "correction": {
+      "modal": {
+        "title": "Add correction",
+        "item": "Item",
+        "systemQty": "System qty",
+        "countedQty": "Counted qty",
+        "difference": "Difference",
+        "calculatedInfo": "🔒 Field calculated automatically",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "e.g. registry error, stock change",
+        "saving": "Saving…",
+        "save": "Save correction"
+      },
+      "errors": {
+        "noToolId": "Cannot determine tool ID for correction (no association).",
+        "noSession": "No selected session — choose a session before saving.",
+        "noToolForCorrection": "Cannot determine tool for correction — try again from the \"Stock differences\" panel.",
+        "acceptFailed": "Failed to approve correction",
+        "addFailed": "Failed to add correction"
+      },
+      "success": {
+        "savedAndAccepted": "Correction has been saved and approved.",
+        "savedPending": "Correction has been saved (awaiting approval)."
+      }
+    },
+    "stock": {
+      "title": "Stock",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Name, SKU or inventory number",
+      "searchScanTitle": "Scan code to search",
+      "onlyConsumablesLabel": "Only consumables",
+      "onlyBelowMinLabel": "Below minimum stock",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "quantity": "Quantity",
+        "min": "Min",
+        "max": "Max",
+        "status": "Status"
+      },
+      "status": {
+        "missing": "Low",
+        "ok": "OK"
+      },
+      "empty": "No items to display"
+    },
+    "labels": {
+      "sku": "SKU",
+      "systemQty": "System",
+      "countedQty": "Counted"
+    },
+    "modalDelete": {
+      "title": "Delete correction",
+      "message": "Are you sure you want to delete this correction?",
+      "confirm": "Delete"
+    }
+  },
+  "topbar": {
+    "openMenu": "Open menu",
+    "notifications": "Notifications",
+    "overdueInspections": "Overdue inspections (BHP and Tools)",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "No new notifications",
+    "type": {
+      "bhp": "BHP",
+      "tools": "Tools"
+    },
+    "overdue": "Overdue",
+    "read": "Read",
+    "markRead": "Mark as read",
+    "user": "User",
+    "role": "Role",
+    "settings": "Settings",
+    "dbViewer": "Database Viewer",
+    "themeLight": "Light mode",
+    "themeDark": "Dark mode",
+    "logout": "Log out",
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Manager",
+      "employee": "Employee",
+      "unknown": "Unknown"
+    }
+  },
+  "login": {
+    "title": "Sign in to the system",
+    "subtitle": "Tool management system",
+    "username": "Username",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "enterUsername": "Enter username",
+    "enterPassword": "Enter password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "capsLock": "Caps Lock is on — password may be wrong.",
+    "submit": "Sign in",
+    "loading": "Signing in...",
+    "error": "Login error"
+  },
+  "employees": {
+    "title": "Employee Management",
+    "subtitle": "Manage employee data in the system",
+    "add": "Add employee",
+    "search": "Search",
+    "searchPlaceholder": "First name, last name, brand number...",
+    "department": "Department",
+    "position": "Position",
+    "allDepartments": "All departments",
+    "allPositions": "All positions",
+    "clearFilters": "Clear filters",
+    "none": "No employees",
+    "noneAdded": "No employees added yet.",
+    "noneFound": "No employees match the search criteria.",
+    "actions": "Actions",
+    "fullName": "Full name",
+    "brandNumber": "Brand number",
+    "phone": "Phone",
+    "departmentCol": "Department",
+    "positionCol": "Position",
+    "edit": "Edit",
+    "delete": "Delete",
+    "unknownDept": "Unknown",
+    "unknownPos": "Unknown",
+    "mobilePhone": "Phone:",
+    "mobileDepartment": "Department:",
+    "mobilePosition": "Position:",
+    "addedSuccess": "Employee added successfully",
+    "addError": "Error adding employee",
+    "updatedSuccess": "Employee data updated",
+    "updateError": "Error updating employee",
+    "deletedSuccess": "Employee deleted",
+    "deleteError": "Error deleting employee",
+    "confirmDelete": "Are you sure you want to delete employee"
+  }
+  ,
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}! Here’s an overview of the system.",
+    "stats": {
+      "tools": "Tools in the system",
+      "bhp": "BHP equipment",
+      "employees": "Employees",
+      "overdueInspections": "Overdue inspections",
+      "tooltip": { "tools": "Tools:", "bhp": "BHP:" }
+    },
+    "quick": {
+      "title": "Quick actions",
+      "createEmployeeTitle": "Add employee",
+      "createEmployee": "Create new employee profile",
+      "issue": {
+        "title": "Quick issue",
+        "subtitle": "Scan tool code",
+        "modalTitle": "Quick tool issue",
+        "submitBatch": "Issue items",
+        "batchError": "Error issuing tools",
+        "successSingle": "Successfully issued tool \"{tool}\" to: {employee}",
+        "successBatch": "Issued {ok}/{total} items to {employee}",
+        "errorGeneral": "Error issuing tool",
+        "errorItem": "Issue error: {name}",
+        "errors": {
+          "toolNotFound": "Tool not found for provided code",
+          "toolNotAvailable": "Tool is not available for issuing",
+          "toolNotAvailableSimple": "Tool is not available",
+          "noEmployeeSelected": "Select an employee to issue the tool"
+        }
+      },
+      "return": {
+        "title": "Quick tool return",
+        "subtitle": "Return issued tools",
+        "listTitle": "List of tools issued to employees:",
+        "submit": "Return",
+        "successSingle": "Successfully returned tool \"{tool}\" from employee: {employee}",
+        "errorGeneral": "Error returning tool",
+        "errors": { "noToolData": "Error: Missing tool data" }
+      },
+      "employee": {
+        "addSuccess": "Employee added successfully",
+        "addError": "Error adding employee"
+      }
+    },
+    "search": {
+      "label": "Tool barcode / QR",
+      "placeholder": "Scan or enter tool code...",
+      "searching": "Searching...",
+      "add": "Add",
+      "sku": "SKU",
+      "status": "Status",
+      "location": "Location",
+      "notFoundCode": "No tool found with code: {code}"
+    },
+    "quickIssue": { "itemsLabel": "Items to issue" },
+    "labels": { "employee": "Employee:", "quantity": "Quantity", "issuedAt": "Issued", "tool": "tool", "employeeFallback": "employee" },
+    "history": {
+      "tools": {
+        "title": "Tool issue/return history",
+        "noPermissions": "You do not have permission to view tool history.",
+        "noData": "There are no tool issues or returns yet."
+      },
+      "bhp": {
+        "title": "BHP issue/return history",
+        "noPermissions": "You do not have permission to view BHP history.",
+        "noData": "There are no BHP issues or returns yet."
+      },
+      "recentCount": "Recent {count}",
+      "noDataTitle": "No history",
+      "labels": {
+        "tool": "tool",
+        "bhp": "BHP equipment",
+        "issuedBy": "Issued by",
+        "quantity": "Quantity"
+      }
+    },
+    "action": { "issued": "Issued", "returned": "Returned" }
+  },
+  "users": {
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Manager",
+      "employee": "Employee",
+      "observer": "Observer"
+    },
+    "descriptions": {
+      "administrator": "Full access to all system features",
+      "manager": "Manage tools, employees and analytics",
+      "employee": "Basic operations on tools"
+    }
+  },
+  "permissions": {
+    "saving": "Saving...",
+    "save": "Save",
+    "close": "Close",
+    "toast": {
+      "fetchUsersError": "Error fetching users",
+      "fetchRolePermsError": "Error fetching role permissions",
+      "fetchAvailablePermsError": "Error fetching available permissions",
+      "savePermsSuccess": "Permissions for role {role} have been updated",
+      "savePermsError": "Error saving permissions",
+      "userNotFound": "User not found for update",
+      "updateRoleSuccess": "User role has been updated",
+      "updateRoleError": "Error updating user role"
+    },
+    "labels": {
+      "EDIT_USERS": "Users - edit",
+      "DELETE_USERS": "Users - delete",
+      "VIEW_EMPLOYEES": "Employees - view",
+      "MANAGE_EMPLOYEES": "Employees - manage",
+      "VIEW_ANALYTICS": "Analytics - view",
+  "VIEW_TOOLS": "Tools - view",
+  "VIEW_TOOL_HISTORY": "Tool issue/return history - view",
+      "MANAGE_DEPARTMENTS": "Departments - manage",
+      "MANAGE_POSITIONS": "Positions - manage",
+      "SYSTEM_SETTINGS": "System settings",
+      "VIEW_ADMIN": "Admin panel",
+      "VIEW_AUDIT_LOG": "Audit log - view",
+  "VIEW_BHP": "BHP - view",
+  "VIEW_BHP_HISTORY": "BHP issue/return history - view",
+      "MANAGE_BHP": "BHP - manage",
+      "DELETE_ISSUE_HISTORY": "Delete issue history",
+      "DELETE_RETURN_HISTORY": "Delete return history",
+      "DELETE_SERVICE_HISTORY": "Delete service history",
+      "MANAGE_DATABASE": "Database - manage",
+      "VIEW_DATABASE": "Database - view",
+      "VIEW_INVENTORY": "Inventory - view",
+      "INVENTORY_MANAGE_SESSIONS": "Inventory - manage sessions",
+      "INVENTORY_SCAN": "Inventory - scan",
+      "INVENTORY_ACCEPT_CORRECTION": "Inventory - accept corrections",
+      "INVENTORY_DELETE_CORRECTION": "Inventory - delete corrections",
+      "INVENTORY_EXPORT_CSV": "Inventory - export CSV",
+      "VIEW_LABELS": "Labels - view"
+    }
+  },
+  "admin": {
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Manage system and configuration"
+    },
+    "appConfig": {
+      "card": {
+        "title": "Application settings",
+        "subtitle": "Configure system parameters",
+        "open": "Open settings"
+      }
+    },
+    "audit": {
+      "card": {
+        "title": "Audit log",
+        "subtitle": "Browse operation history",
+        "open": "View log"
+      }
+    },
+    "roles": {
+      "card": {
+        "title": "Roles and permissions",
+        "subtitle": "Configure user roles"
+      },
+      "manage": "Manage permissions"
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "subtitle": "Irreversible data deletion",
+      "tools": {
+        "title": "Tools",
+        "subtitle": "Clear tools database"
+      },
+      "bhp": {
+        "title": "BHP equipment",
+        "subtitle": "Clear BHP equipment database"
+      },
+      "service": {
+        "title": "Servicing",
+        "subtitle": "Clear servicing database"
+      },
+      "employees": {
+        "title": "Employees",
+        "subtitle": "Clear employees database"
+      }
+    },
+    "actions": {
+      "deleteIssues": "Delete issue history",
+      "deleteReturns": "Delete return history",
+      "deleteServiceHistory": "Delete servicing history",
+      "deleteEmployees": "Delete employee data"
+    },
+    "modals": {
+      "deleteAllIssues": {
+        "title": "Delete all issue history",
+        "message": "Are you sure you want to delete the entire tool issuing history? This operation is irreversible and will remove all issue and return records.",
+        "confirm": "Delete history"
+      },
+      "deleteServiceHistory": {
+        "title": "Delete servicing history",
+        "message": "Are you sure you want to delete all tool servicing history? This operation is irreversible and will remove all related entries.",
+        "confirm": "Delete servicing history"
+      },
+      "deleteToolIssues": {
+        "title": "Delete tool issue history",
+        "message": "Are you sure you want to delete all tool ISSUE entries? This operation is irreversible.",
+        "confirm": "Delete issue history"
+      },
+      "deleteToolReturns": {
+        "title": "Delete tool return history",
+        "message": "Are you sure you want to delete all tool RETURN entries? This operation is irreversible.",
+        "confirm": "Delete return history"
+      },
+      "deleteBhpIssues": {
+        "title": "Delete BHP equipment issue history",
+        "message": "Are you sure you want to delete all BHP equipment ISSUE entries? This operation is irreversible.",
+        "confirm": "Delete issue history"
+      },
+      "deleteBhpReturns": {
+        "title": "Delete BHP equipment return history",
+        "message": "Are you sure you want to delete all BHP equipment RETURN entries? This operation is irreversible.",
+        "confirm": "Delete return history"
+      },
+      "deleteEmployees": {
+        "title": "Delete all employees",
+        "message": "Are you sure you want to delete all employees from the database? This operation is irreversible and will remove all employee data.",
+        "confirm": "Delete employees"
+      }
+    }
+  },
+  "bhp": {
+    "title": "BHP Equipment",
+    "subtitle": "Clear BHP equipment database",
+    "manageDescription": "Manage BHP equipment (issues, returns, inspections)",
+    "actions": {
+      "addEquipment": "Add equipment",
+      "edit": "Edit",
+      "delete": "Delete",
+      "issue": "Issue",
+      "return": "Return",
+      "noPermission": "No permission for actions"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "inventory no., manufacturer, model, serial...",
+      "status": "Status",
+      "all": "All",
+      "sort": "Sort",
+      "reviews": "Reviews",
+      "nearestReview": "Nearest inspection",
+      "farthestReview": "Farthest inspection"
+    },
+    "sort": {
+      "inspectionDate": "Inspection date",
+      "inventoryNumber": "Inventory number"
+    },
+    "table": {
+      "inventoryShort": "Inv. no.",
+      "manufacturerModel": "Manufacturer / Model",
+      "serialCatalog": "Serial / Catalog",
+      "inspection": "Inspection",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "set": {
+      "label": "Set",
+      "shock": "shock absorber",
+      "srd": "Self-retracting device"
+    },
+    "labels": {
+      "assignedLabel": "Assigned",
+      "catalogAbbrev": "Cat.",
+      "numberAbbrev": "no.",
+      "inventoryLabel": "Inventory number",
+      "serialLabel": "Serial",
+      "catalogLabel": "Catalog",
+      "inspectionLabel": "Inspection",
+      "inventoryNumber": "Inventory number",
+      "manufacturer": "Manufacturer",
+      "model": "Model",
+      "serialNumber": "Serial number",
+      "catalogNumber": "Catalog number",
+      "productionDate": "Production date",
+      "inspectionDate": "Inspection date",
+      "status": "Status",
+      "assignedFirstName": "Assigned (first name)",
+      "assignedLastName": "Assigned (last name)",
+      "assigned": "Assigned",
+      "manufacturerAbbrev": "Manuf.",
+      "modelAbbrev": "Model",
+      "snAbbrev": "S/N",
+      "productionShort": "Prod. date"
+    },
+    "status": {
+      "available": "Available",
+      "issued": "Issued",
+      "unknown": "unknown"
+    },
+    "modal": {
+      "editTitle": "Edit BHP item",
+      "addTitle": "Add BHP item"
+    },
+    "form": {
+      "inventoryNumberRequired": "Inventory number *",
+      "scanCode": "Scan code",
+      "generateWithPrefix": "Generate code with prefix",
+      "manufacturer": "Manufacturer",
+      "model": "Model",
+      "serialNumber": "Serial number",
+      "catalogNumber": "Catalog number",
+      "productionDateHarness": "Production date (harness)",
+      "harnessStartDate": "Harness start date"
+    },
+    "shock": {
+      "manufacturerLabel": "Shock absorber: Manufacturer",
+      "modelLabel": "Shock absorber: Model",
+      "snLabel": "Shock absorber: S/N",
+      "catalogAbbrevLabel": "Shock absorber: Cat.",
+      "productionShortLabel": "Shock absorber: Prod. date",
+      "catalogLabel": "Shock absorber: Catalog number",
+      "productionLabel": "Shock absorber: Production date"
+    },
+    "srd": {
+      "manufacturerLabel": "SRD: Manufacturer",
+      "modelLabel": "SRD: Model",
+      "snLabel": "SRD: S/N",
+      "catalogAbbrevLabel": "SRD: Cat.",
+      "productionShortLabel": "SRD: Prod. date",
+      "catalogLabel": "SRD: Catalog number",
+      "productionLabel": "SRD: Production date"
+    },
+    "export": {
+      "exportPDF": "Export as PDF",
+      "exportXLSX": "Export as Excel",
+      "field": "Field",
+      "value": "Value",
+      "detailsTitle": "BHP export — details",
+      "detailsHeader": "BHP details",
+      "generatedAt": "Generated",
+      "sheetName": "Details"
+    }
+  },
+  "confirmation": {
+    "title": "Confirm action",
+    "message": "Are you sure you want to perform this operation?",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "userSettings": {
+    "title": "User Settings",
+    "subtitle": "Manage your account security",
+    "tabs": { "security": "Security" },
+    "changePassword": {
+      "title": "Change password",
+      "username": "Username",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "notice": "The password will be updated for your account"
+    },
+    "toast": {
+      "passwordSaved": "Password saved successfully!",
+      "passwordChanged": "Password has been changed"
+    },
+    "errors": {
+      "fillAllFields": "Fill in all fields",
+      "passwordTooShort": "New password must be at least 6 characters",
+      "passwordMismatch": "New password and confirmation do not match",
+      "changeFailed": "Failed to change password"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Overview of system statistics and reports",
+    "permissions": {
+      "title": "No permission",
+      "viewAnalyticsDenied": "No permission for analytics (VIEW_ANALYTICS)."
+    },
+    "upcomingInspections": "Upcoming inspections",
+    "overdue": "Overdue",
+    "upcomingUnder30": "Upcoming (<30 days)",
+    "bhpPermissionDenied": "No permission for BHP section (VIEW_BHP). Showing only Tools data.",
+    "loadingInspections": "Loading inspection data...",
+    "loadingService": "Loading service data...",
+    "overdueTools": "Overdue (Tools)",
+    "noOverdueTools": "No overdue tool inspections.",
+    "overdueBhp": "Overdue (BHP)",
+    "noOverdueBhp": "No overdue BHP inspections.",
+    "upcoming": "Upcoming (<30 days)",
+    "noUpcoming": "No upcoming inspections within 30 days.",
+    "chip": { "tools": "Tools", "bhp": "BHP" },
+    "phrases": {
+      "daysOverdue": "{count} days overdue",
+      "inDays": "in {count} days"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "page": "Page",
+      "of": "of",
+      "next": "Next"
+    },
+    "serviceHistory": {
+      "title": "Service history",
+      "inService": "Currently in service",
+      "recentEvents": "Recent events",
+      "generatedAt": "Generated at",
+      "exportPDF": "Export PDF",
+      "exportXLSX": "Export XLSX",
+      "rowsCount": "Rows",
+      "total": "Total: {count}",
+      "headers": {
+        "tool": "Tool",
+        "sku": "SKU",
+        "action": "Action",
+        "quantity": "Quantity",
+        "orderNumber": "Order number",
+        "date": "Date",
+        "sent": "Sent"
+      },
+      "action": {
+        "sent": "Sent",
+        "received": "Received"
+      },
+      "noInService": "No items in service.",
+      "noRecentEvents": "No recent events.",
+      "noData": "No data"
+    }
+  },
+  "scanner": {
+    "title": "Scan barcode",
+    "close": "Close",
+    "browserNotSupported": {
+      "title": "Browser does not support camera",
+      "desc": "Your browser does not support scanning codes.",
+      "tipsIntro": "Try:",
+      "tips": {
+        "update": "Use a newer browser version",
+        "switch": "Switch to Chrome, Firefox or Safari",
+        "https": "Ensure you use HTTPS (required for camera)",
+        "manual": "Enter the code manually"
+      }
+    },
+    "permissionsDenied": {
+      "desc": "No access to camera. Please allow camera access in browser settings."
+    },
+    "buttons": { "cancel": "Cancel" },
+    "overlay": {
+      "scanning": "Scanning...",
+      "ready": "Ready to scan"
+    },
+    "lastCode": "Last code:",
+    "quantity": "Quantity:",
+    "torch": { "enable": "Turn on torch", "disable": "Turn off torch" },
+    "tipsHeader": "Scanning tips",
+    "tipsGeneral": {
+      "stable": "• Hold the phone steady over the code",
+      "light": "• Ensure the code is well lit",
+      "frame": "• The code should fill the scanning frame",
+      "wait": "• Wait for automatic recognition"
+    },
+    "tipsLabels": {
+      "title": "Label printer stickers",
+      "avoidReflections": "• Avoid light reflections — tilt the phone slightly",
+      "distance": "• Hold the phone closer (5–10 cm from sticker)",
+      "torch": "• Turn on the torch for better contrast",
+      "recognize": "• Wait 2–3 seconds for recognition",
+      "checkDamage": "• Check if the sticker is not damaged"
+    },
+    "cta": "Point the camera at a barcode or QR code",
+    "errors": {
+      "NotAllowedError": "No access to camera. Please allow camera access in browser settings.",
+      "NotFoundError": "Camera not found. Ensure the device has a camera.",
+      "NotSupportedError": "Browser does not support camera access. Try another browser.",
+      "NotReadableError": "Camera is used by another application. Close other apps using the camera.",
+      "OverconstrainedError": "Cannot start camera with selected settings. Try again.",
+      "Generic": "An error occurred while starting the camera: {message}"
+    }
+  }
+}

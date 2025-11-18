@@ -6,6 +6,12 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
+let nodemailerOptional = null;
+try {
+  nodemailerOptional = require('nodemailer');
+} catch (_) {
+  nodemailerOptional = null;
+}
 let ipp;
 try {
   ipp = require('ipp');
@@ -123,6 +129,37 @@ function initializeDatabase() {
           if (!columnNames.includes('tool_category_prefixes')) {
             db.run('ALTER TABLE app_config ADD COLUMN tool_category_prefixes TEXT', (err) => {
               if (err) console.error('Błąd dodawania kolumny tool_category_prefixes:', err.message);
+            });
+          }
+          // SMTP configuration columns
+          if (!columnNames.includes('smtp_host')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_host TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_host:', err.message);
+            });
+          }
+          if (!columnNames.includes('smtp_port')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_port INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_port:', err.message);
+            });
+          }
+          if (!columnNames.includes('smtp_secure')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_secure INTEGER', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_secure:', err.message);
+            });
+          }
+          if (!columnNames.includes('smtp_user')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_user TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_user:', err.message);
+            });
+          }
+          if (!columnNames.includes('smtp_pass')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_pass TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_pass:', err.message);
+            });
+          }
+          if (!columnNames.includes('smtp_from')) {
+            db.run('ALTER TABLE app_config ADD COLUMN smtp_from TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny smtp_from:', err.message);
             });
           }
           // Migracja: usuń legacy kolumny code_prefix i default_item_name, jeśli istnieją
@@ -626,6 +663,8 @@ function initializeDatabase() {
     position TEXT NOT NULL,
     department TEXT NOT NULL,
     brand_number TEXT,
+    email TEXT,
+    login TEXT,
     created_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
@@ -662,6 +701,16 @@ function initializeDatabase() {
           if (!columnNames.includes('brand_number')) {
             db.run('ALTER TABLE employees ADD COLUMN brand_number TEXT', (err) => {
               if (err) console.error('Błąd dodawania kolumny brand_number:', err.message);
+            });
+          }
+          if (!columnNames.includes('email')) {
+            db.run('ALTER TABLE employees ADD COLUMN email TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny email:', err.message);
+            });
+          }
+          if (!columnNames.includes('login')) {
+            db.run('ALTER TABLE employees ADD COLUMN login TEXT', (err) => {
+              if (err) console.error('Błąd dodawania kolumny login:', err.message);
             });
           }
         }
@@ -838,12 +887,35 @@ function initializeDatabase() {
       
       // Inicjalizacja domyślnych uprawnień dla ról (bez roli 'viewer')
       const defaultPermissions = {
-        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'MANAGE_BHP', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
-        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_BHP', 'MANAGE_BHP', 'MANAGE_EMPLOYEES', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
-        'employee': ['VIEW_TOOLS', 'VIEW_BHP', 'VIEW_EMPLOYEES'],
+        'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_TOOL_HISTORY', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'VIEW_BHP_HISTORY', 'MANAGE_BHP', 'VIEW_QUICK_ACTIONS', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_TOOL_HISTORY', 'VIEW_BHP', 'VIEW_BHP_HISTORY', 'MANAGE_BHP', 'VIEW_QUICK_ACTIONS', 'MANAGE_EMPLOYEES', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
+        'employee': ['VIEW_TOOL_HISTORY', 'VIEW_BHP_HISTORY'],
         'hr': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS'],
         'user': []
       };
+
+      // Jeśli tabela role_permissions jest pusta, zasiej domyślne uprawnienia
+      db.get('SELECT COUNT(*) as count FROM role_permissions', [], (countErr, row) => {
+        if (countErr) {
+          console.error('Błąd podczas sprawdzania role_permissions:', countErr.message);
+        } else if ((row?.count || 0) === 0) {
+          db.serialize(() => {
+            const stmt = db.prepare('INSERT INTO role_permissions (role, permission) VALUES (?, ?)');
+            try {
+              Object.entries(defaultPermissions).forEach(([role, perms]) => {
+                (perms || []).forEach((perm) => {
+                  stmt.run([role, perm]);
+                });
+              });
+              console.log('Zainicjalizowano domyślne uprawnienia ról w role_permissions');
+            } catch (seedErr) {
+              console.error('Błąd podczas inicjalizacji uprawnień ról:', seedErr.message);
+            } finally {
+              stmt.finalize();
+            }
+          });
+        }
+      });
     }
   });
   // ===== Tabele inwentaryzacji =====
@@ -903,6 +975,131 @@ function initializeDatabase() {
       console.log('Tabela inventory_corrections została utworzona lub już istnieje');
     }
   });
+
+  // Tabela zgłoszeń (reports)
+  db.run(`CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_by_user_id INTEGER,
+    created_by_username TEXT,
+    type TEXT NOT NULL, -- employee | tool | bhp | other
+    employee_id INTEGER,
+    employee_name_manual TEXT,
+    tool_id INTEGER,
+    bhp_category TEXT,
+    subject TEXT,
+    description TEXT NOT NULL,
+    severity TEXT NOT NULL, -- low | medium | high
+    status TEXT NOT NULL DEFAULT 'Przyjęto', -- Przyjęto | Sprawdzanie | Rozwiązano
+    attachments TEXT, -- JSON array
+    created_at DATETIME DEFAULT (datetime('now')),
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli reports:', err.message);
+    } else {
+      db.run('CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_reports_severity ON reports(severity)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
+      console.log('Tabela reports została utworzona lub już istnieje');
+      // Upewnij się, że brakujące kolumny zostaną dodane (migracje w locie)
+      db.all("PRAGMA table_info(reports)", (infoErr, columns) => {
+        if (infoErr) {
+          console.error('Błąd sprawdzania struktury reports:', infoErr.message);
+          return;
+        }
+        const names = (columns || []).map(c => c.name);
+        if (!names.includes('employee_name_manual')) {
+          db.run('ALTER TABLE reports ADD COLUMN employee_name_manual TEXT', (alterErr) => {
+            if (alterErr) {
+              console.error('Błąd dodawania kolumny employee_name_manual:', alterErr.message);
+            } else {
+              console.log('Dodano kolumnę employee_name_manual do tabeli reports');
+            }
+          });
+        }
+      });
+    }
+  });
+
+  // Tabela tłumaczeń i18n (przechowuje nadpisania kluczy dla języków)
+  db.run(`CREATE TABLE IF NOT EXISTS translate (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lang TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(lang, key)
+  )`, (err) => {
+    if (err) {
+      console.error('Błąd podczas tworzenia tabeli translate:', err.message);
+    } else {
+      seedTranslationsFromFiles();
+    }
+  });
+}
+
+// Helpery do flatten/unflatten obiektów JSON (kropkowane klucze)
+function flattenObject(obj, prefix = '') {
+  const result = {};
+  for (const [key, value] of Object.entries(obj || {})) {
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(result, flattenObject(value, newKey));
+    } else {
+      result[newKey] = String(value);
+    }
+  }
+  return result;
+}
+
+function readJsonSafe(jsonPath) {
+  try {
+    const raw = fs.readFileSync(jsonPath, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Nie udało się odczytać pliku JSON:', jsonPath, e.message);
+    return {};
+  }
+}
+
+function seedTranslationsFromFiles() {
+  try {
+    db.get('SELECT COUNT(*) as cnt FROM translate', [], (err, row) => {
+      if (err) {
+        console.error('Błąd podczas sprawdzania zawartości translate:', err.message);
+        return;
+      }
+      const cnt = row?.cnt || 0;
+      if (cnt > 0) {
+        return; // Już istnieją rekordy, nie seeduj ponownie
+      }
+      const plPath = path.join(__dirname, 'src', 'i18n', 'pl.json');
+      const enPath = path.join(__dirname, 'src', 'i18n', 'en.json');
+      const dePath = path.join(__dirname, 'src', 'i18n', 'de.json');
+      const plDict = readJsonSafe(plPath);
+      const enDict = readJsonSafe(enPath);
+      const deDict = readJsonSafe(dePath);
+      const plFlat = flattenObject(plDict);
+      const enFlat = flattenObject(enDict);
+      const deFlat = flattenObject(deDict);
+      const insertStmt = db.prepare('INSERT OR IGNORE INTO translate (lang, key, value, updated_at) VALUES (?, ?, ?, datetime("now"))');
+      db.serialize(() => {
+        for (const [k, v] of Object.entries(plFlat)) {
+          insertStmt.run('pl', k, v);
+        }
+        for (const [k, v] of Object.entries(enFlat)) {
+          insertStmt.run('en', k, v);
+        }
+        for (const [k, v] of Object.entries(deFlat)) {
+          insertStmt.run('de', k, v);
+        }
+        insertStmt.finalize();
+      });
+      console.log('Zasiano tłumaczenia z plików i18n do tabeli translate');
+    });
+  } catch (e) {
+    console.error('Błąd podczas seeda tłumaczeń:', e.message);
+  }
 }
 
 // Middleware do weryfikacji tokenu JWT
@@ -1018,21 +1215,108 @@ app.post('/api/login', (req, res) => {
 });
 
 // Endpoint pobierania wszystkich wydań narzędzi z paginacją
-app.get('/api/tool-issues', authenticateToken, (req, res) => {
+app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HISTORY'), (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
+  const { status, employee_id } = req.query;
 
-  // Zapytanie do pobrania całkowitej liczby rekordów
+  // Dynamiczne filtry
+  const whereClauses = [];
+  const whereParams = [];
+  if (status) {
+    whereClauses.push('ti.status = ?');
+    whereParams.push(status);
+  }
+  const isEmployeeRole = req.user.role === 'employee';
+  if (!isEmployeeRole && employee_id) {
+    whereClauses.push('ti.employee_id = ?');
+    whereParams.push(employee_id);
+  }
+  if (isEmployeeRole) {
+    // Pracownik widzi tylko własną historię (mapowanie po login -> employees.login)
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (err, row) => {
+      if (err) {
+        console.error('Błąd przy mapowaniu użytkownika na pracownika:', err);
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+      if (!row || !row.id) {
+        return res.json({
+          data: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: limit,
+            hasNextPage: false,
+            hasPreviousPage: false
+          }
+        });
+      }
+      whereClauses.push('ti.employee_id = ?');
+      whereParams.push(row.id);
+      const whereSqlLocal = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const countQueryLocal = `
+        SELECT COUNT(*) as total
+        FROM tool_issues ti
+        LEFT JOIN tools t ON ti.tool_id = t.id
+        LEFT JOIN employees e ON ti.employee_id = e.id
+        LEFT JOIN users u ON ti.issued_by_user_id = u.id
+        ${whereSqlLocal}
+      `;
+      const dataQueryLocal = `
+        SELECT 
+          ti.*, 
+          t.name as tool_name,
+          e.first_name as employee_first_name,
+          e.last_name as employee_last_name,
+          u.full_name as issued_by_user_name
+        FROM tool_issues ti
+        LEFT JOIN tools t ON ti.tool_id = t.id
+        LEFT JOIN employees e ON ti.employee_id = e.id
+        LEFT JOIN users u ON ti.issued_by_user_id = u.id
+        ${whereSqlLocal}
+        ORDER BY ti.issued_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      db.get(countQueryLocal, whereParams, (err2, countResult) => {
+        if (err2) {
+          console.error('Błąd przy pobieraniu liczby wydań narzędzi:', err2);
+          return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+        }
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit);
+        db.all(dataQueryLocal, [...whereParams, limit, offset], (err3, issues) => {
+          if (err3) {
+            console.error('Błąd przy pobieraniu wydań narzędzi:', err3);
+            return res.status(500).json({ message: 'Błąd serwera', error: err3.message });
+          }
+          return res.json({
+            data: issues,
+            pagination: {
+              currentPage: page,
+              totalPages: totalPages,
+              totalItems: total,
+              itemsPerPage: limit,
+              hasNextPage: page < totalPages,
+              hasPreviousPage: page > 1
+            }
+          });
+        });
+      });
+    });
+  }
+  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
   const countQuery = `
     SELECT COUNT(*) as total
     FROM tool_issues ti
     LEFT JOIN tools t ON ti.tool_id = t.id
     LEFT JOIN employees e ON ti.employee_id = e.id
     LEFT JOIN users u ON ti.issued_by_user_id = u.id
+    ${whereSql}
   `;
 
-  // Zapytanie do pobrania danych z paginacją
   const dataQuery = `
     SELECT 
       ti.*,
@@ -1044,12 +1328,12 @@ app.get('/api/tool-issues', authenticateToken, (req, res) => {
     LEFT JOIN tools t ON ti.tool_id = t.id
     LEFT JOIN employees e ON ti.employee_id = e.id
     LEFT JOIN users u ON ti.issued_by_user_id = u.id
+    ${whereSql}
     ORDER BY ti.issued_at DESC
     LIMIT ? OFFSET ?
   `;
 
-  // Najpierw pobieramy całkowitą liczbę rekordów
-  db.get(countQuery, [], (err, countResult) => {
+  db.get(countQuery, whereParams, (err, countResult) => {
     if (err) {
       console.error('Błąd przy pobieraniu liczby wydań narzędzi:', err);
       return res.status(500).json({ message: 'Błąd serwera', error: err.message });
@@ -1058,8 +1342,7 @@ app.get('/api/tool-issues', authenticateToken, (req, res) => {
     const total = countResult.total;
     const totalPages = Math.ceil(total / limit);
 
-    // Następnie pobieramy dane dla aktualnej strony
-    db.all(dataQuery, [limit, offset], (err, issues) => {
+    db.all(dataQuery, [...whereParams, limit, offset], (err, issues) => {
       if (err) {
         console.error('Błąd przy pobieraniu wydań narzędzi:', err);
         return res.status(500).json({ message: 'Błąd serwera', error: err.message });
@@ -1081,10 +1364,97 @@ app.get('/api/tool-issues', authenticateToken, (req, res) => {
 });
 
 // Endpoint pobierania wszystkich wydań/zwrotów BHP z paginacją
-app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP'), (req, res) => {
+app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTORY'), (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
+  const { status, employee_id } = req.query;
+
+  const whereClauses = [];
+  const whereParams = [];
+  if (status) {
+    whereClauses.push('bi.status = ?');
+    whereParams.push(status);
+  }
+  const isEmployeeRole = req.user.role === 'employee';
+  if (!isEmployeeRole && employee_id) {
+    whereClauses.push('bi.employee_id = ?');
+    whereParams.push(employee_id);
+  }
+  if (isEmployeeRole) {
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (err, row) => {
+      if (err) {
+        console.error('Błąd przy mapowaniu użytkownika na pracownika (BHP):', err);
+        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      }
+      if (!row || !row.id) {
+        return res.json({
+          data: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: limit,
+            hasNextPage: false,
+            hasPreviousPage: false
+          }
+        });
+      }
+      whereClauses.push('bi.employee_id = ?');
+      whereParams.push(row.id);
+      const whereSqlLocal = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const countQueryLocal = `
+        SELECT COUNT(*) as total
+        FROM bhp_issues bi
+        LEFT JOIN bhp b ON bi.bhp_id = b.id
+        LEFT JOIN employees e ON bi.employee_id = e.id
+        LEFT JOIN users u ON bi.issued_by_user_id = u.id
+        ${whereSqlLocal}
+      `;
+      const dataQueryLocal = `
+        SELECT 
+          bi.*, 
+          b.inventory_number AS bhp_inventory_number,
+          b.model AS bhp_model,
+          e.first_name AS employee_first_name,
+          e.last_name AS employee_last_name,
+          u.full_name AS issued_by_user_name
+        FROM bhp_issues bi
+        LEFT JOIN bhp b ON bi.bhp_id = b.id
+        LEFT JOIN employees e ON bi.employee_id = e.id
+        LEFT JOIN users u ON bi.issued_by_user_id = u.id
+        ${whereSqlLocal}
+        ORDER BY bi.issued_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      db.get(countQueryLocal, whereParams, (err2, countResult) => {
+        if (err2) {
+          console.error('Błąd przy pobieraniu liczby wydań BHP:', err2);
+          return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+        }
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit);
+        db.all(dataQueryLocal, [...whereParams, limit, offset], (err3, issues) => {
+          if (err3) {
+            console.error('Błąd przy pobieraniu wydań BHP:', err3);
+            return res.status(500).json({ message: 'Błąd serwera', error: err3.message });
+          }
+          return res.json({
+            data: issues,
+            pagination: {
+              currentPage: page,
+              totalPages: totalPages,
+              totalItems: total,
+              itemsPerPage: limit,
+              hasNextPage: page < totalPages,
+              hasPreviousPage: page > 1
+            }
+          });
+        });
+      });
+    });
+  }
+  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   const countQuery = `
     SELECT COUNT(*) as total
@@ -1092,6 +1462,7 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP'), (re
     LEFT JOIN bhp b ON bi.bhp_id = b.id
     LEFT JOIN employees e ON bi.employee_id = e.id
     LEFT JOIN users u ON bi.issued_by_user_id = u.id
+    ${whereSql}
   `;
 
   const dataQuery = `
@@ -1106,11 +1477,12 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP'), (re
     LEFT JOIN bhp b ON bi.bhp_id = b.id
     LEFT JOIN employees e ON bi.employee_id = e.id
     LEFT JOIN users u ON bi.issued_by_user_id = u.id
+    ${whereSql}
     ORDER BY bi.issued_at DESC
     LIMIT ? OFFSET ?
   `;
 
-  db.get(countQuery, [], (err, countResult) => {
+  db.get(countQuery, whereParams, (err, countResult) => {
     if (err) {
       console.error('Błąd przy pobieraniu liczby wydań BHP:', err);
       return res.status(500).json({ message: 'Błąd serwera', error: err.message });
@@ -1119,7 +1491,7 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP'), (re
     const total = countResult.total;
     const totalPages = Math.ceil(total / limit);
 
-    db.all(dataQuery, [limit, offset], (err, issues) => {
+    db.all(dataQuery, [...whereParams, limit, offset], (err, issues) => {
       if (err) {
         console.error('Błąd przy pobieraniu wydań BHP:', err);
         return res.status(500).json({ message: 'Błąd serwera', error: err.message });
@@ -1809,7 +2181,7 @@ app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
 });
 
 // Historia wydań/zwrotów BHP (wszystkie wpisy)
-app.get('/api/bhp/:id/history', authenticateToken, (req, res) => {
+app.get('/api/bhp/:id/history', authenticateToken, requirePermission('VIEW_BHP_HISTORY'), (req, res) => {
   const bhpId = req.params.id;
   const query = `
     SELECT 
@@ -1862,22 +2234,68 @@ app.get('/api/employees', authenticateToken, (req, res) => {
 
 // Endpoint dodawania pracownika
 app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
-  const { first_name, last_name, phone, position, department, brand_number } = req.body;
+  const { first_name, last_name, phone, position, department, brand_number, email } = req.body;
 
   if (!first_name || !last_name || !position || !department) {
     return res.status(400).json({ message: 'Wymagane są imię, nazwisko, stanowisko i dział' });
   }
 
   db.run(
-    'INSERT INTO employees (first_name, last_name, phone, position, department, brand_number) VALUES (?, ?, ?, ?, ?, ?)',
-    [first_name, last_name, phone, position, department, brand_number],
+    'INSERT INTO employees (first_name, last_name, phone, position, department, brand_number, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [first_name, last_name, phone, position, department, brand_number, email || null],
     function(err) {
       if (err) {
         return res.status(500).json({ message: 'Błąd serwera' });
       }
-      res.status(201).json({ 
-        message: 'Pracownik został dodany',
-        id: this.lastID
+      const employeeId = this.lastID;
+      const fullName = `${first_name} ${last_name}`;
+      generateEmployeeLogin(first_name, last_name, (loginErr, username) => {
+        if (loginErr || !username) {
+          console.error('Błąd generowania loginu:', loginErr?.message || 'unknown');
+          // Mimo błędu generowania loginu, zwróć pracownika
+          return res.status(201).json({ message: 'Pracownik został dodany', id: employeeId });
+        }
+
+        const rawPassword = generateRandomPassword(10);
+        const hashedPassword = bcrypt.hashSync(rawPassword, 10);
+
+        // Insert into users
+        db.run(
+          'INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))',
+          [username, hashedPassword, 'employee', fullName],
+          function(userErr) {
+            if (userErr) {
+              console.error('Błąd dodawania użytkownika dla pracownika:', userErr.message);
+              // Kontynuuj mimo błędu dodania użytkownika
+            }
+
+            // Update employee with login
+            db.run('UPDATE employees SET login = ? WHERE id = ?', [username, employeeId], (updErr) => {
+              if (updErr) {
+                console.error('Błąd aktualizacji loginu pracownika:', updErr.message);
+              }
+
+              // Attempt email sending
+              sendCredentialsEmail(email, username, rawPassword, fullName, (mailErr) => {
+                if (mailErr) {
+                  console.warn('Nie udało się wysłać e-maila z danymi logowania');
+                }
+                // Zwróć pełny rekord pracownika po aktualizacji loginu
+                db.get('SELECT * FROM employees WHERE id = ?', [employeeId], (selErr, row) => {
+                  if (selErr || !row) {
+                    // Awaryjnie zwróć podstawowe info
+                    return res.status(201).json({ 
+                      message: 'Pracownik został dodany',
+                      id: employeeId,
+                      login: username
+                    });
+                  }
+                  return res.status(201).json(row);
+                });
+              });
+            });
+          }
+        );
       });
     }
   );
@@ -1885,7 +2303,7 @@ app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEE
 
 // Endpoint aktualizacji pracownika
 app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
-  const { first_name, last_name, phone, position, department, brand_number } = req.body;
+  const { first_name, last_name, phone, position, department, brand_number, email } = req.body;
   const id = req.params.id;
 
   if (!first_name || !last_name || !position || !department) {
@@ -1893,8 +2311,8 @@ app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLO
   }
 
   db.run(
-    'UPDATE employees SET first_name = ?, last_name = ?, phone = ?, position = ?, department = ?, brand_number = ? WHERE id = ?',
-    [first_name, last_name, phone, position, department, brand_number, id],
+    'UPDATE employees SET first_name = ?, last_name = ?, phone = ?, position = ?, department = ?, brand_number = ?, email = ? WHERE id = ?',
+    [first_name, last_name, phone, position, department, brand_number, email || null, id],
     function(err) {
       if (err) {
         return res.status(500).json({ message: 'Błąd serwera' });
@@ -1902,7 +2320,12 @@ app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLO
       if (this.changes === 0) {
         return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
       }
-      res.status(200).json({ message: 'Pracownik został zaktualizowany' });
+      db.get('SELECT * FROM employees WHERE id = ?', [id], (selErr, row) => {
+        if (selErr || !row) {
+          return res.status(200).json({ message: 'Pracownik został zaktualizowany' });
+        }
+        res.status(200).json(row);
+      });
     }
   );
 });
@@ -1959,6 +2382,193 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
     res.status(200).json({ 
       message: 'Wszyscy pracownicy zostali usunięci',
       deletedCount: this.changes
+    });
+  });
+});
+
+// Endpoint: wygeneruj loginy dla pracowników bez przypisanego loginu (administrator / MANAGE_EMPLOYEES)
+app.post('/api/employees/generate-logins', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
+  db.all('SELECT * FROM employees WHERE login IS NULL OR login = ""', [], (err, employees) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera podczas pobierania pracowników' });
+    }
+    if (!employees || employees.length === 0) {
+      return res.status(200).json({ message: 'Brak pracowników bez loginu', created: 0, results: [] });
+    }
+
+    const results = [];
+    let processed = 0;
+
+    const processNext = () => {
+      if (processed >= employees.length) {
+        return res.status(200).json({ message: 'Generowanie zakończone', created: results.filter(r => r.success).length, results });
+      }
+
+      const emp = employees[processed++];
+      const first_name = emp.first_name || '';
+      const last_name = emp.last_name || '';
+      const fullName = `${first_name} ${last_name}`.trim();
+
+      generateEmployeeLogin(first_name, last_name, (loginErr, username) => {
+        if (loginErr || !username) {
+          results.push({ employee_id: emp.id, success: false, error: `Błąd generowania loginu: ${loginErr?.message || 'unknown'}` });
+          return processNext();
+        }
+
+        const rawPassword = generateRandomPassword(10);
+        const hashedPassword = bcrypt.hashSync(rawPassword, 10);
+
+        db.run(
+          'INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))',
+          [username, hashedPassword, 'employee', fullName],
+          function(userErr) {
+            if (userErr) {
+              results.push({ employee_id: emp.id, success: false, username, error: `Błąd dodawania użytkownika: ${userErr.message}` });
+              return processNext();
+            }
+
+            db.run('UPDATE employees SET login = ? WHERE id = ?', [username, emp.id], (updErr) => {
+              if (updErr) {
+                results.push({ employee_id: emp.id, success: false, username, error: `Błąd aktualizacji pracownika: ${updErr.message}` });
+                return processNext();
+              }
+
+              // Spróbuj wysłać e-mail z danymi logowania, jeśli jest podany adres e-mail
+              sendCredentialsEmail(emp.email, username, rawPassword, fullName, (mailErr) => {
+                results.push({ employee_id: emp.id, success: true, username, emailSent: !mailErr && !!emp.email });
+                return processNext();
+              });
+            });
+          }
+        );
+      });
+    };
+
+    processNext();
+  });
+});
+
+// Wysyłka danych logowania dla pojedynczego pracownika (tworzy login jeśli brak, resetuje hasło jeśli istnieje)
+app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
+  const employeeId = parseInt(req.params.id, 10);
+  if (!employeeId) {
+    return res.status(400).json({ message: 'Nieprawidłowe ID pracownika' });
+  }
+  db.get('SELECT id, first_name, last_name, email, login FROM employees WHERE id = ?', [employeeId], (err, emp) => {
+    if (err) {
+      console.error('Błąd pobierania pracownika:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (!emp) {
+      return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+    }
+    if (!emp.email) {
+      // Audyt próby wysyłki bez adresu e-mail
+      const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))`;
+      db.run(auditQuery, [
+        req.user.id,
+        req.user.username,
+        'EMPLOYEE_SEND_CREDENTIALS',
+        `Próba wysyłki danych logowania dla pracownika ID=${employeeId} bez adresu e-mail`,
+        req.ip || 'localhost'
+      ], (auditErr) => {
+        if (auditErr) {
+          console.error('Błąd audytu (brak e-maila):', auditErr);
+        }
+      });
+      return res.status(400).json({ message: 'Brak adresu e-mail dla pracownika' });
+    }
+    const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+
+    const proceed = (username, rawPassword, createdLogin) => {
+      sendCredentialsEmail(emp.email, username, rawPassword, fullName, (mailErr) => {
+        if (mailErr) {
+          console.error('Błąd wysyłki danych logowania:', mailErr.message || mailErr);
+        }
+        db.get('SELECT * FROM employees WHERE id = ?', [employeeId], (err2, updated) => {
+          if (err2) {
+            console.error('Błąd pobierania zaktualizowanego pracownika:', err2.message);
+            // Audyt wysyłki danych logowania (nawet jeśli pobranie aktualizacji pracownika nie powiodło się)
+            const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
+              VALUES (?, ?, ?, ?, ?, datetime('now'))`;
+            const details = `Wysłano dane logowania: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
+            db.run(auditQuery, [req.user.id, req.user.username, 'EMPLOYEE_SEND_CREDENTIALS', details, req.ip || 'localhost'], (auditErr) => {
+              if (auditErr) console.error('Błąd audytu (send-credentials):', auditErr);
+            });
+            return res.json({ ok: true, emailSent: !mailErr, createdLogin, login: username });
+          }
+          // Audyt wysyłki danych logowania
+          const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))`;
+          const details = `Wysłano dane logowania: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
+          db.run(auditQuery, [req.user.id, req.user.username, 'EMPLOYEE_SEND_CREDENTIALS', details, req.ip || 'localhost'], (auditErr) => {
+            if (auditErr) console.error('Błąd audytu (send-credentials):', auditErr);
+          });
+          return res.json({ ok: true, emailSent: !mailErr, createdLogin, login: username, employee: updated });
+        });
+      });
+    };
+
+    if (!emp.login) {
+      generateEmployeeLogin(emp.first_name || '', emp.last_name || '', (genErr, username) => {
+        if (genErr || !username) {
+          console.error('Błąd generowania loginu:', genErr?.message || genErr);
+          return res.status(500).json({ message: 'Nie udało się wygenerować loginu' });
+        }
+        const rawPassword = generateRandomPassword(10);
+        const hashedPassword = bcrypt.hashSync(rawPassword, 10);
+        db.run(
+          'INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))',
+          [username, hashedPassword, 'employee', fullName],
+          function (insErr) {
+            if (insErr) {
+              console.error('Błąd tworzenia użytkownika:', insErr.message);
+              return res.status(500).json({ message: 'Nie udało się utworzyć użytkownika' });
+            }
+            db.run('UPDATE employees SET login = ? WHERE id = ?', [username, employeeId], function (updErr) {
+              if (updErr) {
+                console.error('Błąd aktualizacji loginu pracownika:', updErr.message);
+                return res.status(500).json({ message: 'Nie udało się zaktualizować pracownika' });
+              }
+              proceed(username, rawPassword, true);
+            });
+          }
+        );
+      });
+      return;
+    }
+
+    const username = String(emp.login);
+    const rawPassword = generateRandomPassword(10);
+    const hashedPassword = bcrypt.hashSync(rawPassword, 10);
+    db.get('SELECT id FROM users WHERE username = ?', [username], (uErr, userRow) => {
+      if (uErr) {
+        console.error('Błąd wyszukiwania użytkownika:', uErr.message);
+        return res.status(500).json({ message: 'Błąd serwera' });
+      }
+      const upsert = (cb) => {
+        if (!userRow) {
+          db.run(
+            'INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))',
+            [username, hashedPassword, 'employee', fullName],
+            function (insErr) { return cb(insErr); }
+          );
+        } else {
+          db.run(
+            'UPDATE users SET password = ?, updated_at = datetime(\'now\') WHERE username = ?',
+            [hashedPassword, username],
+            function (updErr) { return cb(updErr); }
+          );
+        }
+      };
+      upsert((saveErr) => {
+        if (saveErr) {
+          console.error('Błąd zapisu hasła:', saveErr.message);
+          return res.status(500).json({ message: 'Nie udało się zapisać hasła' });
+        }
+        proceed(username, rawPassword, false);
+      });
     });
   });
 });
@@ -3043,6 +3653,7 @@ try {
 // Konfiguracja uploadu tylko jeśli multer jest dostępny
 const LOGO_DIR = path.join(__dirname, 'public', 'logos');
 const CURRENT_LOGO_PATH = path.join(__dirname, 'public', 'logo.png');
+const REPORT_ATTACHMENTS_DIR = path.join(__dirname, 'public', 'report_attachments');
 
 function ensureLogoDir() {
   try {
@@ -3052,6 +3663,17 @@ function ensureLogoDir() {
     }
   } catch (err) {
     console.error('Nie udało się utworzyć katalogu logo:', err.message);
+  }
+}
+
+function ensureReportAttachmentsDir() {
+  try {
+    if (!fs.existsSync(REPORT_ATTACHMENTS_DIR)) {
+      fs.mkdirSync(REPORT_ATTACHMENTS_DIR, { recursive: true });
+      console.log('Utworzono katalog załączników zgłoszeń:', REPORT_ATTACHMENTS_DIR);
+    }
+  } catch (err) {
+    console.error('Nie udało się utworzyć katalogu załączników:', err.message);
   }
 }
 
@@ -3077,8 +3699,10 @@ const MIN_LOGO_HEIGHT = 64;
 const MAX_LOGO_WIDTH = 1024;
 const MAX_LOGO_HEIGHT = 1024;
 let upload;
+let reportUpload;
 if (multer) {
   ensureLogoDir();
+  ensureReportAttachmentsDir();
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, LOGO_DIR);
@@ -3101,6 +3725,29 @@ if (multer) {
     storage,
     fileFilter,
     limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+  });
+
+  const reportStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, REPORT_ATTACHMENTS_DIR);
+    },
+    filename: (req, file, cb) => {
+      const ts = Date.now();
+      const safeName = (file.originalname || 'att').replace(/[^a-zA-Z0-9._-]+/g, '_');
+      cb(null, `${ts}-${safeName}`);
+    }
+  });
+  const reportFileFilter = (req, file, cb) => {
+    if (String(file.mimetype || '').startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('ONLY_IMAGES'));
+    }
+  };
+  reportUpload = multer({
+    storage: reportStorage,
+    fileFilter: reportFileFilter,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
   });
 }
 
@@ -3134,6 +3781,102 @@ app.get('/api/config/general', (req, res) => {
     });
   });
 });
+
+// Publiczne: pobranie tłumaczeń dla danego języka (nadpisania z bazy)
+app.get('/api/translations/:lang', (req, res) => {
+  const lang = String(req.params.lang || '').trim();
+  if (!['pl', 'en', 'de'].includes(lang)) {
+    return res.status(400).json({ message: 'Nieprawidłowy język' });
+  }
+  db.all('SELECT key, value FROM translate WHERE lang = ? ORDER BY key', [lang], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    const map = {};
+    for (const r of rows) {
+      map[r.key] = r.value;
+    }
+    res.json({ lang, translations: map });
+  });
+});
+
+// Admin: pobranie tłumaczeń z możliwością filtrowania
+app.get('/api/translate', authenticateToken, requirePermission('SYSTEM_SETTINGS'), (req, res) => {
+  const lang = String(req.query.lang || '').trim();
+  const search = String(req.query.search || '').trim();
+  if (!['pl', 'en', 'de'].includes(lang)) {
+    return res.status(400).json({ message: 'Nieprawidłowy język' });
+  }
+  let sql = 'SELECT key, value FROM translate WHERE lang = ?';
+  const params = [lang];
+  if (search) {
+    sql += ' AND key LIKE ?';
+    params.push(`%${search}%`);
+  }
+  sql += ' ORDER BY key';
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    res.json(rows);
+  });
+});
+
+// Admin: zbiorcza aktualizacja tłumaczeń
+app.put('/api/translate/bulk', authenticateToken, requirePermission('SYSTEM_SETTINGS'), (req, res) => {
+  const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
+  if (updates.length === 0) {
+    return res.status(400).json({ message: 'Brak danych do aktualizacji' });
+  }
+  const validLang = (l) => ['pl', 'en', 'de'].includes(String(l || '').trim());
+  const stmtSql = `INSERT INTO translate(lang, key, value, updated_at) VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(lang, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`;
+  const stmt = db.prepare(stmtSql);
+  let count = 0;
+  db.serialize(() => {
+    for (const u of updates) {
+      const lang = String(u.lang || '').trim();
+      const key = String(u.key || '').trim();
+      const value = String(u.value ?? '');
+      if (!validLang(lang) || !key) continue;
+      stmt.run(lang, key, value);
+      count++;
+    }
+    stmt.finalize((err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Błąd zapisu tłumaczeń', error: err.message });
+      }
+      res.json({ updated: count });
+    });
+  });
+});
+
+// Pobieranie konfiguracji SMTP (tylko administrator)
+app.get('/api/config/email', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err, row) => {
+    if (err) {
+      console.error('Błąd pobierania konfiguracji SMTP:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Konfiguracja nie została znaleziona' });
+    }
+    res.json({
+      host: row.smtp_host || '',
+      port: row.smtp_port || 587,
+      secure: !!row.smtp_secure,
+      user: row.smtp_user || '',
+      pass: row.smtp_pass || '',
+      from: row.smtp_from || 'no-reply@example.com'
+    });
+  });
+});
+
+// Serwowanie załączników zgłoszeń
+app.use('/attachments', express.static(REPORT_ATTACHMENTS_DIR));
 
 // Upload logo aplikacji (tylko administrator)
 app.post('/api/config/logo', authenticateToken, (req, res) => {
@@ -3337,6 +4080,314 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
         bhpCodePrefix: row.bhp_code_prefix || '',
         toolCategoryPrefixes
       });
+    });
+  });
+});
+
+// Aktualizacja konfiguracji SMTP (tylko administrator)
+app.put('/api/config/email', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji ustawień SMTP' });
+  }
+  const { host, port, secure, user, pass, from } = req.body || {};
+  const query = `
+    UPDATE app_config
+    SET smtp_host = COALESCE(?, smtp_host),
+        smtp_port = COALESCE(?, smtp_port),
+        smtp_secure = COALESCE(?, smtp_secure),
+        smtp_user = COALESCE(?, smtp_user),
+        smtp_pass = COALESCE(?, smtp_pass),
+        smtp_from = COALESCE(?, smtp_from),
+        updated_at = datetime('now')
+    WHERE id = 1
+  `;
+  db.run(query, [host || null, port || null, (secure ? 1 : 0), user || null, pass || null, from || null], function(err) {
+    if (err) {
+      console.error('Błąd aktualizacji ustawień SMTP:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err2, row) => {
+      if (err2) {
+        return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+      }
+      res.json({
+        host: row.smtp_host || '',
+        port: row.smtp_port || 587,
+        secure: !!row.smtp_secure,
+        user: row.smtp_user || '',
+        pass: row.smtp_pass || '',
+        from: row.smtp_from || 'no-reply@example.com'
+      });
+    });
+  });
+});
+
+// Wysyłka testowej wiadomości e-mail (tylko administrator)
+app.post('/api/config/email/test', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  const { to } = req.body || {};
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!to || typeof to !== 'string' || !emailRegex.test(to)) {
+    return res.status(400).json({ message: 'Podaj poprawny adres odbiorcy (to)' });
+  }
+
+  try {
+    const row = await new Promise((resolve, reject) => {
+      db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err, r) => {
+        if (err) return reject(err);
+        resolve(r);
+      });
+    });
+    const host = row?.smtp_host || process.env.SMTP_HOST || '';
+    const port = row?.smtp_port || parseInt(process.env.SMTP_PORT || '0', 10) || 587;
+    const secure = !!(row?.smtp_secure || (process.env.SMTP_SECURE === 'true'));
+    const user = row?.smtp_user || process.env.SMTP_USER || '';
+    const pass = row?.smtp_pass || process.env.SMTP_PASS || '';
+    const from = row?.smtp_from || process.env.SMTP_FROM || '';
+
+    if (!host || !port || !from || !emailRegex.test(String(from))) {
+      return res.status(400).json({ message: 'Nieprawidłowa konfiguracja SMTP (host/port/from)' });
+    }
+
+    const nodemailer = require('nodemailer');
+    // Wymuś secure=true dla portu 465 (implicit SSL), aby uniknąć typowych błędów konfiguracji
+    const effectiveSecure = port === 465 ? true : secure;
+    const transporterOptions = {
+      host,
+      port,
+      secure: effectiveSecure,
+    };
+    if (user && pass) {
+      transporterOptions.auth = { user, pass };
+    }
+    const transporter = nodemailer.createTransport(transporterOptions);
+
+    try { await transporter.verify(); } catch (_) {}
+
+    await transporter.sendMail({
+      from,
+      to,
+      subject: 'Test SMTP — System Zarządzania',
+      text: 'To jest testowa wiadomość. Konfiguracja SMTP działa poprawnie.',
+    });
+
+    return res.json({ ok: true, message: 'Wiadomość testowa została wysłana' });
+  } catch (err) {
+    // Loguj więcej szczegółów, aby ułatwić diagnozę (kod błędu, odpowiedź serwera)
+    const more = {
+      code: err && err.code,
+      command: err && err.command,
+      response: err && err.response,
+    };
+    console.error('Błąd wysyłki testowej wiadomości:', err.message, more);
+    // Zwróć rozszerzone dane diagnostyczne do UI (bez wrażliwych danych)
+    return res.status(500).json({
+      message: 'Błąd wysyłki testowej wiadomości',
+      error: err.message,
+      code: more.code,
+      command: more.command,
+      response: more.response,
+      hint:
+        'Upewnij się, że port/secure są zgodne (465→secure: true, 587→secure: false) oraz poprawne dane uwierzytelniające.'
+    });
+  }
+});
+
+// ===== Reports Endpoints =====
+// Utworzenie zgłoszenia (multipart, opcjonalne załączniki)
+app.post('/api/reports', authenticateToken, (req, res) => {
+  if (!reportUpload) {
+    return res.status(500).json({ message: 'Upload nie jest dostępny (brak konfiguracji multer)' });
+  }
+  reportUpload.array('attachments', 8)(req, res, (err) => {
+    if (err) {
+      if (err.message === 'ONLY_IMAGES') {
+        return res.status(400).json({ message: 'Dozwolone są tylko pliki obrazów' });
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Plik jest za duży (maks. 10MB)' });
+      }
+      return res.status(500).json({ message: 'Błąd uploadu', error: err.message });
+    }
+
+    const body = req.body || {};
+    const type = String(body.type || '').trim();
+    const description = String(body.description || '').trim();
+    const severity = String(body.severity || '').trim();
+    if (!type || !description || !severity) {
+      return res.status(400).json({ message: 'Typ, opis i priorytet są wymagane' });
+    }
+    const allowedTypes = ['employee', 'tool', 'bhpIssued', 'bhp', 'other'];
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({ message: 'Nieprawidłowy typ zgłoszenia' });
+    }
+
+    const employeeId = type === 'employee' ? (parseInt(body.employeeId) || null) : null;
+    const employeeNameManual = (type === 'employee' && req.user.role === 'employee')
+      ? String(body.employeeName || '').trim()
+      : null;
+    const toolId = type === 'tool' ? (parseInt(body.toolId) || null) : null;
+    const bhpCategory = type === 'bhp' ? String(body.bhpCategory || '').trim() : String(body.bhpCategory || '').trim();
+    const subject = String(body.subject || '').trim();
+
+    if (type === 'employee' && req.user.role === 'employee') {
+      if (!employeeNameManual) {
+        return res.status(400).json({ message: 'Podaj imię i nazwisko pracownika dla zgłoszenia' });
+      }
+    }
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    const attachments = files.map(f => ({
+      filename: path.basename(f.filename),
+      originalName: f.originalname,
+      size: f.size,
+      url: `/attachments/${path.basename(f.filename)}`
+    }));
+
+    const sql = `INSERT INTO reports (created_by_user_id, created_by_username, type, employee_id, employee_name_manual, tool_id, bhp_category, subject, description, severity, status, attachments, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`;
+    const params = [
+      req.user.id || null,
+      req.user.username || null,
+      type,
+      employeeId,
+      employeeNameManual || null,
+      toolId,
+      bhpCategory || null,
+      subject || null,
+      description,
+      severity,
+      'Przyjęto',
+      JSON.stringify(attachments)
+    ];
+    db.run(sql, params, function (insErr) {
+      if (insErr) {
+        console.error('Błąd dodawania zgłoszenia:', insErr.message);
+        return res.status(500).json({ message: 'Błąd dodawania zgłoszenia' });
+      }
+      return res.json({ message: 'Zgłoszenie zostało utworzone', id: this.lastID });
+    });
+  });
+});
+
+// Lista zgłoszeń (tylko administrator) z filtrami
+app.get('/api/reports', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Tylko administrator może przeglądać zgłoszenia' });
+  }
+  const { type, severity, status } = req.query || {};
+  const where = [];
+  const params = [];
+  if (type) { where.push('type = ?'); params.push(String(type)); }
+  if (severity) { where.push('severity = ?'); params.push(String(severity)); }
+  if (status) { where.push('status = ?'); params.push(String(status)); }
+  const sql = `SELECT r.*, 
+    (CASE WHEN r.employee_id IS NOT NULL THEN (SELECT first_name || ' ' || last_name FROM employees WHERE id = r.employee_id) ELSE NULL END) AS employee_name,
+    (CASE WHEN r.tool_id IS NOT NULL THEN (SELECT name FROM tools WHERE id = r.tool_id) ELSE NULL END) AS tool_name
+    FROM reports r ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.created_at DESC`;
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error('Błąd pobierania zgłoszeń:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    }
+    const items = (rows || []).map(r => {
+      let atts = [];
+      try { atts = r.attachments ? JSON.parse(r.attachments) : []; } catch (_) { atts = []; }
+      return { ...r, attachments: atts };
+    });
+    return res.json({ items });
+  });
+});
+
+// Aktualizacja statusu zgłoszenia (admin)
+app.put('/api/reports/:id/status', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  const id = parseInt(req.params.id);
+  const status = String((req.body || {}).status || '').trim();
+  const allowed = ['Przyjęto', 'Sprawdzanie', 'Rozwiązano'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ message: 'Nieprawidłowy status' });
+  }
+  db.run('UPDATE reports SET status = ?, updated_at = datetime(\'now\') WHERE id = ?', [status, id], function (updErr) {
+    if (updErr) {
+      console.error('Błąd aktualizacji statusu zgłoszenia:', updErr.message);
+      return res.status(500).json({ message: 'Błąd aktualizacji statusu' });
+    }
+    if ((this.changes || 0) === 0) {
+      return res.status(404).json({ message: 'Zgłoszenie nie znalezione' });
+    }
+    return res.json({ message: 'Status zgłoszenia zaktualizowany' });
+  });
+});
+
+// Usunięcie zgłoszenia (admin) wraz z załącznikami
+app.delete('/api/reports/:id', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Brak uprawnień' });
+  }
+  const id = parseInt(req.params.id);
+  if (Number.isNaN(id) || id <= 0) {
+    return res.status(400).json({ message: 'Nieprawidłowe ID zgłoszenia' });
+  }
+
+  db.get('SELECT id, type, subject, severity, status, created_at, attachments FROM reports WHERE id = ?', [id], (findErr, row) => {
+    if (findErr) {
+      console.error('Błąd wyszukiwania zgłoszenia do usunięcia:', findErr.message);
+      return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
+    }
+    if (!row) {
+      return res.status(404).json({ message: 'Zgłoszenie nie zostało znalezione' });
+    }
+
+    let attachments = [];
+    try {
+      attachments = row.attachments ? JSON.parse(row.attachments) : [];
+    } catch (_) {
+      attachments = [];
+    }
+
+    // Usuń pliki załączników z dysku
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      attachments.forEach(att => {
+        const filename = att && att.filename ? String(att.filename) : null;
+        if (filename) {
+          try {
+            const target = path.join(REPORT_ATTACHMENTS_DIR, path.basename(filename));
+            if (fs.existsSync(target)) {
+              fs.unlinkSync(target);
+            }
+          } catch (err) {
+            console.warn('Nie udało się usunąć załącznika zgłoszenia:', filename, err && err.message);
+          }
+        }
+      });
+    }
+
+    // Usuń rekord zgłoszenia
+    db.run('DELETE FROM reports WHERE id = ?', [id], function(delErr) {
+      if (delErr) {
+        console.error('Błąd usuwania zgłoszenia:', delErr.message);
+        return res.status(500).json({ message: 'Błąd usuwania zgłoszenia', error: delErr.message });
+      }
+      if ((this.changes || 0) === 0) {
+        return res.status(404).json({ message: 'Zgłoszenie nie zostało znalezione' });
+      }
+      // Audit log: zapisujemy kto i co usunął
+      const details = `report_id:${id}; type:${row.type}; severity:${row.severity}; status:${row.status}; subject:${row.subject || ''}; attachments_deleted:${Array.isArray(attachments) ? attachments.length : 0}`;
+      db.run(
+        "INSERT INTO audit_logs (user_id, username, action, target_type, target_id, details, timestamp) VALUES (?, ?, 'report_delete', 'report', ?, ?, datetime('now'))",
+        [req.user.id, req.user.username, String(id), details],
+        (logErr) => {
+          if (logErr) {
+            console.error('Błąd zapisu do audit_logs (usunięcie zgłoszenia):', logErr.message);
+          }
+          return res.json({ message: 'Zgłoszenie zostało usunięte', id });
+        }
+      );
     });
   });
 });
@@ -4243,7 +5294,10 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'VIEW_ADMIN',
     'VIEW_AUDIT_LOG',
     'VIEW_BHP',
+    'VIEW_TOOL_HISTORY',
+    'VIEW_BHP_HISTORY',
     'MANAGE_BHP',
+    'VIEW_QUICK_ACTIONS',
     'DELETE_ISSUE_HISTORY',
     'DELETE_RETURN_HISTORY',
     'DELETE_SERVICE_HISTORY',
@@ -4932,3 +5986,125 @@ app.post('/api/print', authenticateToken, async (req, res) => {
     return res.status(500).json({ message: 'Nieoczekiwany błąd Print API' });
   }
 });
+function sanitizeNamePart(str, take = 3) {
+  if (!str) return '';
+  const noDiacritics = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const lettersOnly = noDiacritics.replace(/[^a-zA-Z]/g, '');
+  return lettersOnly.slice(0, take).toLowerCase();
+}
+
+function randomFromAlphabet(length, alphabet) {
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
+
+function generateEmployeeLogin(firstName, lastName, cb) {
+  const base = sanitizeNamePart(firstName, 3) + sanitizeNamePart(lastName, 3);
+  const alphabet = '0123456789';
+  const tryGenerate = () => {
+    const candidate = base + randomFromAlphabet(4, alphabet);
+    // Ensure uniqueness in users table
+    db.get('SELECT id FROM users WHERE username = ?', [candidate], (err, row) => {
+      if (err) return cb(err);
+      if (row) return tryGenerate(); // collision, try again
+      cb(null, candidate);
+    });
+  };
+  tryGenerate();
+}
+
+function generateRandomPassword(length = 10) {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return randomFromAlphabet(length, alphabet);
+}
+
+function sendCredentialsEmail(email, username, password, fullName, callback) {
+  if (!email) return callback && callback(null);
+  if (!nodemailerOptional) {
+    console.warn('Email not sent: nodemailer is not installed.');
+    return callback && callback(null);
+  }
+  // Pobierz konfigurację SMTP z bazy; fallback do zmiennych środowiskowych
+  db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err, row) => {
+    if (err) {
+      console.warn('Email not sent: cannot read SMTP config from DB, using env.');
+    }
+    const host = (row && row.smtp_host) || process.env.SMTP_HOST;
+    const port = parseInt((row && row.smtp_port) || process.env.SMTP_PORT || '587', 10);
+    // Wymuś secure=true dla portu 465 (implicit SSL), aby uniknąć typowych błędów konfiguracji
+    const configuredSecure = !!((row && row.smtp_secure) || ((process.env.SMTP_SECURE || 'false').toLowerCase() === 'true'));
+    const secure = port === 465 ? true : configuredSecure;
+    const user = (row && row.smtp_user) || process.env.SMTP_USER;
+    const pass = (row && row.smtp_pass) || process.env.SMTP_PASS;
+    const from = (row && row.smtp_from) || process.env.SMTP_FROM || 'narzędziownia';
+    if (!host || !user || !pass) {
+      console.warn('Email not sent: SMTP configuration missing.');
+      return callback && callback(null);
+    }
+    const transporter = nodemailerOptional.createTransport({ host, port, secure, auth: { user, pass } });
+
+    // Przygotuj szablon HTML z logotypem i stopką
+    const legalNotice = 'Treść niniejszej wiadomości jest poufna i objęta zakazem jej ujawniania. Jeśli odbiorca tej wiadomości nie jest jej zamierzonym adresatem, pracownikiem lub pośrednikiem upoważnionym do jej przekazania adresatowi, informujemy że wszelkie rozpowszechnianie, powielanie lub jakiekolwiek inne wykorzystywanie niniejszej wiadomości jest zabronione. Jeżeli zatem wiadomość ta została otrzymana omyłkowo, prosimy o bezzwłoczne zawiadomienie nadawcy w trybie odpowiedzi na niniejszą wiadomość oraz o usunięcie wszystkich jej kopii.';
+    const logoPath = path.join(__dirname, 'public', 'logo.png');
+    const hasLogo = fs.existsSync(logoPath);
+    const html = `
+      <div style="font-family:Segoe UI,Roboto,Arial,sans-serif;background:#f7f7f8;padding:24px;color:#111;">
+        <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+          <div style="padding:20px 24px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px;">
+            ${hasLogo ? '<img src="cid:app_logo" alt="Logo" style="height:40px;">' : ''}
+            <div style="font-size:18px;font-weight:600;">Dane do logowania</div>
+          </div>
+          <div style="padding:24px;">
+            <p style="margin:0 0 12px;">Witaj <strong>${escapeHtml(fullName)}</strong>,</p>
+            <p style="margin:0 0 16px;">Twoje konto zostało utworzone. Poniżej znajdują się dane do logowania:</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px;">
+              <div style="flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:6px;padding:12px;">
+                <div style="font-size:12px;color:#6b7280;">Login</div>
+                <div style="font-size:16px;font-weight:600;color:#111;">${escapeHtml(username)}</div>
+              </div>
+              <div style="flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:6px;padding:12px;">
+                <div style="font-size:12px;color:#6b7280;">Hasło</div>
+                <div style="font-size:16px;font-weight:600;color:#111;">${escapeHtml(password)}</div>
+              </div>
+            </div>
+            <p style="margin:0 0 12px;color:#374151;">Ze względów bezpieczeństwa zalecamy zmianę hasła po pierwszym logowaniu.</p>
+          </div>
+          <div style="padding:16px 24px;border-top:1px solid #eee;">
+            <small style="display:block;font-size:12px;color:#6b7280;font-style:italic;line-height:1.5;">${escapeHtml(legalNotice)}</small>
+          </div>
+        </div>
+      </div>`;
+
+    const mailOptions = {
+      from,
+      to: email,
+      subject: 'Dane do logowania — System Zarządzania Narzędziownią',
+      text: `Witaj ${fullName},\n\nTwoje konto zostało utworzone.\nLogin: ${username}\nHasło: ${password}\n\nZalecamy zmianę hasła po pierwszym logowaniu.\n\n${legalNotice}`,
+      html,
+      attachments: hasLogo ? [{ filename: 'logo.png', path: logoPath, cid: 'app_logo' }] : []
+    };
+
+    transporter.sendMail(mailOptions, (sendErr, info) => {
+      if (sendErr) {
+        console.error('Błąd wysyłki e-maila z danymi logowania:', sendErr.message);
+        return callback && callback(sendErr);
+      }
+      console.log('Wysłano e-mail z danymi logowania:', info && info.response);
+      callback && callback(null);
+    });
+  });
+}
+
+// Prosta funkcja ucieczki HTML do bezpiecznego renderowania
+function escapeHtml(str) {
+  if (typeof str !== 'string') return String(str || '');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

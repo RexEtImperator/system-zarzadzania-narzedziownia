@@ -1,20 +1,27 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { useLanguage } from '../contexts/LanguageContext';
 import BarcodeScanner from './BarcodeScanner';
 import { PERMISSIONS, hasPermission } from '../constants';
 import { toast } from 'react-toastify';
 import { CheckIcon, TrashIcon } from '@heroicons/react/24/solid';
 import ConfirmationModal from './ConfirmationModal';
+import SkeletonList from './SkeletonList';
 
 function InventoryScreen({ tools = [], user }) {
+  const { t } = useLanguage();
+  // Lokalny fetch narzędzi aby ograniczyć koszt startu (fallback do props jeśli dostępne)
+  const [localTools, setLocalTools] = useState([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
   // Istniejące filtry magazynowe
   const [search, setSearch] = useState('');
   const [onlyConsumables, setOnlyConsumables] = useState(true);
   const [onlyBelowMin, setOnlyBelowMin] = useState(false);
 
+  const sourceTools = useMemo(() => (Array.isArray(tools) && tools.length > 0 ? tools : localTools), [tools, localTools]);
   const filtered = useMemo(() => {
     const term = (search || '').trim().toLowerCase();
-    return (tools || [])
+    return (sourceTools || [])
       .filter(t => {
         const isCons = !!t.is_consumable;
         if (onlyConsumables && !isCons) return false;
@@ -29,7 +36,7 @@ function InventoryScreen({ tools = [], user }) {
         return name.includes(term) || sku.includes(term) || inv.includes(term);
       })
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-  }, [tools, search, onlyConsumables, onlyBelowMin]);
+  }, [sourceTools, search, onlyConsumables, onlyBelowMin]);
 
   // Sesje inwentaryzacji
   const [sessions, setSessions] = useState([]);
@@ -145,6 +152,28 @@ function InventoryScreen({ tools = [], user }) {
     fetchSessions();
   }, [canViewInventory]);
 
+  // Pobierz narzędzia na żądanie, gdy ekran aktywny
+  useEffect(() => {
+    if (!canViewInventory) return;
+    // Ładuj narzędzia tylko jeśli nie przyszły w props
+    if (Array.isArray(tools) && tools.length > 0) return;
+    let cancelled = false;
+    const loadTools = async () => {
+      try {
+        setToolsLoading(true);
+        const data = await api.get('/api/tools');
+        if (!cancelled) setLocalTools(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error fetching tools (inventory):', err);
+        if (!cancelled) setLocalTools([]);
+      } finally {
+        if (!cancelled) setToolsLoading(false);
+      }
+    };
+    loadTools();
+    return () => { cancelled = true; };
+  }, [canViewInventory, tools]);
+
   // Zapamiętuj/odtwarzaj wybraną sesję w localStorage
   useEffect(() => {
     try {
@@ -226,8 +255,8 @@ function InventoryScreen({ tools = [], user }) {
     return (
       <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak uprawnień</h3>
-          <p className="text-slate-600 dark:text-slate-400">Brak uprawnień do przeglądania inwentaryzacji (VIEW_INVENTORY).</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('inventory.permissions.title')}</h3>
+          <p className="text-slate-600 dark:text-slate-400">{t('inventory.permissions.viewInventoryDenied')}</p>
         </div>
       </div>
     );
@@ -255,17 +284,17 @@ function InventoryScreen({ tools = [], user }) {
     setCorrModalOpen(true);
 
     if (!toolId) {
-      toast.error('Nie można ustalić ID narzędzia dla korekty (brak powiązania).');
+      toast.error(t('inventory.correction.errors.noToolId'));
     }
   };
 
   const submitCorrection = async () => {
     if (!selectedSessionId) {
-      toast.error('Brak wybranej sesji — wybierz sesję przed zapisem korekty.');
+      toast.error(t('inventory.correction.errors.noSession'));
       return;
     }
     if (!corrToolId) {
-      toast.error('Nie udało się ustalić narzędzia do korekty — spróbuj ponownie z panelu „Różnice stanów”.');
+      toast.error(t('inventory.correction.errors.noToolForCorrection'));
       return;
     }
     try {
@@ -287,7 +316,7 @@ function InventoryScreen({ tools = [], user }) {
         try {
           await api.post(`/api/inventory/corrections/${corrId}/accept`, {});
         } catch (accErr) {
-          toast.error(accErr?.message || 'Nie udało się zatwierdzić korekty');
+          toast.error(accErr?.message || t('inventory.correction.errors.acceptFailed'));
         }
       }
       try {
@@ -306,12 +335,12 @@ function InventoryScreen({ tools = [], user }) {
         ].filter(rc => Date.now() - rc.at < 60000));
       }
       const successMsg = (canAcceptCorrection && !autoAcceptDisabled)
-        ? 'Korekta została zapisana i zatwierdzona.'
-        : 'Korekta została zapisana (oczekuje zatwierdzenia).';
+        ? t('inventory.correction.success.savedAndAccepted')
+        : t('inventory.correction.success.savedPending');
       toast.success(successMsg);
       closeCorrectionModal();
     } catch (err) {
-      toast.error(err?.message || 'Nie udało się dodać korekty');
+      toast.error(err?.message || t('inventory.correction.errors.addFailed'));
     } finally {
       setCorrSubmitting(false);
     }
@@ -328,12 +357,12 @@ function InventoryScreen({ tools = [], user }) {
 
   const handleCreateSession = async () => {
     if (!hasPermission(user, PERMISSIONS.ADMIN)) {
-      alert('Tylko administrator może tworzyć sesje');
+      alert(t('inventory.sessions.errors.onlyAdminCreate'));
       return;
     }
     const name = String(newSessionName || '').trim();
     if (!name) {
-      alert('Podaj nazwę sesji');
+      alert(t('inventory.sessions.errors.nameRequired'));
       return;
     }
     try {
@@ -344,7 +373,7 @@ function InventoryScreen({ tools = [], user }) {
       await fetchSessions();
       setSelectedSessionId(created?.id || null);
     } catch (err) {
-      alert(err?.message || 'Nie udało się utworzyć sesji');
+      alert(err?.message || t('inventory.sessions.errors.createFailed'));
     } finally {
       setCreatingSession(false);
     }
@@ -353,28 +382,28 @@ function InventoryScreen({ tools = [], user }) {
   const handleSessionStatus = async (action) => {
     if (!selectedSessionId) return;
     if (!hasPermission(user, PERMISSIONS.ADMIN)) {
-      alert('Tylko administrator może zmieniać status sesji');
+      alert(t('inventory.sessions.errors.onlyAdminStatus'));
       return;
     }
     try {
       await api.put(`/api/inventory/sessions/${selectedSessionId}/status`, { action });
       await fetchSessions();
     } catch (err) {
-      alert(err?.message || 'Zmiana statusu nie powiodła się');
+      alert(err?.message || t('inventory.sessions.errors.statusFailed'));
     }
   };
 
   const handleDeleteSession = async (session) => {
     if (!session?.id) return;
     if (!hasPermission(user, PERMISSIONS.ADMIN)) {
-      alert('Tylko administrator może usuwać sesje');
+      alert(t('inventory.sessions.errors.onlyAdminDelete'));
       return;
     }
     if (session.status !== 'ended') {
-      alert('Usunąć można tylko sesję zakończoną');
+      alert(t('inventory.sessions.errors.onlyEndedDelete'));
       return;
     }
-    if (!window.confirm(`Czy na pewno chcesz trwale usunąć sesję "${session.name}"?`)) {
+    if (!window.confirm(t('inventory.sessions.delete.confirm', { name: session.name }))) {
       return;
     }
     try {
@@ -384,9 +413,9 @@ function InventoryScreen({ tools = [], user }) {
       }
       await api.delete(`/api/inventory/sessions/${session.id}`);
       await fetchSessions();
-      toast.success('Sesja została trwale usunięta.');
+      toast.success(t('inventory.sessions.delete.success'));
     } catch (err) {
-      alert(err?.message || 'Usuwanie sesji nie powiodło się');
+      alert(err?.message || t('inventory.sessions.delete.failed'));
     }
   };
 
@@ -402,14 +431,14 @@ function InventoryScreen({ tools = [], user }) {
 
   const handleScan = async (text) => {
     if (!selectedSessionId) {
-      setScanError('Brak wybranej sesji');
+      setScanError(t('inventory.scan.errors.noSession'));
       return;
     }
     try {
       setScanError('');
       const payload = { code: text, quantity: Math.max(1, parseInt(scanQty || 1, 10)) };
       const resp = await api.post(`/api/inventory/sessions/${selectedSessionId}/scan`, payload);
-      setScanStatus(resp?.message || 'Zliczono');
+      setScanStatus(resp?.message || t('inventory.scan.success.counted'));
       setLastScanTool(resp?.tool || null);
       fetchSessions();
       // Wyczyść status po 4s
@@ -419,7 +448,7 @@ function InventoryScreen({ tools = [], user }) {
         setLastScanTool(null);
       }, 4000);
     } catch (err) {
-      setScanError(err?.message || 'Błąd skanowania');
+      setScanError(err?.message || t('inventory.scan.errors.failed'));
     }
   };
 
@@ -451,14 +480,23 @@ function InventoryScreen({ tools = [], user }) {
 
   const exportDiffsToCSV = async () => {
     if (!hasPermission(user, PERMISSIONS.INVENTORY_EXPORT_CSV)) {
-      toast.error('Brak uprawnień do eksportu CSV (INVENTORY_EXPORT_CSV)');
+      toast.error(t('inventory.export.errors.noPermission'));
       return;
     }
     try {
       setCsvExporting(true);
       const session = sessions.find(s => s.id === selectedSessionId);
       const now = new Date().toISOString();
-      const header = ['Nazwa', 'SKU', 'System ilość', 'Zliczona ilość', 'Różnica', 'Sesja', 'Data eksportu', 'Odpowiedzialny'];
+      const header = [
+        t('inventory.diffs.headers.name'),
+        t('inventory.diffs.headers.sku'),
+        t('inventory.diffs.headers.systemQty'),
+        t('inventory.diffs.headers.countedQty'),
+        t('inventory.diffs.headers.difference'),
+        t('inventory.sessions.title'),
+        t('loading.exportDate') || 'Export Date',
+        t('loading.responsible') || 'Responsible'
+      ];
       const lines = [header.join(';')];
       for (const r of filteredDiffs) {
         const row = [
@@ -478,14 +516,14 @@ function InventoryScreen({ tools = [], user }) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const fname = `roznice-sesja-${session?.id || 'brak'}-${new Date().toLocaleDateString('pl-PL')}.csv`;
+      const fname = `differences-session-${session?.id || 'none'}-${new Date().toLocaleDateString('pl-PL')}.csv`;
       link.download = fname;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Eksport CSV nie powiódł się');
+      alert(t('inventory.export.errors.failed'));
     } finally {
       setCsvExporting(false);
     }
@@ -560,29 +598,29 @@ function InventoryScreen({ tools = [], user }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Inwentaryzacja</h1>
-          <p className="text-slate-600 dark:text-slate-400">Przegląd stanów magazynowych i materiały zużywalne + sesje</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('inventory.title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{t('inventory.subtitle')}</p>
         </div>
       </div>
 
       {/* Panel sesji */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Sesje inwentaryzacji</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('inventory.sessions.title')}</h2>
           {isAdmin && (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <input
                 type="text"
                 value={newSessionName}
                 onChange={(e) => setNewSessionName(e.target.value)}
-                placeholder="Nazwa nowej sesji"
+                placeholder={t('inventory.sessions.newNamePlaceholder')}
                 className="w-full sm:w-56 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
               />
               <input
                 type="text"
                 value={newSessionNotes}
                 onChange={(e) => setNewSessionNotes(e.target.value)}
-                placeholder="Notatki (opcjonalnie)"
+                placeholder={t('inventory.sessions.notesPlaceholder')}
                 className="w-full sm:w-64 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
               />
               <button
@@ -590,7 +628,7 @@ function InventoryScreen({ tools = [], user }) {
                 disabled={creatingSession}
                 className="w-full sm:w-auto px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
               >
-                {creatingSession ? 'Tworzenie...' : 'Nowa sesja'}
+                {creatingSession ? t('inventory.sessions.creating') : t('inventory.sessions.createBtn')}
               </button>
             </div>
           )}
@@ -598,18 +636,18 @@ function InventoryScreen({ tools = [], user }) {
 
         <div className="overflow-x-auto">
           {sessionsLoading ? (
-            <div className="text-slate-600 dark:text-slate-300">Ładowanie sesji...</div>
+            <div className="text-slate-600 dark:text-slate-300">{t('loading.sessions')}</div>
           ) : sessionsError ? (
             <div className="text-red-600 dark:text-red-400">{sessionsError}</div>
           ) : (
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Nazwa</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Zliczone pozycje</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Data rozpoczęcia</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Data zakończenia</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.sessions.headers.name')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.sessions.headers.status')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.sessions.headers.counted')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.sessions.headers.startedAt')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.sessions.headers.finishedAt')}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -619,10 +657,10 @@ function InventoryScreen({ tools = [], user }) {
                     <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                       {s.name}
                       <div className="sm:hidden mt-1 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                        <div>Status: {s.status}</div>
-                        <div>Zliczone: {s.counted_items ?? 0}</div>
-                        <div>Start: {s.started_at ? new Date(s.started_at).toLocaleString('pl-PL') : '-'}</div>
-                        <div>Koniec: {s.finished_at ? new Date(s.finished_at).toLocaleString('pl-PL') : '-'}</div>
+                        <div>{t('inventory.sessions.details.status')}: {s.status}</div>
+                        <div>{t('inventory.sessions.details.counted')}: {s.counted_items ?? 0}</div>
+                        <div>{t('inventory.sessions.details.start')}: {s.started_at ? new Date(s.started_at).toLocaleString('pl-PL') : '-'}</div>
+                        <div>{t('inventory.sessions.details.end')}: {s.finished_at ? new Date(s.finished_at).toLocaleString('pl-PL') : '-'}</div>
                       </div>
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{s.status}</td>
@@ -635,19 +673,19 @@ function InventoryScreen({ tools = [], user }) {
                           onClick={() => setSelectedSessionId(s.id)}
                           className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600"
                         >
-                          Wybierz
+                          {t('inventory.sessions.select')}
                         </button>
                         {isAdmin && s.status === 'active' && (
                           <>
-                            <button onClick={() => handleSessionStatus('pause')} className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Wstrzymaj</button>
-                            <button onClick={() => handleSessionStatus('end')} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Zakończ</button>
+                            <button onClick={() => handleSessionStatus('pause')} className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">{t('inventory.sessions.pause')}</button>
+                            <button onClick={() => handleSessionStatus('end')} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{t('inventory.sessions.end')}</button>
                           </>
                         )}
                         {isAdmin && s.status === 'paused' && (
-                          <button onClick={() => handleSessionStatus('resume')} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Wznów</button>
+                          <button onClick={() => handleSessionStatus('resume')} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">{t('inventory.sessions.resume')}</button>
                         )}
                         {isAdmin && s.status === 'ended' && (
-                          <button onClick={() => handleDeleteSession(s)} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Usuń</button>
+                          <button onClick={() => handleDeleteSession(s)} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">{t('inventory.sessions.delete')}</button>
                         )}
                       </div>
                     </td>
@@ -655,7 +693,7 @@ function InventoryScreen({ tools = [], user }) {
                 ))}
                 {sessions && sessions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">Brak sesji</td>
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">{t('noData.sessions')}</td>
                   </tr>
                 )}
               </tbody>
@@ -666,7 +704,7 @@ function InventoryScreen({ tools = [], user }) {
         {/* Skanowanie w wybranej sesji */}
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-700 dark:text-slate-300">Wybrana sesja: </span>
+            <span className="text-sm text-slate-700 dark:text-slate-300">{t('inventory.sessions.selected')}: </span>
             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{selectedSessionId ? sessions.find(x => x.id === selectedSessionId)?.name : '—'}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -676,14 +714,14 @@ function InventoryScreen({ tools = [], user }) {
               value={scanQty}
               onChange={(e) => setScanQty(e.target.value)}
               className="w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
-              placeholder="Ilość"
+              placeholder={t('inventory.scan.qtyPlaceholder')}
             />
             <button
               onClick={handleOpenScanner}
               disabled={!selectedSessionId || sessions.find(s => s.id === selectedSessionId)?.status !== 'active'}
               className="px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
             >
-              Skanuj
+              {t('inventory.scan.open')}
             </button>
           </div>
         </div>
@@ -694,20 +732,20 @@ function InventoryScreen({ tools = [], user }) {
           <div className="mt-2 text-red-700 dark:text-red-300 text-sm">{scanError}</div>
         )}
         {lastScanTool && (
-          <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">Ostatnio zliczono: {lastScanTool.name} (SKU: {lastScanTool.sku})</div>
+          <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">{t('inventory.scan.last')}: {lastScanTool.name} ({t('inventory.labels.sku')}: {lastScanTool.sku})</div>
         )}
       </div>
 
       {/* Różnice w wybranej sesji */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Różnice stanów</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('inventory.diffs.title')}</h2>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <input
               type="text"
               value={diffSearch}
               onChange={(e) => setDiffSearch(e.target.value)}
-              placeholder="Filtruj po nazwie lub SKU"
+              placeholder={t('inventory.diffs.filterPlaceholder')}
               className="w-full sm:w-56 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
             />
             <input
@@ -715,7 +753,7 @@ function InventoryScreen({ tools = [], user }) {
               min={0}
               value={diffMinAbs}
               onChange={(e) => setDiffMinAbs(e.target.value)}
-              placeholder="Min. |różnica|"
+              placeholder={t('inventory.diffs.minAbsPlaceholder')}
               className="w-full sm:w-40 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
             />
             {canExportInventory && (
@@ -724,7 +762,7 @@ function InventoryScreen({ tools = [], user }) {
                 disabled={csvExporting || filteredDiffs.length === 0}
                 className="w-full sm:w-auto px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600"
               >
-                {csvExporting ? 'Eksport…' : 'Eksport CSV'}
+                {csvExporting ? t('inventory.diffs.exporting') : t('inventory.diffs.exportCsv')}
               </button>
             )}
             {isAdmin && (
@@ -735,13 +773,13 @@ function InventoryScreen({ tools = [], user }) {
                   onChange={(e) => setAutoAcceptDisabled(!!e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                 />
-                <span>Nie zatwierdzaj automatycznie</span>
+                <span>{t('inventory.diffs.autoAcceptDisabled')}</span>
               </label>
             )}
           </div>
         </div>
         {diffsLoading ? (
-          <div className="text-slate-600 dark:text-slate-300">Ładowanie różnic...</div>
+          <div className="text-slate-600 dark:text-slate-300">{t('loading.differences')}</div>
         ) : diffsError ? (
           <div className="text-red-600 dark:text-red-400">{diffsError}</div>
         ) : (
@@ -749,11 +787,11 @@ function InventoryScreen({ tools = [], user }) {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Nazwa</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">SKU</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">System ilość</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Zliczona ilość</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Różnica</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.diffs.headers.name')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.diffs.headers.sku')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.diffs.headers.systemQty')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.diffs.headers.countedQty')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.diffs.headers.difference')}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -766,12 +804,12 @@ function InventoryScreen({ tools = [], user }) {
                       <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                         {r.name}
                         {recently ? (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 px-2 py-0.5 text-xs">Skorygowano</span>
+                          <span className="ml-2 inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 px-2 py-0.5 text-xs">{t('inventory.diffs.correctedTag')}</span>
                         ) : null}
                         <div className="mt-1 text-xs text-slate-500 sm:hidden">
-                          <div>SKU: {r.sku || '-'}</div>
-                          <div>System: {Number(r.system_qty ?? 0)}</div>
-                          <div>Zliczona: {Number(r.counted_qty ?? 0)}</div>
+                          <div>{t('inventory.labels.sku')}: {r.sku || '-'}</div>
+                          <div>{t('inventory.labels.systemQty')}: {Number(r.system_qty ?? 0)}</div>
+                          <div>{t('inventory.labels.countedQty')}: {Number(r.counted_qty ?? 0)}</div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{r.sku}</td>
@@ -783,7 +821,7 @@ function InventoryScreen({ tools = [], user }) {
                           onClick={() => openCorrectionModal(r)}
                           className="w-full sm:w-auto px-3 py-2 text-sm bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
                         >
-                          Dodaj korektę
+                          {t('inventory.diffs.addCorrection')}
                         </button>
                       </td>
                     </tr>
@@ -791,7 +829,7 @@ function InventoryScreen({ tools = [], user }) {
                 })}
                 {filteredDiffs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">Brak różnic do wyświetlenia</td>
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">{t('inventory.diffs.empty')}</td>
                   </tr>
                 )}
               </tbody>
@@ -803,7 +841,7 @@ function InventoryScreen({ tools = [], user }) {
       {/* Historia korekt */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Historia korekt</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('inventory.history.title')}</h2>
           <div className="flex items-center gap-2">
             <input
               id="corrPendingOnly"
@@ -812,11 +850,11 @@ function InventoryScreen({ tools = [], user }) {
               onChange={(e) => setCorrShowPendingOnly(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="corrPendingOnly" className="text-sm text-slate-700 dark:text-slate-300">Tylko oczekujące</label>
+            <label htmlFor="corrPendingOnly" className="text-sm text-slate-700 dark:text-slate-300">{t('inventory.history.pendingOnly')}</label>
           </div>
         </div>
         {corrLoading ? (
-          <div className="text-slate-600 dark:text-slate-300">Ładowanie historii...</div>
+          <div className="text-slate-600 dark:text-slate-300">{t('loading.history')}</div>
         ) : corrError ? (
           <div className="text-red-600 dark:text-red-400">{corrError}</div>
         ) : (
@@ -824,14 +862,14 @@ function InventoryScreen({ tools = [], user }) {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Nazwa</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">SKU</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Różnica</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Powód</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Utworzono</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Kto zatwierdził</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Kiedy</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.history.headers.name')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.sku')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.history.headers.difference')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.reason')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.status')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.created')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.acceptedBy')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.history.headers.acceptedAt')}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -841,19 +879,19 @@ function InventoryScreen({ tools = [], user }) {
                     <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                       {c.tool_name}
                       <div className="mt-1 text-xs text-slate-500 sm:hidden">
-                        <div>SKU: {c.tool_sku || '-'}</div>
-                        <div>Powód: {c.reason || '-'}</div>
-                        <div>Status: {c.accepted_at ? 'Zatwierdzona' : 'Oczekuje'}</div>
-                        <div>Utw.: {c.created_at ? new Date(c.created_at).toLocaleString('pl-PL') : '-'}</div>
+                        <div>{t('inventory.history.headers.sku')}: {c.tool_sku || '-'}</div>
+                        <div>{t('inventory.history.headers.reason')}: {c.reason || '-'}</div>
+                        <div>{t('inventory.history.headers.status')}: {c.accepted_at ? t('inventory.history.status.accepted') : t('inventory.history.status.pending')}</div>
+                        <div>{t('inventory.history.headers.created')}: {c.created_at ? new Date(c.created_at).toLocaleString('pl-PL') : '-'}</div>
                         {c.accepted_at ? (
-                          <div>Zatw.: {(c.accepted_by_username || c.accepted_by_user_id || '-')} • {new Date(c.accepted_at).toLocaleString('pl-PL')}</div>
+                          <div>{t('inventory.history.headers.acceptedBy')}: {(c.accepted_by_username || c.accepted_by_user_id || '-')} • {new Date(c.accepted_at).toLocaleString('pl-PL')}</div>
                         ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.tool_sku}</td>
                     <td className={`px-4 py-3 text-sm ${c.difference_qty > 0 ? 'text-green-700 dark:text-green-300' : c.difference_qty < 0 ? 'text-red-700 dark:text-red-300' : 'text-slate-700 dark:text-slate-300'}`}>{c.difference_qty}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.reason || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.accepted_at ? 'Zatwierdzona' : 'Oczekuje'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.accepted_at ? t('inventory.history.status.accepted') : t('inventory.history.status.pending')}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.created_at ? new Date(c.created_at).toLocaleString('pl-PL') : '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.accepted_at ? (c.accepted_by_username || c.accepted_by_user_id || '-') : '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{c.accepted_at ? new Date(c.accepted_at).toLocaleString('pl-PL') : '-'}</td>
@@ -862,30 +900,30 @@ function InventoryScreen({ tools = [], user }) {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => acceptCorrection(c)}
-                            title="Zatwierdź korektę"
-                            aria-label="Zatwierdź korektę"
+                            title={t('inventory.history.accept.title')}
+                            aria-label={t('inventory.history.accept.aria')}
                             className="w-10 h-10 sm:w-8 sm:h-8 grid place-items-center rounded-full bg-green-600 text-white hover:bg-green-700"
                           >
                             <CheckIcon className="w-5 h-5" aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => openDeleteModal(c)}
-                            title="Usuń korektę"
-                            aria-label="Usuń korektę"
+                            title={t('inventory.history.delete.title')}
+                            aria-label={t('inventory.history.delete.aria')}
                             className="w-10 h-10 sm:w-8 sm:h-8 grid place-items-center rounded-full bg-red-600 text-white hover:bg-red-700"
                           >
                             <TrashIcon className="w-5 h-5" aria-hidden="true" />
                           </button>
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500">Zatwierdzona</span>
+                        <span className="text-xs text-slate-500">{t('inventory.history.accept.acceptedLabel')}</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {(!corrections || corrections.length === 0) && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">Brak korekt do wyświetlenia</td>
+                    <td colSpan={9} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">{t('inventory.history.empty')}</td>
                   </tr>
                 )}
               </tbody>
@@ -898,12 +936,12 @@ function InventoryScreen({ tools = [], user }) {
       {corrModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Dodaj korektę</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('inventory.correction.modal.title')}</h3>
             <div className="space-y-3">
-              <div className="text-sm text-slate-700 dark:text-slate-300">Pozycja: <span className="font-medium">{corrToolName}</span> <span className="text-slate-500">({corrSku || '-'})</span></div>
+              <div className="text-sm text-slate-700 dark:text-slate-300">{t('inventory.correction.modal.item')}: <span className="font-medium">{corrToolName}</span> <span className="text-slate-500">({corrSku || '-'})</span></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">System ilość</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('inventory.correction.modal.systemQty')}</label>
                   <input
                     type="number"
                     value={corrSystemQty}
@@ -912,7 +950,7 @@ function InventoryScreen({ tools = [], user }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Zliczona ilość</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('inventory.correction.modal.countedQty')}</label>
                   <input
                     type="number"
                     value={corrCountedQty}
@@ -926,8 +964,8 @@ function InventoryScreen({ tools = [], user }) {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Różnica</label>
-                <span className="text-xs text-slate-500 dark:text-slate-400">🔒 Pole obliczane automatycznie</span>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('inventory.correction.modal.difference')}</label>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t('inventory.correction.modal.calculatedInfo')}</span>
               </div>
               <input
                 type="number"
@@ -935,18 +973,18 @@ function InventoryScreen({ tools = [], user }) {
                 readOnly
                 className="w-full px-3 py-2 border rounded-lg bg-slate-100 dark:bg-slate-700 dark:text-slate-100"
               />
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Powód (opcjonalnie)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('inventory.correction.modal.reasonLabel')}</label>
               <input
                 type="text"
                 value={corrReason}
                 onChange={(e) => setCorrReason(e.target.value)}
-                placeholder="Np. błąd ewidencji, zmiana stanu"
+                placeholder={t('inventory.correction.modal.reasonPlaceholder')}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={closeCorrectionModal} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600">Anuluj</button>
-              <button onClick={submitCorrection} disabled={corrSubmitting} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">{corrSubmitting ? 'Zapisywanie...' : 'Zapisz korektę'}</button>
+              <button onClick={closeCorrectionModal} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600">{t('common.cancel')}</button>
+              <button onClick={submitCorrection} disabled={corrSubmitting} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">{corrSubmitting ? t('inventory.correction.modal.saving') : t('inventory.correction.modal.save')}</button>
             </div>
           </div>
         </div>
@@ -955,24 +993,24 @@ function InventoryScreen({ tools = [], user }) {
       {/* Istniejące filtry magazynowe */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Stan magazynowy</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('inventory.stock.title')}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Wyszukaj</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('inventory.stock.searchLabel')}</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nazwa, SKU lub nr ewidencyjny"
+                placeholder={t('inventory.stock.searchPlaceholder')}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
               />
               <button
                 type="button"
                 onClick={openSearchScanner}
                 className="px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                title="Skanuj kod do wyszukiwania"
+                title={t('inventory.stock.searchScanTitle')}
               >
                 📷
               </button>
@@ -989,7 +1027,7 @@ function InventoryScreen({ tools = [], user }) {
               onChange={(e) => setOnlyConsumables(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="onlyConsumables" className="text-sm text-slate-700 dark:text-slate-300">Tylko materiały zużywalne</label>
+            <label htmlFor="onlyConsumables" className="text-sm text-slate-700 dark:text-slate-300">{t('inventory.stock.onlyConsumablesLabel')}</label>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -999,20 +1037,23 @@ function InventoryScreen({ tools = [], user }) {
               onChange={(e) => setOnlyBelowMin(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="onlyBelowMin" className="text-sm text-slate-700 dark:text-slate-300">Poniżej stanu minimalnego</label>
+            <label htmlFor="onlyBelowMin" className="text-sm text-slate-700 dark:text-slate-300">{t('inventory.stock.onlyBelowMinLabel')}</label>
           </div>
         </div>
         <div className="overflow-x-auto">
         {/* Tabela materiałów zużywalnych */}
+        {toolsLoading && sourceTools.length === 0 ? (
+          <SkeletonList rows={8} cols={4} />
+        ) : (
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Nazwa</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">SKU</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Ilość</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Min</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">Max</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.stock.headers.name')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.stock.headers.sku')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.stock.headers.quantity')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.stock.headers.min')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider hidden sm:table-cell">{t('inventory.stock.headers.max')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 dark:text-slate-200 uppercase tracking-wider">{t('inventory.stock.headers.status')}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -1026,8 +1067,8 @@ function InventoryScreen({ tools = [], user }) {
                   <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                     {t.name}
                     <div className="mt-1 text-xs text-slate-500 sm:hidden">
-                      <div>SKU: {t.sku || '-'}</div>
-                      <div>Min: {min ?? '-'} | Max: {max ?? '-'}</div>
+                      <div>{t('inventory.stock.headers.sku')}: {t.sku || '-'}</div>
+                      <div>{t('inventory.stock.headers.min')}: {min ?? '-'} | {t('inventory.stock.headers.max')}: {max ?? '-'}</div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{t.sku}</td>
@@ -1036,9 +1077,9 @@ function InventoryScreen({ tools = [], user }) {
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{max ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">
                     {belowMin ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Braki</span>
+                      <span className="inline-flex items-center px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">{t('inventory.stock.status.missing')}</span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">OK</span>
+                      <span className="inline-flex items-center px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">{t('inventory.stock.status.ok')}</span>
                     )}
                   </td>
                 </tr>
@@ -1046,11 +1087,12 @@ function InventoryScreen({ tools = [], user }) {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">Brak pozycji do wyświetlenia</td>
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-600 dark:text-slate-400">{t('inventory.stock.empty')}</td>
               </tr>
             )}
           </tbody>
         </table>
+        )}
         </div>
       </div>
 
@@ -1089,10 +1131,10 @@ function InventoryScreen({ tools = [], user }) {
               setDeleteLoading(false);
             }
           }}
-          title="Usuń korektę"
-          message="Czy na pewno chcesz usunąć tę korektę?"
-          confirmText="Usuń"
-          cancelText="Anuluj"
+          title={t('inventory.modalDelete.title')}
+          message={t('inventory.modalDelete.message')}
+          confirmText={t('inventory.modalDelete.confirm')}
+          cancelText={t('common.cancel')}
           type="danger"
           loading={deleteLoading}
         />

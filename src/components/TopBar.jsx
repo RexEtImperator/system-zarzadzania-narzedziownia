@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { WrenchIcon, Bars3Icon, ChevronDownIcon, SunIcon, MoonIcon, ArrowRightOnRectangleIcon, BellIcon, ShieldExclamationIcon, ClockIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import api from '../api';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -10,6 +11,8 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
   const [bellOpen, setBellOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const bellRef = useRef(null);
+
+  const { t, language } = useLanguage();
 
   // Helpers do formatowania i obliczeń w UI powiadomień
   const parseDateFlexibleUI = (val) => {
@@ -42,7 +45,8 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
     const d = parseDateFlexibleUI(dateStr);
     if (!d) return String(dateStr || '-');
     try {
-      return d.toLocaleDateString('pl-PL');
+      const locale = language === 'de' ? 'de-DE' : (language === 'en' ? 'en-US' : 'pl-PL');
+      return d.toLocaleDateString(locale);
     } catch (_) {
       return String(dateStr || '-');
     }
@@ -218,7 +222,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
           onClick={onToggleSidebar}
           className="p-2 rounded-md text-gray-400 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 lg:hidden transition-colors duration-200"
         >
-          <span className="sr-only">Otwórz menu</span>
+          <span className="sr-only">{t('topbar.openMenu')}</span>
           <Bars3Icon className="h-6 w-6" aria-hidden="true" />
         </button>
       </div>
@@ -229,7 +233,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
           <button
             onClick={() => setBellOpen(prev => !prev)}
             className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
-            aria-label="Powiadomienia"
+            aria-label={t('topbar.notifications')}
           >
             <BellIcon className="w-6 h-6 text-gray-500 dark:text-gray-300" aria-hidden="true" />
             {unreadCount > 0 && (
@@ -243,8 +247,8 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
               <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Powiadomienia</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Przeglądy po terminie (BHP i Narzędzia)</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{t('topbar.notifications')}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('topbar.overdueInspections')}</div>
                   </div>
                   {notifications.length > 0 && (
                     <button
@@ -272,14 +276,14 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                       }}
                       className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
                     >
-                      Oznacz wszystkie jako przeczytane
+                      {t('topbar.markAllRead')}
                     </button>
                   )}
                 </div>
               </div>
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">Brak nowych powiadomień</div>
+                  <div className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">{t('topbar.noNotifications')}</div>
                 ) : (
                   notifications.map(n => (
                     <div
@@ -316,7 +320,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                                 {n.inventory_number}
                               </button>
                               <span className="inline-flex items-center px-2 py-0.5 text-[11px] rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                {n.type === 'bhp' ? 'BHP' : 'Narzędzia'}
+                                {n.type === 'bhp' ? t('topbar.type.bhp') : t('topbar.type.tools')}
                               </span>
                             </div>
                             <div className="text-xs text-gray-600 dark:text-gray-300">{[n.manufacturer, n.model].filter(Boolean).join(' ')}</div>
@@ -325,12 +329,12 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                         <div className="text-right">
                           <div className="flex items-center justify-end gap-1 text-xs font-medium text-red-600 dark:text-red-400">
                             <ClockIcon className="w-4 h-4" aria-hidden="true" />
-                            <span>Po terminie: {calcDaysOverdue(n.inspection_date) ?? '-'} dni</span>
+                            <span>{t('topbar.overdue')}: {calcDaysOverdue(n.inspection_date) ?? '-'} {t('common.days')}</span>
                           </div>
                           <div className="text-[11px] text-gray-500 dark:text-gray-400">{formatDatePL(n.inspection_date)}</div>
                           <div className="mt-2 flex items-center justify-end gap-2">
                             {n.read ? (
-                              <span className="inline-flex items-center" title="Przeczytano" aria-label="Przeczytano">
+                              <span className="inline-flex items-center" title={t('topbar.read')} aria-label={t('topbar.read')}>
                                 <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" aria-hidden="true" />
                               </span>
                             ) : (
@@ -348,8 +352,8 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                                   } catch (_) {}
                                 }}
                                 className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                                title="Oznacz jako przeczytane"
-                                aria-label="Oznacz jako przeczytane"
+                                title={t('topbar.markRead')}
+                                aria-label={t('topbar.markRead')}
                               >
                                 <CheckIcon className="w-5 h-5 text-slate-700 dark:text-slate-200" aria-hidden="true" />
                               </button>
@@ -377,10 +381,13 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
             </div>
             <div className="hidden md:block text-left">
               <div className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">
-                {user?.full_name || user?.username || 'Użytkownik'}
+                {user?.full_name || user?.username}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                {user?.role || 'Rola'}
+                {user?.role === 'administrator' ? 'Administrator' : 
+                  user?.role === 'manager' ? 'Kierownik' : 
+                  user?.role === 'employee' ? 'Pracownik' : 
+                  user?.role || 'Nieznana'}
               </div>
             </div>
             <ChevronDownIcon
@@ -403,7 +410,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                   </div>
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">
-                      {user?.full_name || user?.username || 'Użytkownik'}
+                      {user?.full_name || user?.username || t('topbar.user')}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
                       @{user?.username || 'username'}
@@ -414,13 +421,13 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
               
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                 <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold mb-1 transition-colors duration-200">
-                  Rola
+                  {t('topbar.role')}
                 </div>
                 <div className="text-sm text-gray-900 dark:text-white font-medium transition-colors duration-200">
-                  {user?.role === 'administrator' ? 'Administrator' : 
-                   user?.role === 'manager' ? 'Kierownik' : 
-                   user?.role === 'user' ? 'Użytkownik' : 
-                   user?.role || 'Nieznana'}
+                  {user?.role === 'administrator' ? t('topbar.roles.administrator') :
+                   user?.role === 'manager' ? t('topbar.roles.manager') :
+                   user?.role === 'employee' ? t('topbar.roles.employee') :
+                   user?.role || t('topbar.roles.unknown')}
                 </div>
               </div>
 
@@ -431,7 +438,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                >
                   {/** Ikona klucza (wrench) z Heroicons */}
                   <WrenchIcon className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true" />
-                  <span>Ustawienia</span>
+                  <span>{t('topbar.settings')}</span>
                 </button>
                 {user?.role === 'administrator' && (
                   <button
@@ -439,7 +446,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center space-x-2 transition-colors duration-200"
                   >
                     <span className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true">📄</span>
-                    <span>Podgląd bazy danych</span>
+                    <span>{t('topbar.dbViewer')}</span>
                   </button>
                 )}
                 <button
@@ -452,7 +459,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                     ) : (
                       <MoonIcon className="w-4 h-4" aria-hidden="true" />
                     )}
-                    <span>{isDarkMode ? 'Tryb jasny' : 'Tryb ciemny'}</span>
+                    <span>{isDarkMode ? t('topbar.themeLight') : t('topbar.themeDark')}</span>
                   </div>
                   <div className={`w-10 h-5 rounded-full p-1 transition-colors duration-200 ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-300'}`}>
                     <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-200 ${isDarkMode ? 'translate-x-5' : 'translate-x-0'}`}></div>
@@ -464,7 +471,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, appName, onNav
                   className="w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-900 flex items-center space-x-2 transition-colors duration-200"
                 >
                   <ArrowRightOnRectangleIcon className="w-4 h-4" aria-hidden="true" />
-                  <span>Wyloguj się</span>
+                  <span>{t('topbar.logout')}</span>
                 </button>
               </div>
             </div>

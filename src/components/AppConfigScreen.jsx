@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { ArchiveBoxIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import DepartmentManagementScreen from './DepartmentManagementScreen';
@@ -7,6 +8,7 @@ import UserManagementScreen from './UserManagementScreen';
 import ConfirmationModal from './ConfirmationModal';
 
 const AppConfigScreen = ({ apiClient, user }) => {
+  const { t } = useLanguage();
   const MIN_LOGO_WIDTH = 64;
   const MIN_LOGO_HEIGHT = 64;
   const MAX_LOGO_WIDTH = 1024;
@@ -31,6 +33,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
       maxLoginAttempts: 5,
       lockoutDuration: 15
     },
+    email: {
+      host: '',
+      port: 587,
+      secure: false,
+      user: '',
+      pass: '',
+      from: 'no-reply@example.com'
+    },
     notifications: {
       emailNotifications: true,
       smsNotifications: false,
@@ -46,6 +56,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
       enableDataExport: true
     }
   });
+  // Walidacja SMTP + test wysyłki
+  const [emailErrors, setEmailErrors] = useState({ host: '', port: '', from: '' });
+  const [testEmail, setTestEmail] = useState('');
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -75,6 +90,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
   useEffect(() => {
     loadConfig();
+    loadEmailConfig();
     loadLogoHistory();
   }, []);
 
@@ -133,7 +149,34 @@ const AppConfigScreen = ({ apiClient, user }) => {
         bhpCodePrefix: config.general.bhpCodePrefix,
         toolCategoryPrefixes: config.general.toolCategoryPrefixes
       });
+      // Zapisz konfigurację SMTP (jeśli admin)
+      const validCfg = validateEmailConfig(config.email);
+      setEmailErrors(validCfg.errors);
+      if (!validCfg.isValid) {
+        notifyError('Popraw konfigurację SMTP (host/port/from)');
+      } else {
+        try {
+          await apiClient.put('/api/config/email', {
+            host: config.email.host,
+            port: config.email.port,
+            secure: !!config.email.secure,
+            user: config.email.user,
+            pass: config.email.pass,
+            from: config.email.from
+          });
+        } catch (e) {
+          console.warn('Nie udało się zapisać konfiguracji SMTP:', e?.message || e);
+        }
+      }
       
+      // Zaktualizuj język lokalnie dla natychmiastowego efektu UI
+      try {
+        localStorage.setItem('language', config.general.language);
+        window.dispatchEvent(new CustomEvent('language:changed', { detail: { language: config.general.language } }));
+      } catch (_) {
+        // ignore localStorage errors
+      }
+
       // Toastr
       notifySuccess('Konfiguracja została zapisana pomyślnie!');
       setSaved(true);
@@ -156,15 +199,44 @@ const AppConfigScreen = ({ apiClient, user }) => {
     }));
   };
 
+  const validateEmailConfig = (emailCfg) => {
+    const errors = { host: '', port: '', from: '' };
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // host
+    if (!emailCfg.host || String(emailCfg.host).trim().length === 0) {
+      errors.host = 'Pole host jest wymagane';
+    }
+    // port
+    const portNum = parseInt(emailCfg.port, 10);
+    if (!portNum || portNum <= 0 || portNum > 65535) {
+      errors.port = 'Podaj poprawny port (1-65535)';
+    }
+    // from
+    if (!emailCfg.from || !emailRegex.test(String(emailCfg.from))) {
+      errors.from = 'Podaj poprawny adres e-mail w polu FROM';
+    }
+    const isValid = !errors.host && !errors.port && !errors.from;
+    return { isValid, errors };
+  };
+
+  const onEmailFieldChange = (field, value) => {
+    updateConfig('email', field, value);
+    const next = { ...config.email, [field]: value };
+    const valid = validateEmailConfig(next);
+    setEmailErrors(valid.errors);
+  };
+
   const tabs = [
     { id: 'general', name: 'Ogólne', icon: '⚙️' },
     { id: 'security', name: 'Bezpieczeństwo', icon: '🔒' },
+    { id: 'email', name: 'Poczta email', icon: '✉️' },
     { id: 'users', name: 'Użytkownicy', icon: '👥' },
     { id: 'features', name: 'Funkcje', icon: '🎛️' },
     { id: 'departments', name: 'Działy', icon: '🏢' },
     { id: 'positions', name: 'Stanowiska', icon: '👔' },
     { id: 'categories', name: 'Kategorie', icon: '🏷️' },
     { id: 'codes', name: 'Kody qr/kreskowe', icon: '🔖' },
+    { id: 'translations', name: 'Tłumaczenie', icon: '🈶' },
     { id: 'backup', name: 'Backup', icon: '💾' }
   ];
 
@@ -517,6 +589,148 @@ const AppConfigScreen = ({ apiClient, user }) => {
     </div>
   );
 
+  const loadEmailConfig = async () => {
+    try {
+      const emailCfg = await apiClient.get('/api/config/email');
+      setConfig(prev => ({
+        ...prev,
+        email: {
+          host: emailCfg.host ?? prev.email.host,
+          port: emailCfg.port ?? prev.email.port,
+          secure: !!emailCfg.secure,
+          user: emailCfg.user ?? prev.email.user,
+          pass: emailCfg.pass ?? prev.email.pass,
+          from: emailCfg.from ?? prev.email.from
+        }
+      }));
+    } catch (err) {
+      console.warn('Nie udało się pobrać konfiguracji SMTP:', err?.message || err);
+    }
+  };
+
+  const renderEmailTab = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Konfiguracja SMTP</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_HOST</label>
+            <input
+              type="text"
+              value={config.email.host}
+              onChange={(e) => onEmailFieldChange('host', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+            {emailErrors.host && (<p className="mt-1 text-xs text-red-600">{emailErrors.host}</p>)}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_PORT</label>
+            <input
+              type="number"
+              value={config.email.port}
+              onChange={(e) => onEmailFieldChange('port', parseInt(e.target.value) || 0)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+            {emailErrors.port && (<p className="mt-1 text-xs text-red-600">{emailErrors.port}</p>)}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_SECURE (Tak lub NIE)</label>
+            <select
+              value={config.email.secure ? 'TAK' : 'NIE'}
+              onChange={(e) => onEmailFieldChange('secure', e.target.value === 'TAK')}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            >
+              <option value="TAK">TAK</option>
+              <option value="NIE">NIE</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_USER</label>
+            <input
+              type="text"
+              value={config.email.user}
+              onChange={(e) => onEmailFieldChange('user', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_PASS</label>
+            <input
+              type="password"
+              value={config.email.pass}
+              onChange={(e) => onEmailFieldChange('pass', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_FROM</label>
+            <input
+              type="text"
+              value={config.email.from}
+              onChange={(e) => onEmailFieldChange('from', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+            {emailErrors.from && (<p className="mt-1 text-xs text-red-600">{emailErrors.from}</p>)}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Ustawienia używane do wysyłki e-maili (np. danych logowania).</p>
+      </div>
+      <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">Test wysyłki e-mail</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Wyślij testową wiadomość, aby zweryfikować konfigurację SMTP. Wymagane uprawnienia administratora.</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Adres odbiorcy (TO)</label>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="np. test@twojadomena.pl"
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={async () => {
+                setTestResult('');
+                const validCfg = validateEmailConfig(config.email);
+                setEmailErrors(validCfg.errors);
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!validCfg.isValid) {
+                  setTestResult('Najpierw popraw konfigurację SMTP (host/port/from).');
+                  notifyError('Najpierw popraw konfigurację SMTP (host/port/from)');
+                  return;
+                }
+                if (!testEmail || !emailRegex.test(testEmail)) {
+                  setTestResult('Podaj poprawny adres odbiorcy testowej wiadomości.');
+                  notifyError('Podaj poprawny adres odbiorcy testowej wiadomości.');
+                  return;
+                }
+                try {
+                  setIsSendingTest(true);
+                  await apiClient.post('/api/config/email/test', { to: testEmail });
+                  setTestResult('Wiadomość testowa została wysłana pomyślnie.');
+                  notifySuccess('Wiadomość testowa została wysłana pomyślnie.');
+                } catch (err) {
+                  setTestResult(`Błąd wysyłki testowej: ${err?.message || err}`);
+                  notifyError(`Błąd wysyłki testowej: ${err?.message || err}`);
+                } finally {
+                  setIsSendingTest(false);
+                }
+              }}
+              disabled={isSendingTest}
+              className={`inline-flex items-center px-4 py-2 rounded-md text-white ${isSendingTest ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            >
+              {isSendingTest ? 'Wysyłanie…' : 'Wyślij mail testowy'}
+            </button>
+            {testResult && (<p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{testResult}</p>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderNotificationsTab = () => (
     <div className="space-y-6">
       <div>
@@ -728,9 +942,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Możesz zdefiniować różne prefiksy dla konkretnych kategorii.</p>
         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
           {categoriesLoading ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie kategorii...</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('loading.categories')}</div>
           ) : (categories || []).length === 0 ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Brak kategorii</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('noData.categories')}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {categories.map(cat => (
@@ -765,6 +979,246 @@ const AppConfigScreen = ({ apiClient, user }) => {
       </div>
     </div>
   );
+
+  // ====== Zakładka: Tłumaczenie ======
+  const [translationsLoading, setTranslationsLoading] = useState(false);
+  const [translationsSearch, setTranslationsSearch] = useState('');
+  const [translations, setTranslations] = useState({}); // { key: { pl, en, de } }
+  const [changedPairs, setChangedPairs] = useState(new Set()); // set of `${key}|${lang}` changed
+  const [selectedLang, setSelectedLang] = useState('pl');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newKey, setNewKey] = useState('');
+  const [newPL, setNewPL] = useState('');
+  const [newEN, setNewEN] = useState('');
+  const [newDE, setNewDE] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const loadTranslations = async () => {
+    try {
+      setTranslationsLoading(true);
+      const [plRes, enRes, deRes] = await Promise.all([
+        apiClient.get('/api/translations/pl'),
+        apiClient.get('/api/translations/en'),
+        apiClient.get('/api/translations/de')
+      ]);
+      const plMap = plRes?.translations || {};
+      const enMap = enRes?.translations || {};
+      const deMap = deRes?.translations || {};
+      const allKeys = Array.from(new Set([...Object.keys(plMap), ...Object.keys(enMap), ...Object.keys(deMap)])).sort();
+      const merged = {};
+      for (const k of allKeys) {
+        merged[k] = { pl: plMap[k] ?? '', en: enMap[k] ?? '', de: deMap[k] ?? '' };
+      }
+      setTranslations(merged);
+      setChangedPairs(new Set());
+    } catch (err) {
+      notifyError('Nie udało się pobrać tłumaczeń');
+    } finally {
+      setTranslationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'translations') {
+      loadTranslations();
+    }
+  }, [activeTab]);
+
+  const setValue = (key, lang, value) => {
+    setTranslations(prev => ({
+      ...prev,
+      [key]: { ...(prev[key] || {}), [lang]: value }
+    }));
+    setChangedPairs(prev => {
+      const next = new Set(prev);
+      next.add(`${key}|${lang}`);
+      return next;
+    });
+  };
+
+  const saveTranslations = async () => {
+    try {
+      const updates = [];
+      for (const pair of Array.from(changedPairs)) {
+        const [key, lang] = pair.split('|');
+        const row = translations[key];
+        if (!row) continue;
+        updates.push({ lang, key, value: row[lang] ?? '' });
+      }
+      if (updates.length === 0) {
+        notifyError('Brak zmian do zapisania');
+        return;
+      }
+      await apiClient.put('/api/translate/bulk', { updates });
+      notifySuccess('Tłumaczenia zapisane');
+      setChangedPairs(new Set());
+    } catch (_) {
+      notifyError('Nie udało się zapisać tłumaczeń');
+    }
+  };
+
+  const renderTranslationsTab = () => {
+    const keys = Object.keys(translations || {}).filter(k => !translationsSearch || k.toLowerCase().includes(translationsSearch.toLowerCase()));
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Tłumaczenia i18n</h3>
+            <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-md p-1">
+              {['pl','en','de'].map((lng) => (
+                <button
+                  key={lng}
+                  type="button"
+                  onClick={() => setSelectedLang(lng)}
+                  className={`px-3 py-1 rounded ${selectedLang === lng ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow' : 'text-slate-600 dark:text-slate-300'}`}
+                >
+                  {lng.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowAddModal(true); setNewKey(''); setNewPL(''); setNewEN(''); setNewDE(''); }}
+              className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800">
+              Dodaj tłumaczenie
+            </button>
+            <input
+              type="text"
+              placeholder="Szukaj klucza…"
+              value={translationsSearch}
+              onChange={(e) => setTranslationsSearch(e.target.value)}
+              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+            <button
+              type="button"
+              onClick={saveTranslations}
+              className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-60"
+              disabled={translationsLoading}
+            >
+              Zapisz zmiany
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+          {translationsLoading ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie tłumaczeń…</div>
+          ) : keys.length === 0 ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400">Brak kluczy do wyświetlenia</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-900">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Klucz</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{selectedLang.toUpperCase()}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {keys.map((k) => (
+                    <tr key={k}>
+                      <td className="px-3 py-2 align-top text-xs text-gray-600 dark:text-gray-300 w-64">{k}</td>
+                      <td className="px-3 py-2">
+                        <textarea
+                          rows={2}
+                          value={translations[k]?.[selectedLang] ?? ''}
+                          onChange={(e) => setValue(k, selectedLang, e.target.value)}
+                          className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => !adding && setShowAddModal(false)} />
+            <div className="relative z-10 w-full max-w-2xl rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dodaj tłumaczenie</h4>
+                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">✖</button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Klucz</label>
+                  {(() => {
+                    const trimmedKey = newKey.trim();
+                    const keyExists = !!trimmedKey && Object.prototype.hasOwnProperty.call(translations, trimmedKey);
+                    const base = "w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 ";
+                    const border = keyExists ? "border-red-400 dark:border-red-500" : "border-slate-300 dark:border-slate-600";
+                    return (
+                      <>
+                        <input
+                          type="text"
+                          value={newKey}
+                          onChange={(e) => setNewKey(e.target.value)}
+                          className={base + border}
+                          placeholder="np. inventory.correctionDelete.title"
+                        />
+                        {keyExists && (
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">Taki klucz już istnieje. Edytuj go na liście zamiast dodawać.</p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PL</label>
+                    <textarea rows={3} value={newPL} onChange={(e) => setNewPL(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">EN</label>
+                    <textarea rows={3} value={newEN} onChange={(e) => setNewEN(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">DE</label>
+                    <textarea rows={3} value={newDE} onChange={(e) => setNewDE(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">Anuluj</button>
+                <button
+                  type="button"
+                  disabled={!newKey.trim() || adding || Object.prototype.hasOwnProperty.call(translations, newKey.trim())}
+                  onClick={async () => {
+                    try {
+                      setAdding(true);
+                      const trimmedKey = newKey.trim();
+                      const updates = [
+                        { lang: 'pl', key: trimmedKey, value: newPL ?? '' },
+                        { lang: 'en', key: trimmedKey, value: newEN ?? '' },
+                        { lang: 'de', key: trimmedKey, value: newDE ?? '' }
+                      ];
+                      await apiClient.put('/api/translate/bulk', { updates });
+                      setShowAddModal(false);
+                      setNewKey(''); setNewPL(''); setNewEN(''); setNewDE('');
+                      await loadTranslations();
+                      notifySuccess('Tłumaczenie dodane');
+                    } catch (e) {
+                      notifyError('Nie udało się dodać tłumaczenia');
+                    } finally {
+                      setAdding(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:opacity-60"
+                >
+                  Dodaj
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const formatDateTime = (dt) => {
     if (!dt) return '-';
@@ -965,9 +1419,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           </div>
 
           {categoriesLoading ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie kategorii...</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('loading.categories')}</div>
           ) : categories.length === 0 ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Brak kategorii</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('noData.categories')}</div>
           ) : (
             <ul className="divide-y divide-slate-200 dark:divide-slate-700">
               {categories.map(cat => (
@@ -1028,6 +1482,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
         return renderGeneralTab();
       case 'security':
         return renderSecurityTab();
+      case 'email':
+        return renderEmailTab();
       case 'users':
         return <UserManagementScreen user={user} />;
       case 'features':
@@ -1040,6 +1496,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
         return renderCategoriesTab();
       case 'codes':
         return renderCodesTab();
+      case 'translations':
+        return renderTranslationsTab();
       case 'backup':
         return renderBackupTab();
       default:
@@ -1130,7 +1588,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
         title="Usuń wersję logo"
         message={logoDeleteFilename ? `Czy na pewno chcesz usunąć wersję: ${logoDeleteFilename}?` : 'Czy na pewno chcesz usunąć tę wersję logo?'}
         confirmText="Usuń"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={logoDeleteLoading}
       />

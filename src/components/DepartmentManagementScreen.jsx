@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { BuildingOfficeIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import ConfirmationModal from './ConfirmationModal';
 
 const DepartmentManagementScreen = ({ apiClient }) => {
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState([]);
   const [dbDepartments, setDbDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -125,7 +127,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       }
     });
 
-    setDepartments(merged);
+  setDepartments(merged);
   }, [dbDepartments, employees]);
 
   const handleAdd = () => {
@@ -137,7 +139,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       status: 'active'
     });
     setErrors({});
-    setShowModal(true);
+  setShowModal(true);
   };
 
   const handleEdit = (department) => {
@@ -307,7 +309,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         {loading ? (
           <div className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Ładowanie działów...</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{t('loading.departments')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -479,7 +481,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                     onClick={() => setShowModal(false)}
                     className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>
@@ -496,7 +498,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         title="Usuń dział"
         message={`Czy na pewno chcesz usunąć dział "${deleteTarget?.name || ''}"?`}
         confirmText="Usuń"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={deleteLoading}
       />

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'react-toastify';
 import api from '../api';
 
 const PermissionsModal = ({ isOpen, onClose, user }) => {
+  const { t } = useLanguage();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -15,24 +17,19 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
   // Definicja dostępnych ról i ich uprawnień
   const roles = {
     administrator: {
-      name: 'Administrator',
-      description: 'Pełny dostęp do wszystkich funkcji systemu',
+      name: t('users.roles.administrator'),
+      description: t('users.descriptions.administrator'),
       color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
     },
     manager: {
-      name: 'Kierownik',
-      description: 'Zarządzanie narzędziami, pracownikami i analityka',
+      name: t('users.roles.manager'),
+      description: t('users.descriptions.manager'),
       color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
     },
     employee: {
-      name: 'Pracownik',
-      description: 'Podstawowe operacje na narzędziach i pracownikach',
+      name: t('users.roles.employee'),
+      description: t('users.descriptions.employee'),
       color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-    },
-    user: {
-      name: 'Użytkownik',
-      description: 'Dostęp do narzędzi i podstawowych funkcji',
-      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
     }
   };
 
@@ -47,13 +44,16 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'MANAGE_EMPLOYEES': 'Pracownicy - zarządzanie',
     'VIEW_ANALYTICS': 'Analityka - przeglądanie',
     'VIEW_TOOLS': 'Narzędzia - przeglądanie',
+    'VIEW_TOOL_HISTORY': 'Narzędzia - przeglądanie - Historia wydań/zwrotów',
     'MANAGE_DEPARTMENTS': 'Działy - zarządzanie',
     'MANAGE_POSITIONS': 'Stanowiska - zarządzanie',
     'SYSTEM_SETTINGS': 'Ustawienia systemowe',
     'VIEW_ADMIN': 'Panel administracyjny',
     'VIEW_AUDIT_LOG': 'Dziennik audytu - przeglądanie',
     'VIEW_BHP': 'BHP - przeglądanie',
+    'VIEW_BHP_HISTORY': 'BHP - przeglądanie - Historia wydań/zwrotów',
     'MANAGE_BHP': 'BHP - zarządzanie',
+    'VIEW_QUICK_ACTIONS': 'Szybkie akcje - przeglądanie',
     'DELETE_ISSUE_HISTORY': 'Usuwanie historii wydań',
     'DELETE_RETURN_HISTORY': 'Usuwanie historii zwrotów',
     'DELETE_SERVICE_HISTORY': 'Usuwanie historii serwisowania',
@@ -85,7 +85,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Błąd podczas pobierania użytkowników');
+      toast.error(t('permissions.toast.fetchUsersError'));
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       setRolePermissions(data);
     } catch (error) {
       console.error('Error fetching role permissions:', error);
-      toast.error('Błąd podczas pobierania uprawnień ról');
+      toast.error(t('permissions.toast.fetchRolePermsError'));
     } finally {
       setLoadingPermissions(false);
     }
@@ -110,7 +110,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       setAvailablePermissions(data);
     } catch (error) {
       console.error('Error fetching available permissions:', error);
-      toast.error('Błąd podczas pobierania dostępnych uprawnień');
+      toast.error(t('permissions.toast.fetchAvailablePermsError'));
     }
   };
 
@@ -135,10 +135,10 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
       setSaving(true);
       const permissions = rolePermissions[role] || [];
       await api.put(`/api/role-permissions/${role}`, { permissions });
-      toast.success(`Uprawnienia dla roli ${roles[role]?.name || role} zostały zaktualizowane`);
+      toast.success(t('permissions.toast.savePermsSuccess', { role: roles[role]?.name || role }));
     } catch (error) {
       console.error('Error saving role permissions:', error);
-      toast.error('Błąd podczas zapisywania uprawnień');
+      toast.error(t('permissions.toast.savePermsError'));
       // Odśwież uprawnienia w przypadku błędu
       fetchRolePermissions();
     } finally {
@@ -149,15 +149,30 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
   const handleRoleChange = async (userId, newRole) => {
     try {
       setSaving(true);
-      await api.put(`/api/users/${userId}`, { role: newRole });
-      
+
+      // Znajdź użytkownika, aby wysłać wymagane pola: username i full_name
+      const targetUser = users.find((u) => u.id === userId);
+      if (!targetUser) {
+        toast.error(t('permissions.toast.userNotFound'));
+        return;
+      }
+
+      const payload = {
+        username: targetUser.username,
+        full_name: targetUser.full_name,
+        role: newRole,
+      };
+
+      await api.put(`/api/users/${userId}`, payload);
+
       // Aktualizuj lokalny stan
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      
-      toast.success('Rola użytkownika została zaktualizowana');
+
+      toast.success(t('permissions.toast.updateRoleSuccess'));
     } catch (error) {
       console.error('Error updating user role:', error);
-      toast.error('Błąd podczas aktualizacji roli użytkownika');
+      const msg = typeof error?.message === 'string' ? error.message : t('permissions.toast.updateRoleError');
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -331,7 +346,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
                                     disabled={saving}
                                     className="px-3 py-1 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
-                                    {saving ? 'Zapisywanie...' : 'Zapisz'}
+                                    {saving ? t('permissions.saving') : t('permissions.save')}
                                   </button>
                                 </div>
                                 
@@ -345,7 +360,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
                                         className="rounded border-gray-300 dark:border-slate-600 text-orange-600 focus:ring-orange-500"
                                       />
                                       <span className="text-gray-700 dark:text-slate-300">
-                                        {permissionLabels[permission] || permission}
+                                        {t(`permissions.labels.${permission}`)}
                                       </span>
                                     </label>
                                   ))}
@@ -369,7 +384,7 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
               onClick={onClose}
               className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 text-base font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 sm:w-auto sm:text-sm"
             >
-              Zamknij
+              {t('permissions.close')}
             </button>
           </div>
         </div>

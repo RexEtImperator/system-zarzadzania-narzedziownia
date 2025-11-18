@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import ConfirmationModal from './ConfirmationModal';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PositionManagementScreen = ({ apiClient }) => {
+  const { t } = useLanguage();
   const [positions, setPositions] = useState([]);
   const [dbPositions, setDbPositions] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -721,7 +723,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                     onClick={() => setShowModal(false)}
                     className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>
@@ -738,7 +740,7 @@ const PositionManagementScreen = ({ apiClient }) => {
         title="Usuń stanowisko"
         message={`Czy na pewno chcesz usunąć stanowisko "${deleteTarget?.name || ''}"?`}
         confirmText="Usuń"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={deleteLoading}
       />

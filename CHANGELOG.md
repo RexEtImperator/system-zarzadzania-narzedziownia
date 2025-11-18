@@ -4,7 +4,44 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/1.9.0...HEAD
+[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/2.0.0...HEAD
+
+### Dodane / Zmienione
+- i18n - tłumaczenie całego systemu w językach `PL/EN/DE`.
+- Konfiguracja → „Tłumaczenie”: nowa zakładka w sekcji „Kody qr/kreskowe” do edycji tłumaczeń `PL/EN/DE`.
+  - Przełącznik języków (PL/EN/DE), wyszukiwanie po kluczu, zapis tylko zmienionych par `klucz|język`.
+  - Modal „Dodaj tłumaczenie” (pola: `Klucz`, `PL`, `EN`, `DE`).
+  - Walidacja kolizji — ostrzeżenie i blokada dodania, jeśli klucz istnieje.
+- i18n: nadpisania tłumaczeń z bazy wczytywane w `LanguageContext` i stosowane w `t()` (priorytet nad plikami `src/i18n/*.json`).
+- Backend: tabela `translate` oraz endpointy:
+  - `GET /api/translations/:lang` — zwrot mapy tłumaczeń dla języka;
+  - `GET /api/translate` (admin, `SYSTEM_SETTINGS`) — podgląd/filtrowanie;
+  - `PUT /api/translate/bulk` (admin, `SYSTEM_SETTINGS`) — masowa aktualizacja.
+  - Inicjalne zasilenie tabeli (`seed`) z `pl.json`, `en.json`, `de.json`.
+- Utils: `src/utils/dateUtils.js` lokalizuje formaty dat i „czas temu” dla `PL/EN/DE` (pluralizacja PL, locale per język).
+
+### Dokumentacja
+- README: sekcja „Tłumaczenia (i18n)” — opis zakładki, endpointów i inicjalizacji bazy; uwagi o `LanguageContext` i `dateUtils`.
+
+## [2.0.0] - 2025-11-17
+
+### Dodane / Zmienione
+- Uprawnienia widoków historii narzędzi i BHP oraz zaktualizowane domyślne role.
+
+### Backend
+- `GET /api/tool-issues` wymaga `VIEW_TOOL_HISTORY`.
+- `GET /api/bhp-issues` oraz `GET /api/bhp/:id/history` wymagają `VIEW_BHP_HISTORY`.
+- `GET /api/permissions`: dodano `VIEW_TOOL_HISTORY` i `VIEW_BHP_HISTORY` do listy dostępnych uprawnień.
+- Domyślne uprawnienia ról: `administrator` i `manager` mają nowe uprawnienia; `employee` ograniczony do historii.
+
+### Frontend
+- Dashboard: bramki uprawnień dla sekcji historii narzędzi i BHP; przy braku uprawnień wyświetlany jest komunikat „Brak uprawnień”, bez wywołań API.
+- i18n: dodane klucze `VIEW_TOOL_HISTORY` i `VIEW_BHP_HISTORY`; `PermissionsModal` prezentuje nowe uprawnienia.
+
+### Migracja / Uwagi
+- Po aktualizacji nadaj nowe uprawnienia odpowiednim rolom w panelu administracyjnym.
+
+[2.0.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.0.0
 
 ## [1.9.0] - 2025-11-05
 
@@ -14,8 +51,7 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
   - Integracja skanera kodów: zeskanowane kody automatycznie dodawane do listy.
   - Walidacje dostępności i wybór pracownika przed akcją wsadową.
 - Etykiety — Edytor osobnych szablonów: przeciąganie elementów „Tytuł”, „SKU” i „Informacja” w podglądzie.
-- Etykiety — skalowanie tekstów: automatyczna skala dla rozmiarów 51×32, 70×40 oraz 110×40 mm (podgląd).
-- Rozmiary etykiet: zmiana opcji `110×60 mm` na `110×40 mm` we wszystkich edytorach i w eksporcie.
+- Etykiety — skalowanie tekstów: automatyczna skala dla rozmiarów 51×32, 70×40 oraz 110×60 mm (podgląd).
 - Eksport etykiet: eksport PNG odpowiada dokładnie wybranemu rozmiarowi („Rozmiar etykiety”); spójne skalowanie elementów.
 
 ### Naprawione

@@ -1,0 +1,871 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "tools": "Narzędzia",
+    "bhp": "BHP",
+    "inventory": "Inwentaryzacja",
+    "employees": "Pracownicy",
+    "labels": "Etykiety",
+    "analytics": "Analityka",
+    "admin": "Ustawienia",
+    "report": "Zgłoś"
+  },
+  "screens": {
+    "dashboard": "Dashboard",
+    "tools": "Narzędzia",
+    "bhp": "BHP",
+    "employees": "Pracownicy",
+    "analytics": "Analityka",
+    "labels": "Etykiety",
+    "admin": "Ustawienia",
+    "user-management": "Zarządzanie użytkownikami",
+    "config": "Konfiguracja",
+    "audit": "Dziennik audytu",
+    "user-settings": "Ustawienia użytkownika",
+    "report": "Zgłoszenia",
+    "defaultTitle": "Zarządzanie Narzędziami"
+  },
+  "common": {
+    "days": "dni",
+    "loading": "Ładowanie…",
+    "noData": "Brak danych.",
+    "selectEmployee": "Wybierz pracownika, aby wyświetlić dane.",
+    "error": "Wystąpił błąd.",
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "remove": "Usuń",
+    "clearList": "Wyczyść listę",
+    "saveChanges": "Zapisz zmiany",
+    "saving": "Zapisywanie...",
+    "details": "Szczegóły"
+  },
+  "Theme": {
+    "useThemeProvider": "useTheme musi być używany w ramach ThemeProvider"
+  },
+  "loading": {
+    "tables": "Ładowanie tabel…",
+    "departments": "Ładowanie działów…",
+    "categories": "Ładowanie kategorii…",
+    "differences": "Ładowanie różnic…",
+    "history": "Ładowanie historii…",
+    "sessions": "Ładowanie sesji…",
+    "data": "Ładowanie danych…",
+    "issuedTools": "Ładowanie wydanych narzędzi…",
+    "employees": "Ładowanie pracowników…"
+  },
+  "noData": {
+    "categories": "Brak kategorii",
+    "sessions": "Brak sesji",
+    "tables": "Brak tabel",
+    "issuedTools": "Brak wydanych narzędzi"
+  },
+  "reports": {
+    "title": "Zgłoś nieprawidłowość",
+    "description": "Wybierz typ i uzupełnij szczegóły",
+    "tabs": {
+      "form": "Formularz",
+      "reported": "Zgłoszone",
+      "bhpIssued": "Wydane BHP"
+    },
+    "type": {
+      "label": "Typ zgłoszenia",
+      "employee": "Pracownik",
+      "tool": "Wydane narzędzie",
+      "bhpIssued": "Wydane BHP",
+      "bhp": "BHP",
+      "other": "Inne"
+    },
+    "employee": { "label": "Pracownik" },
+    "employeeManual": { "label": "Pracownik (podaj Imię i nazwisko)", "placeholder": "Imię i nazwisko osoby, której dotyczy zgłoszenie" },
+    "tool": { "label": "Wydane narzędzie:" },
+    "bhpIssued": { "label": "Wydany sprzęt BHP:" },
+    "bhp": { "label": "Kategoria BHP", "placeholder": "np. Ocena ryzyka, przegląd, wypadek" },
+    "other": { "label": "Temat", "placeholder": "Krótki temat" },
+    "details": { "label": "Opis", "placeholder": "Opisz szczegóły zdarzenia lub nieprawidłowości" },
+    "severity": {
+      "label": "Priorytet",
+      "low": "Niski",
+      "medium": "Średni",
+      "high": "Wysoki"
+    },
+    "attachments": {
+      "label": "Załączniki (zdjęcia)",
+      "hint": "Możesz dodać kilka zdjęć jako załączniki"
+    },
+    "issuedTools": {
+      "loading": "Ładowanie wydanych narzędzi…",
+      "selectEmployee": "Wybierz pracownika, aby zobaczyć wydane narzędzia.",
+      "none": "Brak wydanych narzędzi."
+    },
+    "issuedBhp": {
+      "loading": "Ładowanie wydanych BHP…",
+      "selectEmployee": "Wybierz pracownika, aby zobaczyć wydany sprzęt BHP.",
+      "none": "Brak wydanego sprzętu BHP."
+    },
+    "filters": {
+      "type": "Filtr: typ",
+      "severity": "Filtr: priorytet",
+      "status": "Filtr: status"
+    },
+    "list": {
+      "type": "Typ",
+      "subject": "Temat / Szczegóły",
+      "severity": "Priorytet",
+      "status": "Status",
+      "created": "Utworzono",
+      "attachments": "Załączniki",
+      "actions": "Akcje"
+    },
+    "status": {
+      "accepted": "Przyjęto",
+      "checking": "Sprawdzanie",
+      "resolved": "Rozwiązano"
+    },
+    "submit": "Wyślij zgłoszenie",
+    "delete": {
+      "title": "Usuń zgłoszenie",
+      "confirm": "Usuń",
+      "aria": "Usuń zgłoszenie",
+      "messageWithTarget": "Czy na pewno chcesz usunąć zgłoszenie \"{subject}\" (ID: {id})? Operacja jest nieodwracalna.",
+      "messageGeneric": "Czy na pewno chcesz usunąć to zgłoszenie? Operacja jest nieodwracalna."
+    },
+    "toast": {
+      "success": "Zgłoszenie wysłane",
+      "error": "Nie udało się wysłać zgłoszenia",
+      "fetchError": "Błąd pobierania zgłoszeń",
+      "statusUpdated": "Status zgłoszenia zaktualizowany",
+      "statusError": "Nie udało się zaktualizować statusu"
+    }
+  },
+  "inventory": {
+    "title": "Inwentaryzacja",
+    "subtitle": "Przegląd stanów, materiały zużywalne i sesje",
+    "permissions": {
+      "title": "Brak uprawnień",
+      "viewInventoryDenied": "Brak uprawnień do przeglądania inwentaryzacji (VIEW_INVENTORY)."
+    },
+    "sessions": {
+      "title": "Sesje inwentaryzacji",
+      "newNamePlaceholder": "Nazwa nowej sesji",
+      "notesPlaceholder": "Notatki (opcjonalnie)",
+      "creating": "Tworzenie…",
+      "createBtn": "Nowa sesja",
+      "headers": {
+        "name": "Nazwa",
+        "status": "Status",
+        "counted": "Zliczone pozycje",
+        "startedAt": "Data rozpoczęcia",
+        "finishedAt": "Data zakończenia"
+      },
+      "details": {
+        "status": "Status",
+        "counted": "Zliczone",
+        "start": "Start",
+        "end": "Koniec"
+      },
+      "select": "Wybierz",
+      "pause": "Wstrzymaj",
+      "end": "Zakończ",
+      "resume": "Wznów",
+      "delete": "Usuń",
+      "selected": "Wybrana sesja",
+      "errors": {
+        "onlyAdminCreate": "Tylko administrator może tworzyć sesje",
+        "nameRequired": "Podaj nazwę sesji",
+        "createFailed": "Nie udało się utworzyć sesji",
+        "onlyAdminStatus": "Tylko administrator może zmieniać status sesji",
+        "statusFailed": "Zmiana statusu nie powiodła się",
+        "onlyAdminDelete": "Tylko administrator może usuwać sesje",
+        "onlyEndedDelete": "Usunąć można tylko sesję zakończoną"
+      },
+      "modaldelete": {
+        "confirm": "Czy na pewno chcesz trwale usunąć sesję \"{{name}}\"?",
+        "success": "Sesja została trwale usunięta.",
+        "failed": "Usuwanie sesji nie powiodło się"
+      }
+    },
+    "scan": {
+      "qtyPlaceholder": "Ilość",
+      "open": "Skanuj",
+      "last": "Ostatnio zliczono",
+      "errors": {
+        "noSession": "Brak wybranej sesji",
+        "failed": "Błąd skanowania"
+      },
+      "success": {
+        "counted": "Zliczono"
+      }
+    },
+    "diffs": {
+      "title": "Różnice stanów",
+      "filterPlaceholder": "Filtruj po nazwie lub SKU",
+      "minAbsPlaceholder": "Min. |różnica|",
+      "exporting": "Eksport…",
+      "exportCsv": "Eksport CSV",
+      "autoAcceptDisabled": "Nie zatwierdzaj automatycznie",
+      "headers": {
+        "name": "Nazwa",
+        "sku": "SKU",
+        "systemQty": "System ilość",
+        "countedQty": "Zliczona ilość",
+        "difference": "Różnica"
+      },
+      "addCorrection": "Dodaj korektę",
+      "empty": "Brak różnic do wyświetlenia",
+      "correctedTag": "Skorygowano"
+    },
+    "history": {
+      "title": "Historia korekt",
+      "pendingOnly": "Tylko oczekujące",
+      "headers": {
+        "name": "Nazwa",
+        "sku": "SKU",
+        "difference": "Różnica",
+        "reason": "Powód",
+        "status": "Status",
+        "created": "Utworzono",
+        "acceptedBy": "Kto zatwierdził",
+        "acceptedAt": "Kiedy zatwierdzono"
+      },
+      "status": {
+        "accepted": "Zatwierdzona",
+        "pending": "Oczekuje"
+      },
+      "accept": {
+        "title": "Zatwierdź korektę",
+        "aria": "Zatwierdź korektę",
+        "acceptedLabel": "Zatwierdzona"
+      },
+      "delete": {
+        "title": "Usuń korektę",
+        "aria": "Usuń korektę"
+      },
+      "empty": "Brak korekt do wyświetlenia"
+    },
+    "correction": {
+      "modal": {
+        "title": "Dodaj korektę",
+        "item": "Pozycja",
+        "systemQty": "System ilość",
+        "countedQty": "Zliczona ilość",
+        "difference": "Różnica",
+        "calculatedInfo": "🔒 Pole obliczane automatycznie",
+        "reasonLabel": "Powód (opcjonalnie)",
+        "reasonPlaceholder": "Np. błąd ewidencji, zmiana stanu",
+        "saving": "Zapisywanie…",
+        "save": "Zapisz korektę"
+      },
+      "errors": {
+        "noToolId": "Nie można ustalić ID narzędzia dla korekty (brak powiązania).",
+        "noSession": "Brak wybranej sesji — wybierz sesję przed zapisem.",
+        "noToolForCorrection": "Nie udało się ustalić narzędzia do korekty — spróbuj ponownie z panelu \"Różnice stanów\".",
+        "acceptFailed": "Nie udało się zatwierdzić korekty",
+        "addFailed": "Nie udało się dodać korekty"
+      },
+      "success": {
+        "savedAndAccepted": "Korekta została zapisana i zatwierdzona.",
+        "savedPending": "Korekta została zapisana (oczekuje zatwierdzenia)."
+      }
+    },
+    "stock": {
+      "title": "Stan magazynowy",
+      "searchLabel": "Wyszukaj",
+      "searchPlaceholder": "Nazwa, SKU lub nr ewidencyjny",
+      "searchScanTitle": "Skanuj kod do wyszukiwania",
+      "onlyConsumablesLabel": "Tylko materiały zużywalne",
+      "onlyBelowMinLabel": "Poniżej stanu minimalnego",
+      "headers": {
+        "name": "Nazwa",
+        "sku": "SKU",
+        "quantity": "Ilość",
+        "min": "Min",
+        "max": "Max",
+        "status": "Status"
+      },
+      "status": {
+        "missing": "Braki",
+        "ok": "OK"
+      },
+      "empty": "Brak pozycji do wyświetlenia"
+    },
+    "labels": {
+      "sku": "SKU",
+      "systemQty": "System",
+      "countedQty": "Zliczona"
+    },
+    "modalDelete": {
+      "title": "Usuń korektę",
+      "message": "Czy na pewno chcesz usunąć tę korektę?",
+      "confirm": "Usuń"
+    }
+  },
+  "topbar": {
+    "openMenu": "Otwórz menu",
+    "notifications": "Powiadomienia",
+    "overdueInspections": "Przeglądy po terminie (BHP i Narzędzia)",
+    "markAllRead": "Oznacz wszystkie jako przeczytane",
+    "noNotifications": "Brak nowych powiadomień",
+    "type": {
+      "bhp": "BHP",
+      "tools": "Narzędzia"
+    },
+    "overdue": "Po terminie",
+    "read": "Przeczytano",
+    "markRead": "Oznacz jako przeczytane",
+    "user": "Użytkownik",
+    "role": "Rola",
+    "settings": "Ustawienia",
+    "dbViewer": "Podgląd bazy danych",
+    "themeLight": "Tryb jasny",
+    "themeDark": "Tryb ciemny",
+    "logout": "Wyloguj się",
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Kierownik",
+      "employee": "Pracownik",
+      "unknown": "Nieznana"
+    }
+  },
+  "login": {
+    "title": "Zaloguj się do systemu",
+    "subtitle": "System zarządzania narzędziownią",
+    "username": "Nazwa użytkownika",
+    "password": "Hasło",
+    "rememberMe": "Pamiętaj mnie",
+    "enterUsername": "Wprowadź nazwę użytkownika",
+    "enterPassword": "Wprowadź hasło",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło",
+    "capsLock": "Włączony CapsLock — hasło może być błędne.",
+    "submit": "Zaloguj się",
+    "loading": "Logowanie...",
+    "error": "Błąd logowania"
+  },
+  "employees": {
+    "title": "Zarządzanie Pracownikami",
+    "subtitle": "Zarządzaj danymi pracowników w systemie",
+    "add": "Dodaj pracownika",
+    "search": "Wyszukaj",
+    "searchPlaceholder": "Imię, nazwisko, numer służbowy...",
+    "department": "Dział",
+    "position": "Stanowisko",
+    "allDepartments": "Wszystkie działy",
+    "allPositions": "Wszystkie stanowiska",
+    "clearFilters": "Wyczyść filtry",
+    "none": "Brak pracowników",
+    "noneAdded": "Nie dodano jeszcze żadnych pracowników.",
+    "noneFound": "Nie znaleziono pracowników spełniających kryteria wyszukiwania.",
+    "actions": "Akcje",
+    "fullName": "Imię i nazwisko/Login",
+    "brandNumber": "Numer służbowy",
+    "phone": "Telefon",
+    "departmentCol": "Dział",
+    "positionCol": "Stanowisko",
+    "edit": "Edytuj",
+    "delete": "Usuń",
+    "unknownDept": "Nieznany",
+    "unknownPos": "Nieznana",
+    "mobilePhone": "Telefon:",
+    "mobileDepartment": "Dział:",
+    "mobilePosition": "Stanowisko:",
+    "addedSuccess": "Pracownik został dodany pomyślnie",
+    "addError": "Błąd podczas dodawania pracownika",
+    "updatedSuccess": "Dane pracownika zostały zaktualizowane",
+    "updateError": "Błąd podczas aktualizacji danych pracownika",
+    "deletedSuccess": "Pracownik został usunięty",
+    "deleteError": "Błąd podczas usuwania pracownika",
+    "confirmDelete": "Czy na pewno chcesz usunąć pracownika"
+  }
+  ,
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Witaj, {name}! Oto przegląd systemu zarządzania.",
+    "stats": {
+      "tools": "Narzędzia w systemie",
+      "bhp": "Sprzęt BHP",
+      "employees": "Pracownicy",
+      "overdueInspections": "Przeglądy przeterminowane",
+      "tooltip": { "tools": "Narzędzia:", "bhp": "BHP:" }
+    },
+    "quick": {
+      "title": "Szybkie akcje",
+      "createEmployeeTitle": "Dodaj pracownika",
+      "createEmployee": "Utwórz nowy profil pracownika",
+      "issue": {
+        "title": "Szybkie wydanie",
+        "subtitle": "Skanuj kod narzędzia",
+        "modalTitle": "Szybkie wydanie narzędzia",
+        "submitBatch": "Wydaj pozycje",
+        "batchError": "Błąd podczas wydawania narzędzi",
+        "successSingle": "Pomyślnie wydano narzędzie \"{tool}\" pracownikowi: {employee}",
+        "successBatch": "Wydano {ok}/{total} pozycji {employee}",
+        "errorGeneral": "Błąd podczas wydawania narzędzia",
+        "errorItem": "Błąd wydania: {name}",
+        "errors": {
+          "toolNotFound": "Nie znaleziono narzędzia o podanym kodzie",
+          "toolNotAvailable": "Narzędzie nie jest dostępne do wydania",
+          "toolNotAvailableSimple": "Narzędzie nie jest dostępne",
+          "noEmployeeSelected": "Wybierz pracownika, któremu chcesz wydać narzędzie"
+        }
+      },
+      "return": {
+        "title": "Szybki zwrot",
+        "subtitle": "Zwróć wydane narzędzia",
+        "listTitle": "Lista narzędzi wydanych pracownikom:",
+        "submit": "Zwróć",
+        "successSingle": "Pomyślnie zwrócono narzędzie \"{tool}\" od pracownika: {employee}",
+        "errorGeneral": "Błąd podczas zwracania narzędzia",
+        "errors": { "noToolData": "Błąd: Brak danych narzędzia" }
+      },
+      "employee": {
+        "addSuccess": "Pracownik został dodany pomyślnie",
+        "addError": "Błąd podczas dodawania pracownika"
+      }
+    },
+    "search": {
+      "label": "Kod kreskowy / QR narzędzia",
+      "placeholder": "Zeskanuj lub wpisz kod narzędzia...",
+      "searching": "Wyszukiwanie...",
+      "add": "Dodaj",
+      "sku": "SKU",
+      "status": "Status",
+      "location": "Lokalizacja",
+      "notFoundCode": "Nie znaleziono narzędzia o kodzie: {code}"
+    },
+    "quickIssue": {
+      "itemsLabel": "Pozycje do wydania"
+    },
+    "labels": {
+      "employee": "Pracownik:",
+      "quantity": "Ilość",
+      "issuedAt": "Wydano",
+      "tool": "narzędzie",
+      "employeeFallback": "pracownikowi"
+    },
+    "history": {
+      "tools": {
+        "title": "Historia wydań/zwrotów narzędzi",
+        "noPermissions": "Nie masz uprawnień, aby przeglądać historię narzędzi.",
+        "noData": "Nie ma jeszcze żadnych wydań lub zwrotów narzędzi."
+      },
+      "bhp": {
+        "title": "Historia wydań/zwrotów BHP",
+        "noPermissions": "Nie masz uprawnień, aby przeglądać historię BHP.",
+        "noData": "Nie ma jeszcze żadnych wydań lub zwrotów sprzętu BHP."
+      },
+      "recentCount": "Ostatnie {count}",
+      "noDataTitle": "Brak historii",
+      "labels": {
+        "tool": "narzędzie",
+        "bhp": "sprzęt BHP",
+        "issuedBy": "Wydał",
+        "quantity": "Ilość"
+      }
+    },
+    "action": { "issued": "Wydano", "returned": "Zwrócono" }
+  },
+  "users": {
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Kierownik",
+      "employee": "Pracownik",
+      "observer": "Obserwator"
+    },
+    "descriptions": {
+      "administrator": "Pełny dostęp do wszystkich funkcji systemu",
+      "manager": "Zarządzanie narzędziami, pracownikami i analityka",
+      "employee": "Podstawowe operacje na narzędziach"
+    }
+  },
+  "permissions": {
+    "saving": "Zapisywanie...",
+    "save": "Zapisz",
+    "close": "Zamknij",
+    "toast": {
+      "fetchUsersError": "Błąd podczas pobierania użytkowników",
+      "fetchRolePermsError": "Błąd podczas pobierania uprawnień ról",
+      "fetchAvailablePermsError": "Błąd podczas pobierania dostępnych uprawnień",
+      "savePermsSuccess": "Uprawnienia dla roli {role} zostały zaktualizowane",
+      "savePermsError": "Błąd podczas zapisywania uprawnień",
+      "userNotFound": "Nie znaleziono użytkownika do aktualizacji",
+      "updateRoleSuccess": "Rola użytkownika została zaktualizowana",
+      "updateRoleError": "Błąd podczas aktualizacji roli użytkownika"
+    },
+    "labels": {
+      "VIEW_USERS": "Użytkownicy - przeglądanie",
+      "CREATE_USERS": "Użytkownicy - tworzenie",
+      "MANAGE_USERS": "Użytkownicy - zarządzanie",
+      "EDIT_USERS": "Użytkownicy - edycja",
+      "DELETE_USERS": "Użytkownicy - usuwanie",
+      "VIEW_EMPLOYEES": "Pracownicy - przeglądanie",
+      "MANAGE_EMPLOYEES": "Pracownicy - zarządzanie",
+      "VIEW_ANALYTICS": "Analityka - przeglądanie",
+      "VIEW_TOOLS": "Narzędzia - przeglądanie",
+      "VIEW_TOOL_HISTORY": "Historia wydań/zwrotów narzędzi - przeglądanie",
+      "MANAGE_DEPARTMENTS": "Działy - zarządzanie",
+      "MANAGE_POSITIONS": "Stanowiska - zarządzanie",
+      "SYSTEM_SETTINGS": "Ustawienia systemowe",
+      "VIEW_ADMIN": "Panel administracyjny",
+      "VIEW_AUDIT_LOG": "Dziennik audytu - przeglądanie",
+      "VIEW_BHP": "BHP - przeglądanie",
+      "VIEW_BHP_HISTORY": "Historia wydań/zwrotów BHP - przeglądanie",
+      "MANAGE_BHP": "BHP - zarządzanie",
+      "VIEW_QUICK_ACTIONS": "Szybkie akcje - przeglądanie",
+      "DELETE_ISSUE_HISTORY": "Usuwanie historii wydań",
+      "DELETE_RETURN_HISTORY": "Usuwanie historii zwrotów",
+      "DELETE_SERVICE_HISTORY": "Usuwanie historii serwisowania",
+      "MANAGE_DATABASE": "Baza danych - zarządzanie",
+      "VIEW_DATABASE": "Baza danych - przeglądanie",
+      "VIEW_INVENTORY": "Inwentaryzacja - przeglądanie",
+      "INVENTORY_MANAGE_SESSIONS": "Inwentaryzacja - zarządzanie sesjami",
+      "INVENTORY_SCAN": "Inwentaryzacja - skanowanie",
+      "INVENTORY_ACCEPT_CORRECTION": "Inwentaryzacja - zatwierdzanie korekt",
+      "INVENTORY_DELETE_CORRECTION": "Inwentaryzacja - usuwanie korekt",
+      "INVENTORY_EXPORT_CSV": "Inwentaryzacja - eksport CSV",
+      "VIEW_LABELS": "Etykiety - przeglądanie"
+    }
+  },
+  "admin": {
+    "settings": {
+      "title": "Ustawienia",
+      "subtitle": "Zarządzaj systemem i konfiguracją"
+    },
+    "appConfig": {
+      "card": {
+        "title": "Ustawienia aplikacji",
+        "subtitle": "Konfiguruj parametry systemu",
+        "open": "Otwórz ustawienia"
+      }
+    },
+    "audit": {
+      "card": {
+        "title": "Dziennik audytu",
+        "subtitle": "Przeglądaj historię operacji",
+        "open": "Zobacz dziennik"
+      }
+    },
+    "roles": {
+      "card": {
+        "title": "Role i uprawnienia",
+        "subtitle": "Konfiguruj role użytkowników"
+      },
+      "manage": "Zarządzaj uprawnieniami"
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "subtitle": "Bezpowrotne usunięcie danych",
+      "tools": {
+        "title": "Narzędzia",
+        "subtitle": "Wyczyść bazę danych narzędzi"
+      },
+      "bhp": {
+        "title": "Sprzęt BHP",
+        "subtitle": "Wyczyść bazę sprzętu BHP"
+      },
+      
+      "service": {
+        "title": "Serwisowanie",
+        "subtitle": "Wyczyść bazę danych serwisowania"
+      },
+      "employees": {
+        "title": "Pracownicy",
+        "subtitle": "Wyczyść bazę danych pracowników"
+      }
+    },
+    "actions": {
+      "deleteIssues": "Usuń historię wydań",
+      "deleteReturns": "Usuń historię zwrotów",
+      "deleteServiceHistory": "Usuń historię serwisowania",
+      "deleteEmployees": "Usuń dane pracowników"
+    },
+    "modals": {
+      "deleteAllIssues": {
+        "title": "Usuń historię wszystkich wydań",
+        "message": "Czy na pewno chcesz usunąć całą historię wydawania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie dane o wydaniach i zwrotach narzędzi.",
+        "confirm": "Usuń historię"
+      },
+      "deleteServiceHistory": {
+        "title": "Usuń historię serwisowania",
+        "message": "Czy na pewno chcesz usunąć całą historię serwisowania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie powiązane wpisy.",
+        "confirm": "Usuń historię serwisowania"
+      },
+      "deleteToolIssues": {
+        "title": "Usuń historię wydań narzędzi",
+        "message": "Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH narzędzi? Operacja jest nieodwracalna.",
+        "confirm": "Usuń historię wydań"
+      },
+      "deleteToolReturns": {
+        "title": "Usuń historię zwrotów narzędzi",
+        "message": "Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH narzędzi? Operacja jest nieodwracalna.",
+        "confirm": "Usuń historię zwrotów"
+      },
+      "deleteBhpIssues": {
+        "title": "Usuń historię wydań sprzętu BHP",
+        "message": "Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH sprzętu BHP? Operacja jest nieodwracalna.",
+        "confirm": "Usuń historię wydań"
+      },
+      "deleteBhpReturns": {
+        "title": "Usuń historię zwrotów sprzętu BHP",
+        "message": "Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH sprzętu BHP? Operacja jest nieodwracalna.",
+        "confirm": "Usuń historię zwrotów"
+      },
+      "deleteEmployees": {
+        "title": "Usuń wszystkich pracowników",
+        "message": "Czy na pewno chcesz usunąć wszystkich pracowników z bazy danych? Ta operacja jest nieodwracalna i usunie wszystkie dane pracowników.",
+        "confirm": "Usuń pracowników"
+      }
+    }
+  },
+  "bhp": {
+    "title": "Sprzęt BHP",
+    "subtitle": "Wyczyść bazę danych sprzętu BHP",
+    "manageDescription": "Zarządzaj wyposażeniem BHP (wydania, zwroty, przeglądy)",
+    "actions": {
+      "addEquipment": "Dodaj sprzęt",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "issue": "Wydaj",
+      "return": "Zwrot",
+      "noPermission": "Brak uprawnień do akcji"
+    },
+    "filters": {
+      "search": "Wyszukaj",
+      "searchPlaceholder": "nr ewid., producent, model, seryjny...",
+      "status": "Status",
+      "all": "Wszystkie",
+      "sort": "Sortowanie",
+      "reviews": "Przeglądy",
+      "nearestReview": "Najbliższy przegląd",
+      "farthestReview": "Najdalszy przegląd"
+    },
+    "sort": {
+      "inspectionDate": "Data przeglądu",
+      "inventoryNumber": "Nr ewidencyjny"
+    },
+    "table": {
+      "inventoryShort": "Nr. ew.",
+      "manufacturerModel": "Producent / Model",
+      "serialCatalog": "Seryjny / Katalogowy",
+      "inspection": "Przegląd",
+      "status": "Status",
+      "actions": "Akcje"
+    },
+    "set": {
+      "label": "Zestaw",
+      "shock": "amortyzator",
+      "srd": "Urządzenie samohamowne"
+    },
+    "labels": {
+      "assignedLabel": "Przypisano",
+      "catalogAbbrev": "Kat.",
+      "numberAbbrev": "nr",
+      "inventoryLabel": "Nr ewidencyjny",
+      "serialLabel": "Seryjny",
+      "catalogLabel": "Katalogowy",
+      "inspectionLabel": "Przegląd",
+      "inventoryNumber": "Nr ewidencyjny",
+      "manufacturer": "Producent",
+      "model": "Model",
+      "serialNumber": "Nr seryjny",
+      "catalogNumber": "Nr katalogowy",
+      "productionDate": "Data produkcji",
+      "inspectionDate": "Data przeglądu",
+      "status": "Status",
+      "assignedFirstName": "Przypisany (imię)",
+      "assignedLastName": "Przypisany (nazwisko)",
+      "assigned": "Przypisany",
+      "manufacturerAbbrev": "Prod.",
+      "modelAbbrev": "Model",
+      "snAbbrev": "S/N",
+      "productionShort": "Prod. data"
+    },
+    "status": {
+      "available": "Dostępne",
+      "issued": "Wydane",
+      "unknown": "nieznany"
+    },
+    "modal": {
+      "editTitle": "Edytuj pozycję BHP",
+      "addTitle": "Dodaj pozycję BHP"
+    },
+    "form": {
+      "inventoryNumberRequired": "Nr ewidencyjny *",
+      "scanCode": "Skanuj kod",
+      "generateWithPrefix": "Generuj kod z prefiksem",
+      "manufacturer": "Producent",
+      "model": "Model",
+      "serialNumber": "Numer seryjny",
+      "catalogNumber": "Numer katalogowy",
+      "productionDateHarness": "Data produkcji (szelek)",
+      "harnessStartDate": "Data rozpoczęcia użytkowania"
+    },
+    "shock": {
+      "manufacturerLabel": "Amortyzator: Producent",
+      "modelLabel": "Amortyzator: Model",
+      "snLabel": "Amortyzator: S/N",
+      "catalogAbbrevLabel": "Amortyzator: Kat.",
+      "productionShortLabel": "Amortyzator: Data prod.",
+      "catalogLabel": "Amortyzator: Nr katalogowy",
+      "productionLabel": "Amortyzator: Data produkcji"
+    },
+    "srd": {
+      "manufacturerLabel": "SRD: Producent",
+      "modelLabel": "SRD: Model",
+      "snLabel": "SRD: S/N",
+      "catalogAbbrevLabel": "SRD: Kat.",
+      "productionShortLabel": "SRD: Data prod.",
+      "catalogLabel": "SRD: Nr katalogowy",
+      "productionLabel": "SRD: Data produkcji"
+    },
+    "export": {
+      "exportPDF": "Eksportuj jako PDF",
+      "exportXLSX": "Eksportuj jako EXCEL",
+      "field": "Pole",
+      "value": "Wartość",
+      "detailsTitle": "Eksport BHP — szczegóły",
+      "detailsHeader": "Szczegóły BHP",
+      "generatedAt": "Wygenerowano",
+      "sheetName": "Szczegóły"
+    }
+  },
+  "confirmation": {
+    "title": "Potwierdź działanie",
+    "message": "Czy na pewno chcesz wykonać tę operację?",
+    "confirm": "Potwierdź",
+    "cancel": "Anuluj"
+  },
+  "userSettings": {
+    "title": "Ustawienia użytkownika",
+    "subtitle": "Zarządzaj bezpieczeństwem swojego konta",
+    "tabs": {
+      "security": "Bezpieczeństwo"
+    },
+    "changePassword": {
+      "title": "Zmień hasło",
+      "username": "Nazwa użytkownika",
+      "current": "Aktualne hasło",
+      "new": "Nowe hasło",
+      "confirm": "Potwierdź nowe hasło",
+      "notice": "Hasło będzie aktualizowane dla Twojego konta"
+    },
+    "toast": {
+      "passwordSaved": "Hasło zostało zapisane pomyślnie!",
+      "passwordChanged": "Hasło zostało zmienione"
+    },
+    "errors": {
+      "fillAllFields": "Wypełnij wszystkie pola",
+      "passwordTooShort": "Nowe hasło musi mieć co najmniej 6 znaków",
+      "passwordMismatch": "Nowe hasło i potwierdzenie nie są zgodne",
+      "changeFailed": "Nie udało się zmienić hasła"
+    }
+  },
+  "analytics": {
+    "title": "Analityka",
+    "subtitle": "Przegląd statystyk i raportów systemu",
+    "permissions": {
+      "title": "Brak uprawnień",
+      "viewAnalyticsDenied": "Brak uprawnień do przeglądania analityki (VIEW_ANALYTICS)."
+    },
+    "upcomingInspections": "Nadchodzące przeglądy",
+    "overdue": "Przeterminowane",
+    "upcomingUnder30": "Nadchodzące (<30 dni)",
+    "bhpPermissionDenied": "Brak uprawnień do sekcji BHP (VIEW_BHP). Wyświetlamy tylko dane z modułu Narzędzia.",
+    "loadingInspections": "Ładowanie danych przeglądów...",
+    "loadingService": "Ładowanie danych serwisu...",
+    "overdueTools": "Przeterminowane (Narzędzia)",
+    "noOverdueTools": "Brak przeterminowanych przeglądów narzędzi.",
+    "overdueBhp": "Przeterminowane (BHP)",
+    "noOverdueBhp": "Brak przeterminowanych przeglądów BHP.",
+    "upcoming": "Nadchodzące (<30 dni)",
+    "noUpcoming": "Brak nadchodzących przeglądów w ciągu 30 dni.",
+    "chip": { "tools": "Narzędzia", "bhp": "BHP" },
+    "phrases": {
+      "daysOverdue": "{count} dni po terminie",
+      "inDays": "za {count} dni"
+    },
+    "pagination": {
+      "prev": "Poprzednia",
+      "page": "Strona",
+      "of": "z",
+      "next": "Następna"
+    },
+    "serviceHistory": {
+      "title": "Historia serwisowani",
+      "inService": "Aktualnie w serwisie",
+      "recentEvents": "Ostatnie zdarzenia",
+      "generatedAt": "Wygenerowano",
+      "exportPDF": "Eksportuj PDF",
+      "exportXLSX": "Eksportuj XLSX",
+      "rowsCount": "Liczba wierszy",
+      "total": "Łącznie: {count}",
+      "headers": {
+        "tool": "Narzędzie",
+        "sku": "SKU",
+        "action": "Akcja",
+        "quantity": "Ilość",
+        "orderNumber": "Nr zlecenia",
+        "date": "Data",
+        "sent": "Wysłano"
+      },
+      "action": {
+        "sent": "Wysłano",
+        "received": "Odebrano"
+      },
+      "noInService": "Brak narzędzi w serwisie.",
+      "noRecentEvents": "Brak ostatnich zdarzeń.",
+      "noData": "Brak danych"
+    }
+  },
+  "scanner": {
+    "title": "Skanuj kod kreskowy",
+    "close": "Zamknij",
+    "browserNotSupported": {
+      "title": "Przeglądarka nie obsługuje kamery",
+      "desc": "Twoja przeglądarka nie obsługuje skanowania kodów.",
+      "tipsIntro": "Spróbuj:",
+      "tips": {
+        "update": "Użyć nowszej wersji przeglądarki",
+        "switch": "Przełączyć się na Chrome, Firefox lub Safari",
+        "https": "Sprawdzić czy używasz HTTPS (wymagane dla kamery)",
+        "manual": "Wprowadzić kod ręcznie"
+      }
+    },
+    "permissionsDenied": {
+      "desc": "Brak dostępu do kamery. Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki."
+    },
+    "buttons": {
+      "cancel": "Anuluj"
+    },
+    "overlay": {
+      "scanning": "Skanowanie...",
+      "ready": "Gotowy do skanowania"
+    },
+    "lastCode": "Ostatni kod:",
+    "quantity": "Ilość:",
+    "torch": { "enable": "Włącz latarkę", "disable": "Wyłącz latarkę" },
+    "tipsHeader": "Wskazówki skanowania",
+    "tipsGeneral": {
+      "stable": "• Trzymaj telefon stabilnie nad kodem",
+      "light": "• Upewnij się, że kod jest dobrze oświetlony",
+      "frame": "• Kod powinien wypełniać ramkę skanowania",
+      "wait": "• Poczekaj na automatyczne rozpoznanie"
+    },
+    "tipsLabels": {
+      "title": "Naklejki z drukarki etykiet",
+      "avoidReflections": "• Unikaj odbić światła - nachyl telefon lekko",
+      "distance": "• Trzymaj telefon bliżej (5-10 cm od naklejki)",
+      "torch": "• Włącz latarkę dla lepszego kontrastu",
+      "recognize": "• Poczekaj 2-3 sekundy na rozpoznanie",
+      "checkDamage": "• Sprawdź czy naklejka nie jest uszkodzona"
+    },
+    "cta": "Skieruj kamerę na kod kreskowy lub kod QR",
+    "errors": {
+      "NotAllowedError": "Brak dostępu do kamery. Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.",
+      "NotFoundError": "Nie znaleziono kamery. Upewnij się, że urządzenie ma kamerę.",
+      "NotSupportedError": "Przeglądarka nie obsługuje dostępu do kamery. Spróbuj użyć innej przeglądarki.",
+      "NotReadableError": "Kamera jest używana przez inną aplikację. Zamknij inne aplikacje używające kamery.",
+      "OverconstrainedError": "Nie można uruchomić kamery z wybranymi ustawieniami. Spróbuj ponownie.",
+      "Generic": "Wystąpił błąd podczas uruchamiania kamery: {message}"
+    }
+  }
+}

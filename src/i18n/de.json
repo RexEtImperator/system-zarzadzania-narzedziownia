@@ -1,0 +1,852 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "tools": "Werkzeuge",
+    "bhp": "BHP",
+    "inventory": "Inventar",
+    "employees": "Mitarbeiter",
+    "labels": "Etiketten",
+    "analytics": "Analytik",
+    "admin": "Einstellungen",
+    "report": "Melden"
+  },
+  "screens": {
+    "dashboard": "Dashboard",
+    "tools": "Werkzeuge",
+    "bhp": "BHP",
+    "employees": "Mitarbeiter",
+    "analytics": "Analytik",
+    "labels": "Etiketten",
+    "admin": "Einstellungen",
+    "user-management": "Benutzerverwaltung",
+    "config": "Konfiguration",
+    "audit": "Audit-Log",
+    "user-settings": "Benutzereinstellungen",
+    "report": "Meldungen",
+    "defaultTitle": "Werkzeugverwaltungssystem"
+  },
+  "common": {
+    "days": "Tage",
+    "loading": "Laden…",
+    "noData": "Keine Daten.",
+    "selectEmployee": "Wählen Sie einen Mitarbeiter, um Daten anzuzeigen.",
+    "error": "Ein Fehler ist aufgetreten.",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "remove": "Entfernen",
+    "clearList": "Liste leeren"
+  },
+  "Theme": {
+    "useThemeProvider": "useTheme muss innerhalb von ThemeProvider verwendet werden"
+  },
+  "loading": {
+    "tables": "Tabellen werden geladen…",
+    "departments": "Abteilungen werden geladen…",
+    "categories": "Kategorien werden geladen…",
+    "differences": "Differenzen werden geladen…",
+    "history": "Verlauf wird geladen…",
+    "sessions": "Sitzungen werden geladen…",
+    "data": "Daten werden geladen…",
+    "issuedTools": "Ausgegebene Werkzeuge werden geladen…",
+    "employees": "Mitarbeiter werden geladen…"
+  },
+  "noData": {
+    "categories": "Keine Kategorien",
+    "sessions": "Keine Sitzungen",
+    "tables": "Keine Tabellen",
+    "issuedTools": "Keine ausgegebenen Werkzeuge"
+  },
+  "reports": {
+    "title": "Problem melden",
+    "description": "Typ wählen und Details ausfüllen",
+    "tabs": {
+      "form": "Formular",
+      "reported": "Gemeldet",
+      "bhpIssued": "Ausgegebenes BHP"
+    },
+    "type": {
+      "label": "Meldungstyp",
+      "employee": "Mitarbeiter",
+      "tool": "Ausgegebenes Werkzeug",
+      "bhpIssued": "Ausgegebenes BHP",
+      "bhp": "BHP",
+      "other": "Sonstiges"
+    },
+    "employee": { "label": "Mitarbeiter" },
+    "employeeManual": { "label": "Mitarbeiter (Name eingeben)", "placeholder": "Vollständiger Name der betroffenen Person" },
+    "tool": { "label": "Werkzeug" },
+    "bhpIssued": { "label": "Ausgegebene BHP-Ausrüstung:" },
+    "bhp": { "label": "BHP-Kategorie", "placeholder": "z. B. Gefährdungsbeurteilung, Prüfung, Unfall" },
+    "other": { "label": "Betreff", "placeholder": "Kurzer Betreff" },
+    "details": { "label": "Beschreibung", "placeholder": "Beschreiben Sie die Details des Ereignisses oder der Unregelmäßigkeit" },
+    "severity": {
+      "label": "Priorität",
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch"
+    },
+    "attachments": {
+      "label": "Anhänge (Fotos)",
+      "hint": "Sie können mehrere Fotos als Anhänge hinzufügen"
+    },
+    "issuedTools": {
+      "loading": "Ausgegebene Werkzeuge werden geladen…",
+      "selectEmployee": "Wählen Sie einen Mitarbeiter, um ausgegebene Werkzeuge zu sehen.",
+      "none": "Keine ausgegebenen Werkzeuge."
+    },
+    "issuedBhp": {
+      "loading": "Ausgegebene BHP-Ausrüstung wird geladen…",
+      "selectEmployee": "Wählen Sie einen Mitarbeiter, um ausgegebene BHP-Ausrüstung zu sehen.",
+      "none": "Keine ausgegebene BHP-Ausrüstung."
+    },
+    "filters": {
+      "type": "Filter: Typ",
+      "severity": "Filter: Priorität",
+      "status": "Filter: Status"
+    },
+    "list": {
+      "type": "Typ",
+      "subject": "Betreff / Details",
+      "severity": "Priorität",
+      "status": "Status",
+      "created": "Erstellt",
+      "attachments": "Anhänge",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "accepted": "Angenommen",
+      "checking": "Prüfung",
+      "resolved": "Gelöst"
+    },
+    "submit": "Meldung senden",
+    "delete": {
+      "title": "Meldung löschen",
+      "confirm": "Löschen",
+      "aria": "Meldung löschen",
+      "messageWithTarget": "Möchten Sie die Meldung \"{subject}\" (ID: {id}) wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "messageGeneric": "Möchten Sie diese Meldung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "toast": {
+      "success": "Meldung gesendet",
+      "error": "Senden fehlgeschlagen",
+      "fetchError": "Laden der Meldungen fehlgeschlagen",
+      "statusUpdated": "Meldungsstatus aktualisiert",
+      "statusError": "Aktualisierung des Status fehlgeschlagen"
+    }
+  },
+  "inventory": {
+    "title": "Inventur",
+    "subtitle": "Bestandsübersicht, Verbrauchsmaterial und Sitzungen",
+    "permissions": {
+      "title": "Keine Berechtigungen",
+      "viewInventoryDenied": "Keine Berechtigung zur Anzeige der Inventur (VIEW_INVENTORY)."
+    },
+    "sessions": {
+      "title": "Inventur-Sitzungen",
+      "newNamePlaceholder": "Name der neuen Sitzung",
+      "notesPlaceholder": "Notizen (optional)",
+      "creating": "Wird erstellt…",
+      "createBtn": "Neue Sitzung",
+      "headers": {
+        "name": "Name",
+        "status": "Status",
+        "counted": "Gezählte Positionen",
+        "startedAt": "Startdatum",
+        "finishedAt": "Enddatum"
+      },
+      "details": {
+        "status": "Status",
+        "counted": "Gezählt",
+        "start": "Start",
+        "end": "Ende"
+      },
+      "select": "Auswählen",
+      "pause": "Pause",
+      "end": "Beenden",
+      "resume": "Fortsetzen",
+      "delete": "Löschen",
+      "selected": "Ausgewählte Sitzung",
+      "errors": {
+        "onlyAdminCreate": "Nur Administratoren können Sitzungen erstellen",
+        "nameRequired": "Sitzungsname angeben",
+        "createFailed": "Sitzung konnte nicht erstellt werden",
+        "onlyAdminStatus": "Nur Administratoren können den Sitzungsstatus ändern",
+        "statusFailed": "Statusänderung fehlgeschlagen",
+        "onlyAdminDelete": "Nur Administratoren können Sitzungen löschen",
+        "onlyEndedDelete": "Nur beendete Sitzungen können gelöscht werden"
+      },
+      "modaldelete": {
+        "confirm": "Möchten Sie die Sitzung \"{{name}}\" dauerhaft löschen?",
+        "success": "Sitzung wurde dauerhaft gelöscht.",
+        "failed": "Löschen der Sitzung fehlgeschlagen"
+      }
+    },
+    "scan": {
+      "qtyPlaceholder": "Menge",
+      "open": "Scannen",
+      "last": "Zuletzt gezählt",
+      "errors": {
+        "noSession": "Keine Sitzung ausgewählt",
+        "failed": "Scanfehler"
+      },
+      "success": {
+        "counted": "Gezählt"
+      }
+    },
+    "diffs": {
+      "title": "Bestandsdifferenzen",
+      "filterPlaceholder": "Nach Name oder SKU filtern",
+      "minAbsPlaceholder": "Min. |Differenz|",
+      "exporting": "Exportiere…",
+      "exportCsv": "CSV exportieren",
+      "autoAcceptDisabled": "Nicht automatisch bestätigen",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "systemQty": "Systemanzahl",
+        "countedQty": "Gezählte Anzahl",
+        "difference": "Differenz"
+      },
+      "addCorrection": "Korrektur hinzufügen",
+      "empty": "Keine Differenzen anzuzeigen",
+      "correctedTag": "Korrigiert"
+    },
+    "history": {
+      "title": "Korrekturverlauf",
+      "pendingOnly": "Nur ausstehend",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "difference": "Differenz",
+        "reason": "Grund",
+        "status": "Status",
+        "created": "Erstellt",
+        "acceptedBy": "Genehmigt von",
+        "acceptedAt": "Genehmigt am"
+      },
+      "status": {
+        "accepted": "Akzeptiert",
+        "pending": "Ausstehend"
+      },
+      "accept": {
+        "title": "Korrektur genehmigen",
+        "aria": "Korrektur genehmigen",
+        "acceptedLabel": "Akzeptiert"
+      },
+      "delete": {
+        "title": "Korrektur löschen",
+        "aria": "Korrektur löschen"
+      },
+      "empty": "Keine Korrekturen anzuzeigen"
+    },
+    "correction": {
+      "modal": {
+        "title": "Korrektur hinzufügen",
+        "item": "Position",
+        "systemQty": "Systemanzahl",
+        "countedQty": "Gezählte Anzahl",
+        "difference": "Differenz",
+        "calculatedInfo": "🔒 Feld wird automatisch berechnet",
+        "reasonLabel": "Grund (optional)",
+        "reasonPlaceholder": "z. B. Erfassungsfehler, Bestandsänderung",
+        "saving": "Speichere…",
+        "save": "Korrektur speichern"
+      },
+      "errors": {
+        "noToolId": "Werkzeug-ID für Korrektur kann nicht ermittelt werden (keine Zuordnung).",
+        "noSession": "Keine Sitzung ausgewählt — wählen Sie vor dem Speichern.",
+        "noToolForCorrection": "Werkzeug für Korrektur kann nicht ermittelt werden — versuchen Sie es erneut im Bereich \"Bestandsdifferenzen\".",
+        "acceptFailed": "Korrektur konnte nicht genehmigt werden",
+        "addFailed": "Korrektur konnte nicht hinzugefügt werden"
+      },
+      "success": {
+        "savedAndAccepted": "Korrektur wurde gespeichert und genehmigt.",
+        "savedPending": "Korrektur wurde gespeichert (wartet auf Genehmigung)."
+      }
+    },
+    "stock": {
+      "title": "Bestand",
+      "searchLabel": "Suche",
+      "searchPlaceholder": "Name, SKU oder Inventarnummer",
+      "searchScanTitle": "Code zum Suchen scannen",
+      "onlyConsumablesLabel": "Nur Verbrauchsmaterial",
+      "onlyBelowMinLabel": "Unter Mindestbestand",
+      "headers": {
+        "name": "Name",
+        "sku": "SKU",
+        "quantity": "Menge",
+        "min": "Min",
+        "max": "Max",
+        "status": "Status"
+      },
+      "status": {
+        "missing": "Niedrig",
+        "ok": "OK"
+      },
+      "empty": "Keine Elemente anzuzeigen"
+    },
+    "labels": {
+      "sku": "SKU",
+      "systemQty": "System",
+      "countedQty": "Gezählt"
+    },
+    "modalDelete": {
+      "title": "Korrektur löschen",
+      "message": "Möchten Sie diese Korrektur wirklich löschen?",
+      "confirm": "Löschen"
+    }
+  },
+  "topbar": {
+    "openMenu": "Menü öffnen",
+    "notifications": "Benachrichtigungen",
+    "overdueInspections": "Überfällige Prüfungen (BHP und Werkzeuge)",
+    "markAllRead": "Alle als gelesen markieren",
+    "noNotifications": "Keine neuen Benachrichtigungen",
+    "type": {
+      "bhp": "BHP",
+      "tools": "Werkzeuge"
+    },
+    "overdue": "Überfällig",
+    "read": "Gelesen",
+    "markRead": "Als gelesen markieren",
+    "user": "Benutzer",
+    "role": "Rolle",
+    "settings": "Einstellungen",
+    "dbViewer": "Datenbankansicht",
+    "themeLight": "Heller Modus",
+    "themeDark": "Dunkler Modus",
+    "logout": "Abmelden",
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Leiter",
+      "employee": "Mitarbeiter",
+      "unknown": "Unbekannt"
+    }
+  },
+  "login": {
+    "title": "Im System anmelden",
+    "subtitle": "Werkzeugverwaltungssystem",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "rememberMe": "Angemeldet bleiben",
+    "enterUsername": "Benutzername eingeben",
+    "enterPassword": "Passwort eingeben",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "capsLock": "Feststelltaste ist aktiv — Passwort könnte falsch sein.",
+    "submit": "Anmelden",
+    "loading": "Anmeldung...",
+    "error": "Anmeldefehler"
+  },
+  "employees": {
+    "title": "Mitarbeiterverwaltung",
+    "subtitle": "Verwalten Sie Mitarbeiterdaten im System",
+    "add": "Mitarbeiter hinzufügen",
+    "search": "Suchen",
+    "searchPlaceholder": "Vorname, Nachname, Dienstausweisnummer...",
+    "department": "Abteilung",
+    "position": "Position",
+    "allDepartments": "Alle Abteilungen",
+    "allPositions": "Alle Positionen",
+    "clearFilters": "Filter löschen",
+    "none": "Keine Mitarbeiter",
+    "noneAdded": "Noch keine Mitarbeiter hinzugefügt.",
+    "noneFound": "Keine Mitarbeiter entsprechen den Suchkriterien.",
+    "actions": "Aktionen",
+    "fullName": "Vollständiger Name",
+    "brandNumber": "Dienstausweisnummer",
+    "phone": "Telefon",
+    "departmentCol": "Abteilung",
+    "positionCol": "Position",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "unknownDept": "Unbekannt",
+    "unknownPos": "Unbekannt",
+    "mobilePhone": "Telefon:",
+    "mobileDepartment": "Abteilung:",
+    "mobilePosition": "Position:",
+    "addedSuccess": "Mitarbeiter erfolgreich hinzugefügt",
+    "addError": "Fehler beim Hinzufügen des Mitarbeiters",
+    "updatedSuccess": "Mitarbeiterdaten aktualisiert",
+    "updateError": "Fehler beim Aktualisieren des Mitarbeiters",
+    "deletedSuccess": "Mitarbeiter gelöscht",
+    "deleteError": "Fehler beim Löschen des Mitarbeiters",
+    "confirmDelete": "Möchten Sie Mitarbeiter wirklich löschen"
+  }
+  ,
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen, {name}! Hier ist die Systemübersicht.",
+    "stats": {
+      "tools": "Werkzeuge im System",
+      "bhp": "BHP-Ausrüstung",
+      "employees": "Mitarbeiter",
+      "overdueInspections": "Überfällige Prüfungen",
+      "tooltip": { "tools": "Werkzeuge:", "bhp": "BHP:" }
+    },
+    "quick": {
+      "title": "Schnelle Aktionen",
+      "createEmployeeTitle": "Mitarbeiter hinzufügen",
+      "createEmployee": "Neues Mitarbeiterprofil erstellen",
+      "issue": {
+        "title": "Schnellausgabe",
+        "subtitle": "Werkzeugcode scannen",
+        "modalTitle": "Schnelle Werkzeugausgabe",
+        "submitBatch": "Posten ausgeben",
+        "batchError": "Fehler bei der Werkzeugausgabe",
+        "successSingle": "Werkzeug \"{tool}\" erfolgreich ausgegeben an: {employee}",
+        "successBatch": "{ok}/{total} Posten ausgegeben an {employee}",
+        "errorGeneral": "Fehler beim Ausgeben des Werkzeugs",
+        "errorItem": "Ausgabefehler: {name}",
+        "errors": {
+          "toolNotFound": "Kein Werkzeug für den angegebenen Code gefunden",
+          "toolNotAvailable": "Werkzeug ist für die Ausgabe nicht verfügbar",
+          "toolNotAvailableSimple": "Werkzeug ist nicht verfügbar",
+          "noEmployeeSelected": "Wählen Sie einen Mitarbeiter für die Ausgabe"
+        }
+      },
+      "return": {
+        "title": "Schnelle Rückgabe",
+        "subtitle": "Ausgegebene Werkzeuge zurückgeben",
+        "listTitle": "Liste der an Mitarbeiter ausgegebenen Werkzeuge:",
+        "submit": "Zurückgeben",
+        "successSingle": "Werkzeug \"{tool}\" erfolgreich zurückgegeben von Mitarbeiter: {employee}",
+        "errorGeneral": "Fehler bei der Rückgabe des Werkzeugs",
+        "errors": { "noToolData": "Fehler: Fehlende Werkzeugdaten" }
+      },
+      "employee": {
+        "addSuccess": "Mitarbeiter erfolgreich hinzugefügt",
+        "addError": "Fehler beim Hinzufügen des Mitarbeiters"
+      }
+    },
+    "search": {
+      "label": "Werkzeug Barcode / QR",
+      "placeholder": "Werkzeugcode scannen oder eingeben...",
+      "searching": "Suche...",
+      "add": "Hinzufügen",
+      "sku": "SKU",
+      "status": "Status",
+      "location": "Standort",
+      "notFoundCode": "Kein Werkzeug mit Code gefunden: {code}"
+    },
+    "quickIssue": { "itemsLabel": "Posten zur Ausgabe" },
+    "labels": { "employee": "Mitarbeiter:", "quantity": "Menge", "issuedAt": "Ausgegeben", "tool": "Werkzeug", "employeeFallback": "Mitarbeiter" },
+    "history": {
+      "tools": {
+        "title": "Verlauf der Werkzeug-Ausgaben/Rückgaben",
+        "noPermissions": "Sie haben keine Berechtigung, den Werkzeugverlauf anzusehen.",
+        "noData": "Es gibt noch keine Ausgaben oder Rückgaben von Werkzeugen."
+      },
+      "bhp": {
+        "title": "Verlauf der BHP-Ausgaben/Rückgaben",
+        "noPermissions": "Sie haben keine Berechtigung, den BHP-Verlauf anzusehen.",
+        "noData": "Es gibt noch keine Ausgaben oder Rückgaben von BHP-Ausrüstung."
+      },
+      "recentCount": "Letzte {count}",
+      "noDataTitle": "Kein Verlauf",
+      "labels": {
+        "tool": "Werkzeug",
+        "bhp": "BHP-Ausrüstung",
+        "issuedBy": "Ausgegeben von",
+        "quantity": "Menge"
+      }
+    },
+    "action": { "issued": "Ausgegeben", "returned": "Zurückgegeben" }
+  },
+  "users": {
+    "roles": {
+      "administrator": "Administrator",
+      "manager": "Leiter",
+      "employee": "Mitarbeiter",
+      "observer": "Beobachter"
+    },
+    "descriptions": {
+      "administrator": "Voller Zugriff auf alle Systemfunktionen",
+      "manager": "Verwaltung von Werkzeugen, Mitarbeitern und Analytik",
+      "employee": "Grundlegende Operationen mit Werkzeugen"
+    }
+  },
+  "permissions": {
+    "saving": "Speichern...",
+    "save": "Speichern",
+    "close": "Schließen",
+    "toast": {
+      "fetchUsersError": "Fehler beim Laden der Benutzer",
+      "fetchRolePermsError": "Fehler beim Laden der Rollenberechtigungen",
+      "fetchAvailablePermsError": "Fehler beim Laden verfügbarer Berechtigungen",
+      "savePermsSuccess": "Berechtigungen für Rolle {role} wurden aktualisiert",
+      "savePermsError": "Fehler beim Speichern der Berechtigungen",
+      "userNotFound": "Benutzer für Aktualisierung nicht gefunden",
+      "updateRoleSuccess": "Benutzerrolle wurde aktualisiert",
+      "updateRoleError": "Fehler beim Aktualisieren der Benutzerrolle"
+    },
+    "labels": {
+      "EDIT_USERS": "Benutzer - bearbeiten",
+      "DELETE_USERS": "Benutzer - löschen",
+      "VIEW_EMPLOYEES": "Mitarbeiter - anzeigen",
+      "MANAGE_EMPLOYEES": "Mitarbeiter - verwalten",
+      "VIEW_ANALYTICS": "Analytik - anzeigen",
+      "VIEW_TOOLS": "Werkzeuge - anzeigen",
+      "VIEW_TOOL_HISTORY": "Werkzeug Ausgabe/Rückgabe-Verlauf - anzeigen",
+      "MANAGE_DEPARTMENTS": "Abteilungen - verwalten",
+      "MANAGE_POSITIONS": "Positionen - verwalten",
+      "SYSTEM_SETTINGS": "Systemeinstellungen",
+      "VIEW_ADMIN": "Admin-Panel",
+      "VIEW_AUDIT_LOG": "Audit-Log - anzeigen",
+      "VIEW_BHP": "BHP - anzeigen",
+      "VIEW_BHP_HISTORY": "BHP Ausgabe/Rückgabe-Verlauf - anzeigen",
+      "MANAGE_BHP": "BHP - verwalten",
+      "DELETE_ISSUE_HISTORY": "Ausgabeverlauf löschen",
+      "DELETE_RETURN_HISTORY": "Rückgabeverlauf löschen",
+      "DELETE_SERVICE_HISTORY": "Serviceverlauf löschen",
+      "MANAGE_DATABASE": "Datenbank - verwalten",
+      "VIEW_DATABASE": "Datenbank - anzeigen",
+      "VIEW_INVENTORY": "Inventar - anzeigen",
+      "INVENTORY_MANAGE_SESSIONS": "Inventar - Sitzungen verwalten",
+      "INVENTORY_SCAN": "Inventar - scannen",
+      "INVENTORY_ACCEPT_CORRECTION": "Inventar - Korrekturen annehmen",
+      "INVENTORY_DELETE_CORRECTION": "Inventar - Korrekturen löschen",
+      "INVENTORY_EXPORT_CSV": "Inventar - CSV exportieren",
+      "VIEW_LABELS": "Etiketten - anzeigen"
+    }
+  },
+  "admin": {
+    "settings": {
+      "title": "Einstellungen",
+      "subtitle": "System und Konfiguration verwalten"
+    },
+    "appConfig": {
+      "card": {
+        "title": "Anwendungseinstellungen",
+        "subtitle": "Systemparameter konfigurieren",
+        "open": "Einstellungen öffnen"
+      }
+    },
+    "audit": {
+      "card": {
+        "title": "Audit-Log",
+        "subtitle": "Operationsverlauf durchsuchen",
+        "open": "Log anzeigen"
+      }
+    },
+    "roles": {
+      "card": {
+        "title": "Rollen und Berechtigungen",
+        "subtitle": "Benutzerrollen konfigurieren"
+      },
+      "manage": "Berechtigungen verwalten"
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "subtitle": "Unwiderrufliche Datenlöschung",
+      "tools": {
+        "title": "Werkzeuge",
+        "subtitle": "Werkzeugdatenbank leeren"
+      },
+      "bhp": {
+        "title": "BHP-Ausrüstung",
+        "subtitle": "BHP-Ausrüstungsdatenbank leeren"
+      },
+      
+      "service": {
+        "title": "Service",
+        "subtitle": "Servicedatenbank leeren"
+      },
+      "employees": {
+        "title": "Mitarbeiter",
+        "subtitle": "Mitarbeiterdatenbank leeren"
+      }
+    },
+    "actions": {
+      "deleteIssues": "Ausgabeverlauf löschen",
+      "deleteReturns": "Rückgabeverlauf löschen",
+      "deleteServiceHistory": "Serviceverlauf löschen",
+      "deleteEmployees": "Mitarbeiterdaten löschen"
+    },
+    "modals": {
+      "deleteAllIssues": {
+        "title": "Gesamten Ausgabeverlauf löschen",
+        "message": "Möchten Sie den gesamten Ausgabeverlauf der Werkzeuge wirklich löschen? Dieser Vorgang ist unwiderruflich und entfernt alle Ausgabe- und Rückgabeeinträge.",
+        "confirm": "Verlauf löschen"
+      },
+      "deleteServiceHistory": {
+        "title": "Serviceverlauf löschen",
+        "message": "Möchten Sie den gesamten Serviceverlauf der Werkzeuge wirklich löschen? Dieser Vorgang ist unwiderruflich und entfernt alle zugehörigen Einträge.",
+        "confirm": "Serviceverlauf löschen"
+      },
+      "deleteToolIssues": {
+        "title": "Ausgabeverlauf der Werkzeuge löschen",
+        "message": "Möchten Sie wirklich alle EINTRÄGE ZUR AUSGABE der Werkzeuge löschen? Dieser Vorgang ist unwiderruflich.",
+        "confirm": "Ausgabeverlauf löschen"
+      },
+      "deleteToolReturns": {
+        "title": "Rückgabeverlauf der Werkzeuge löschen",
+        "message": "Möchten Sie wirklich alle EINTRÄGE ZUR RÜCKGABE der Werkzeuge löschen? Dieser Vorgang ist unwiderruflich.",
+        "confirm": "Rückgabeverlauf löschen"
+      },
+      "deleteBhpIssues": {
+        "title": "Ausgabeverlauf der BHP-Ausrüstung löschen",
+        "message": "Möchten Sie wirklich alle EINTRÄGE ZUR AUSGABE der BHP-Ausrüstung löschen? Dieser Vorgang ist unwiderruflich.",
+        "confirm": "Ausgabeverlauf löschen"
+      },
+      "deleteBhpReturns": {
+        "title": "Rückgabeverlauf der BHP-Ausrüstung löschen",
+        "message": "Möchten Sie wirklich alle EINTRÄGE ZUR RÜCKGABE der BHP-Ausrüstung löschen? Dieser Vorgang ist unwiderruflich.",
+        "confirm": "Rückgabeverlauf löschen"
+      },
+      "deleteEmployees": {
+        "title": "Alle Mitarbeiter löschen",
+        "message": "Möchten Sie wirklich alle Mitarbeiter aus der Datenbank löschen? Dieser Vorgang ist unwiderruflich und entfernt alle Mitarbeiterdaten.",
+        "confirm": "Mitarbeiter löschen"
+      }
+    }
+  },
+  "bhp": {
+    "title": "BHP-Ausrüstung",
+    "subtitle": "BHP-Ausrüstungsdatenbank leeren",
+    "manageDescription": "BHP‑Ausrüstung verwalten (Ausgaben, Rückgaben, Prüfungen)",
+    "actions": {
+      "addEquipment": "Ausrüstung hinzufügen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "issue": "Ausgeben",
+      "return": "Rückgabe",
+      "noPermission": "Keine Berechtigung für Aktionen"
+    },
+    "filters": {
+      "search": "Suchen",
+      "searchPlaceholder": "Inventarnr., Hersteller, Modell, Serie...",
+      "status": "Status",
+      "all": "Alle",
+      "sort": "Sortierung",
+      "reviews": "Prüfungen",
+      "nearestReview": "Nächste Prüfung",
+      "farthestReview": "Entfernteste Prüfung"
+    },
+    "sort": {
+      "inspectionDate": "Prüfdatum",
+      "inventoryNumber": "Inventarnummer"
+    },
+    "table": {
+      "inventoryShort": "Inv.-Nr.",
+      "manufacturerModel": "Hersteller / Modell",
+      "serialCatalog": "Serie / Katalog",
+      "inspection": "Prüfung",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "set": {
+      "label": "Satz",
+      "shock": "Dämpfer",
+      "srd": "Selbstsicherndes Gerät"
+    },
+    "labels": {
+      "assignedLabel": "Zugewiesen",
+      "catalogAbbrev": "Kat.",
+      "numberAbbrev": "Nr.",
+      "inventoryLabel": "Inventarnummer",
+      "serialLabel": "Seriennummer",
+      "catalogLabel": "Katalognummer",
+      "inspectionLabel": "Prüfung",
+      "inventoryNumber": "Inventarnummer",
+      "manufacturer": "Hersteller",
+      "model": "Modell",
+      "serialNumber": "Seriennummer",
+      "catalogNumber": "Katalognummer",
+      "productionDate": "Produktionsdatum",
+      "inspectionDate": "Prüfdatum",
+      "status": "Status",
+      "assignedFirstName": "Zugewiesen (Vorname)",
+      "assignedLastName": "Zugewiesen (Nachname)",
+      "assigned": "Zugewiesen",
+      "manufacturerAbbrev": "Herst.",
+      "modelAbbrev": "Mod.",
+      "snAbbrev": "S/N",
+      "productionShort": "Prod.-Dat."
+    },
+    "status": {
+      "available": "Verfügbar",
+      "issued": "Ausgegeben",
+      "unknown": "unbekannt"
+    },
+    "modal": {
+      "editTitle": "BHP‑Position bearbeiten",
+      "addTitle": "BHP‑Position hinzufügen"
+    },
+    "form": {
+      "inventoryNumberRequired": "Inventarnummer *",
+      "scanCode": "Code scannen",
+      "generateWithPrefix": "Code mit Präfix generieren",
+      "manufacturer": "Hersteller",
+      "model": "Modell",
+      "serialNumber": "Seriennummer",
+      "catalogNumber": "Katalognummer",
+      "productionDateHarness": "Produktionsdatum (Gurt)",
+      "harnessStartDate": "Nutzungsbeginn des Gurts"
+    },
+    "shock": {
+      "manufacturerLabel": "Dämpfer: Hersteller",
+      "modelLabel": "Dämpfer: Modell",
+      "snLabel": "Dämpfer: S/N",
+      "catalogAbbrevLabel": "Dämpfer: Kat.",
+      "productionShortLabel": "Dämpfer: Prod.-Datum",
+      "catalogLabel": "Dämpfer: Katalognummer",
+      "productionLabel": "Dämpfer: Produktionsdatum"
+    },
+    "srd": {
+      "manufacturerLabel": "SRD: Hersteller",
+      "modelLabel": "SRD: Modell",
+      "snLabel": "SRD: S/N",
+      "catalogAbbrevLabel": "SRD: Kat.",
+      "productionShortLabel": "SRD: Prod.-Datum",
+      "catalogLabel": "SRD: Katalognummer",
+      "productionLabel": "SRD: Produktionsdatum"
+    },
+    "export": {
+      "exportPDF": "Als PDF exportieren",
+      "exportXLSX": "Als Excel exportieren",
+      "field": "Feld",
+      "value": "Wert",
+      "detailsTitle": "BHP‑Export — Details",
+      "detailsHeader": "BHP‑Details",
+      "generatedAt": "Erzeugt",
+      "sheetName": "Details"
+    }
+  },
+  "confirmation": {
+    "title": "Aktion bestätigen",
+    "message": "Sind Sie sicher, dass Sie diese Operation ausführen möchten?",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen"
+  },
+  "userSettings": {
+    "title": "Benutzereinstellungen",
+    "subtitle": "Verwalten Sie die Sicherheit Ihres Kontos",
+    "tabs": { "security": "Sicherheit" },
+    "changePassword": {
+      "title": "Passwort ändern",
+      "username": "Benutzername",
+      "current": "Aktuelles Passwort",
+      "new": "Neues Passwort",
+      "confirm": "Neues Passwort bestätigen",
+      "notice": "Das Passwort wird für Ihr Konto aktualisiert"
+    },
+    "toast": {
+      "passwordSaved": "Passwort erfolgreich gespeichert!",
+      "passwordChanged": "Passwort wurde geändert"
+    },
+    "errors": {
+      "fillAllFields": "Bitte alle Felder ausfüllen",
+      "passwordTooShort": "Neues Passwort muss mindestens 6 Zeichen haben",
+      "passwordMismatch": "Neues Passwort und Bestätigung stimmen nicht überein",
+      "changeFailed": "Passwortänderung fehlgeschlagen"
+    }
+  },
+  "analytics": {
+    "title": "Analytik",
+    "subtitle": "Übersicht der Systemstatistiken und Berichte",
+    "permissions": {
+      "title": "Keine Berechtigung",
+      "viewAnalyticsDenied": "Keine Berechtigung für Analytik (VIEW_ANALYTICS)."
+    },
+    "upcomingInspections": "Bevorstehende Prüfungen",
+    "overdue": "Überfällig",
+    "upcomingUnder30": "Bevorstehend (<30 Tage)",
+    "bhpPermissionDenied": "Keine Berechtigung für den BHP‑Bereich (VIEW_BHP). Es werden nur Tools‑Daten angezeigt.",
+    "loadingInspections": "Prüfdaten werden geladen...",
+    "loadingService": "Servicedaten werden geladen...",
+    "overdueTools": "Überfällig (Werkzeuge)",
+    "noOverdueTools": "Keine überfälligen Werkzeugprüfungen.",
+    "overdueBhp": "Überfällig (BHP)",
+    "noOverdueBhp": "Keine überfälligen BHP‑Prüfungen.",
+    "upcoming": "Bevorstehend (<30 Tage)",
+    "noUpcoming": "Keine bevorstehenden Prüfungen innerhalb von 30 Tagen.",
+    "chip": { "tools": "Werkzeuge", "bhp": "BHP" },
+    "phrases": {
+      "daysOverdue": "{count} Tage überfällig",
+      "inDays": "in {count} Tagen"
+    },
+    "pagination": {
+      "prev": "Zurück",
+      "page": "Seite",
+      "of": "von",
+      "next": "Weiter"
+    },
+    "serviceHistory": {
+      "title": "Servicehistorie",
+      "inService": "Derzeit im Service",
+      "recentEvents": "Letzte Ereignisse",
+      "generatedAt": "Generiert am",
+      "exportPDF": "PDF exportieren",
+      "exportXLSX": "XLSX exportieren",
+      "rowsCount": "Zeilen",
+      "total": "Gesamt: {count}",
+      "headers": {
+        "tool": "Werkzeug",
+        "sku": "SKU",
+        "action": "Aktion",
+        "quantity": "Menge",
+        "orderNumber": "Auftragsnr.",
+        "date": "Datum",
+        "sent": "Gesendet"
+      },
+      "action": {
+        "sent": "Gesendet",
+        "received": "Empfangen"
+      },
+      "noInService": "Keine Elemente im Service.",
+      "noRecentEvents": "Keine aktuellen Ereignisse.",
+      "noData": "Keine Daten"
+    }
+  },
+  "scanner": {
+    "title": "Barcode scannen",
+    "close": "Schließen",
+    "browserNotSupported": {
+      "title": "Browser unterstützt Kamera nicht",
+      "desc": "Ihr Browser unterstützt das Scannen von Codes nicht.",
+      "tipsIntro": "Versuchen Sie:",
+      "tips": {
+        "update": "Neuere Browserversion verwenden",
+        "switch": "Zu Chrome, Firefox oder Safari wechseln",
+        "https": "Stellen Sie sicher, dass Sie HTTPS verwenden (für Kamera erforderlich)",
+        "manual": "Code manuell eingeben"
+      }
+    },
+    "permissionsDenied": {
+      "desc": "Kein Kamerazugriff. Bitte erlauben Sie den Kamerazugriff in den Browser‑Einstellungen."
+    },
+    "buttons": { "cancel": "Abbrechen" },
+    "overlay": {
+      "scanning": "Scannen...",
+      "ready": "Bereit zum Scannen"
+    },
+    "lastCode": "Letzter Code:",
+    "quantity": "Menge:",
+    "torch": { "enable": "Taschenlampe einschalten", "disable": "Taschenlampe ausschalten" },
+    "tipsHeader": "Scan‑Tipps",
+    "tipsGeneral": {
+      "stable": "• Halten Sie das Telefon stabil über den Code",
+      "light": "• Stellen Sie eine gute Beleuchtung des Codes sicher",
+      "frame": "• Der Code sollte den Scanrahmen ausfüllen",
+      "wait": "• Warten Sie auf die automatische Erkennung"
+    },
+    "tipsLabels": {
+      "title": "Etikettendrucker‑Aufkleber",
+      "avoidReflections": "• Lichtreflexe vermeiden — Telefon leicht neigen",
+      "distance": "• Telefon näher halten (5–10 cm vom Aufkleber)",
+      "torch": "• Taschenlampe für besseren Kontrast einschalten",
+      "recognize": "• 2–3 Sekunden auf Erkennung warten",
+      "checkDamage": "• Prüfen, ob der Aufkleber nicht beschädigt ist"
+    },
+    "cta": "Richten Sie die Kamera auf einen Barcode oder QR‑Code",
+    "errors": {
+      "NotAllowedError": "Kein Kamerazugriff. Bitte erlauben Sie den Kamerazugriff in den Browser‑Einstellungen.",
+      "NotFoundError": "Keine Kamera gefunden. Stellen Sie sicher, dass das Gerät eine Kamera hat.",
+      "NotSupportedError": "Browser unterstützt keinen Kamerazugriff. Versuchen Sie einen anderen Browser.",
+      "NotReadableError": "Kamera wird von einer anderen Anwendung verwendet. Schließen Sie andere Apps, die die Kamera nutzen.",
+      "OverconstrainedError": "Kamera kann mit den ausgewählten Einstellungen nicht gestartet werden. Bitte erneut versuchen.",
+      "Generic": "Beim Starten der Kamera ist ein Fehler aufgetreten: {message}"
+    }
+  }
+}

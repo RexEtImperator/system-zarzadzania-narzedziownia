@@ -1,17 +1,24 @@
 import React from 'react';
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 const ConfirmationModal = ({ 
   isOpen, 
   onClose, 
   onConfirm, 
-  title = 'Potwierdź działanie',
-  message = 'Czy na pewno chcesz wykonać tę operację?',
-  confirmText = 'Potwierdź',
-  cancelText = 'Anuluj',
+  title,
+  message,
+  confirmText,
+  cancelText,
   type = 'danger', // 'danger', 'warning', 'info'
   loading = false
 }) => {
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t('confirmation.title');
+  const resolvedMessage = message ?? t('confirmation.message');
+  const resolvedConfirmText = confirmText ?? t('confirmation.confirm');
+  const resolvedCancelText = cancelText ?? t('confirmation.cancel');
   if (!isOpen) return null;
 
   const getTypeStyles = () => {
@@ -89,11 +96,11 @@ const ConfirmationModal = ({
               {/* Content */}
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
-                  {title}
+                  {resolvedTitle}
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-300">
-                    {message}
+                    {resolvedMessage}
                   </p>
                 </div>
               </div>
@@ -111,10 +118,10 @@ const ConfirmationModal = ({
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Przetwarzanie...
+                  {t('common.saving')}
                 </>
               ) : (
-                confirmText
+                resolvedConfirmText
               )}
             </button>
             <button
@@ -123,7 +130,7 @@ const ConfirmationModal = ({
               disabled={loading}
               className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {cancelText}
+              {resolvedCancelText}
             </button>
           </div>
         </div>

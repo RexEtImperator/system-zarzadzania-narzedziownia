@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'react-toastify';
 import api from '../api';
 
@@ -25,12 +26,13 @@ const addAuditLog = async (user, action, details) => {
 
 function UserManagementScreen({ user }) {
   const [users, setUsers] = useState([]);
+  const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     full_name: '',
-    role: 'user',
+    role: 'employee',
     password: '',
     confirmPassword: ''
   });
@@ -60,7 +62,7 @@ function UserManagementScreen({ user }) {
     setFormData({
       username: '',
       full_name: '',
-      role: 'user',
+      role: 'employee',
       password: '',
       confirmPassword: ''
     });
@@ -136,7 +138,7 @@ function UserManagementScreen({ user }) {
       setFormData({
         username: '',
         full_name: '',
-        role: 'user',
+        role: 'employee',
         password: '',
         confirmPassword: ''
       });
@@ -204,14 +206,12 @@ function UserManagementScreen({ user }) {
                     u.role === 'administrator' ? 'bg-red-100 text-red-800' :
                     u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
                     u.role === 'employee' ? 'bg-green-100 text-green-800' :
-                    u.role === 'user' ? 'bg-purple-100 text-purple-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {u.role === 'administrator' ? 'Administrator' :
-                     u.role === 'manager' ? 'Menedżer' :
-                     u.role === 'employee' ? 'Pracownik' :
-                     u.role === 'user' ? 'Użytkownik' :
-                     'Obserwator'}
+                    {u.role === 'administrator' ? t('users.roles.administrator') :
+                     u.role === 'manager' ? t('users.roles.manager') :
+                     u.role === 'employee' ? t('users.roles.employee') :
+                     t('users.roles.observer')}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -280,7 +280,6 @@ function UserManagementScreen({ user }) {
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                 >
-                  <option value="user">Użytkownik</option>
                   <option value="employee">Pracownik</option>
                   <option value="manager">Menedżer</option>
                   <option value="administrator">Administrator</option>

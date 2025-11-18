@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'react-toastify';
 import api from '../api';
 import ConfirmationModal from './ConfirmationModal';
 
 const DbViewerScreen = ({ user }) => {
+  const { t } = useLanguage();
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
@@ -325,7 +327,7 @@ const DbViewerScreen = ({ user }) => {
           {isAdmin && (
             <button onClick={openCreateTableModal} className="text-xs px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">Utwórz tabelę</button>
           )}
-          {loadingTables && <span className="text-xs text-gray-500 dark:text-slate-400">Ładowanie…</span>}
+          {loadingTables && <span className="text-xs text-gray-500 dark:text-slate-400">{t('loading.tables')}</span>}
         </div>
         <ul className="space-y-1">
           {tables.map(t => (
@@ -339,7 +341,7 @@ const DbViewerScreen = ({ user }) => {
             </li>
           ))}
           {tables.length === 0 && !loadingTables && (
-            <li className="text-sm text-gray-500 dark:text-slate-400">Brak tabel</li>
+            <li className="text-sm text-gray-500 dark:text-slate-400">{t('noData.tables')}</li>
           )}
         </ul>
       </div>
@@ -385,9 +387,9 @@ const DbViewerScreen = ({ user }) => {
 
         <div className="border border-gray-200 dark:border-slate-700 rounded overflow-auto">
           {loadingData ? (
-            <div className="p-4 text-sm text-gray-600 dark:text-slate-300">Ładowanie danych…</div>
+            <div className="p-4 text-sm text-gray-600 dark:text-slate-300">{t('loading.data')}</div>
           ) : rows.length === 0 ? (
-            <div className="p-4 text-sm text-gray-600 dark:text-slate-300">Brak danych</div>
+            <div className="p-4 text-sm text-gray-600 dark:text-slate-300">{t('common.noData')}</div>
           ) : (
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 dark:bg-slate-800/50">
@@ -448,7 +450,7 @@ const DbViewerScreen = ({ user }) => {
         title="Usuń wiersz"
         message={deleteRowTarget && primaryKey ? `Czy na pewno chcesz usunąć wiersz ${primaryKey}=${deleteRowTarget[primaryKey]}?` : 'Czy na pewno chcesz usunąć ten wiersz?'}
         confirmText="Usuń"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={deleteRowLoading}
       />
@@ -461,7 +463,7 @@ const DbViewerScreen = ({ user }) => {
         title="Usuń tabelę"
         message={selectedTable ? `Czy na pewno chcesz usunąć tabelę "${selectedTable}"?` : 'Czy na pewno chcesz usunąć tę tabelę?'}
         confirmText="Usuń"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={deleteTableLoading}
       />

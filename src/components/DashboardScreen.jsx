@@ -5,9 +5,11 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import { PERMISSIONS, hasPermission } from '../constants';
 import BarcodeScanner from './BarcodeScanner';
 import { toast } from 'react-toastify';
+import { useLanguage } from '../contexts/LanguageContext';
 import EmployeeModal from './EmployeeModal';
 
 const DashboardScreen = ({ user }) => {
+  const { t } = useLanguage();
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeDepartments: 0,
@@ -95,7 +97,20 @@ const DashboardScreen = ({ user }) => {
   const fetchIssuedTools = async () => {
     try {
       setIssuedToolsLoading(true);
-      const response = await api.get('/api/tool-issues?status=wydane&limit=50');
+      // Jeśli zalogowany to pracownik, ogranicz do jego wydań
+      let employeeFilter = '';
+      if (String(user?.role) === 'employee') {
+        try {
+          const allEmployees = await api.get('/api/employees');
+          const matched = (Array.isArray(allEmployees) ? allEmployees : []).find(e => String(e.login || '') === String(user?.username || ''));
+          if (matched?.id) {
+            employeeFilter = `&employee_id=${matched.id}`;
+          }
+        } catch (e) {
+          console.warn('Nie udało się pobrać pracownika do filtrowania szybkiego zwrotu:', e?.message || e);
+        }
+      }
+      const response = await api.get(`/api/tool-issues?status=wydane&limit=50${employeeFilter}`);
       const issuedToolsData = response.data.filter(item => item.status === 'wydane').map(item => ({
         id: item.id,
         toolId: item.tool_id,
@@ -121,6 +136,7 @@ const DashboardScreen = ({ user }) => {
         first_name: employeeData.firstName,
         last_name: employeeData.lastName,
         phone: employeeData.phone,
+        email: employeeData.email,
         department: departments.find(d => d.id?.toString() === employeeData.departmentId)?.name || '',
         position: positions.find(p => p.id?.toString() === employeeData.positionId)?.name || '',
         brand_number: employeeData.brandNumber || ''
@@ -128,7 +144,7 @@ const DashboardScreen = ({ user }) => {
 
       const res = await api.post('/api/employees', apiData);
       if (res) {
-        toast.success('Pracownik został dodany pomyślnie');
+        toast.success(t('dashboard.quick.employee.addSuccess'));
         setShowAddEmployeeModal(false);
         // Odśwież listy i statystyki
         await fetchEmployees();
@@ -136,7 +152,7 @@ const DashboardScreen = ({ user }) => {
       }
     } catch (error) {
       console.error('Błąd podczas dodawania pracownika:', error);
-      const msg = error?.response?.data?.message || 'Błąd podczas dodawania pracownika';
+      const msg = error?.response?.data?.message || t('dashboard.quick.employee.addError');
       toast.error(msg);
       throw error; // pozwala EmployeeModal zarządzać stanem ładowania
     }
@@ -192,7 +208,7 @@ const DashboardScreen = ({ user }) => {
   const addFoundToolToList = () => {
     if (!foundTool) return;
     if (foundTool.status !== 'dostępne') {
-      toast.error('Narzędzie nie jest dostępne');
+      toast.error(t('dashboard.quick.issue.errors.toolNotAvailableSimple'));
       return;
     }
     const existsIdx = quickIssueItems.findIndex(it => it.tool?.id === foundTool.id);
@@ -266,13 +282,13 @@ const DashboardScreen = ({ user }) => {
           });
           successCount += 1;
         } catch (e) {
-          const msg = e?.response?.data?.message || `Błąd wydania: ${tool?.name || 'narzędzie'}`;
+          const msg = e?.response?.data?.message || t('dashboard.quick.issue.errorItem', { name: tool?.name || t('dashboard.labels.tool') });
           toast.error(msg);
         }
       }
       const employee = employees.find(emp => emp.id.toString() === selectedEmployee);
-      const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'pracownikowi';
-      toast.success(`Wydano ${successCount}/${quickIssueItems.length} pozycji ${employeeName}`);
+      const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : t('dashboard.labels.employeeFallback');
+      toast.success(t('dashboard.quick.issue.successBatch', { ok: successCount, total: quickIssueItems.length, employee: employeeName }));
       // Zamknij modal i wyczyść
       setShowQuickIssueModal(false);
       setSearchCode('');
@@ -283,23 +299,23 @@ const DashboardScreen = ({ user }) => {
       fetchDashboardData();
     } catch (error) {
       console.error('Błąd wsadowego wydawania:', error);
-      alert(error?.response?.data?.message || 'Błąd podczas wydawania narzędzi');
+      alert(error?.response?.data?.message || t('dashboard.quick.issue.batchError'));
     }
   };
 
   const handleQuickIssue = async () => {
     if (!foundTool) {
-      alert('Nie znaleziono narzędzia o podanym kodzie');
+      alert(t('dashboard.quick.issue.errors.toolNotFound'));
       return;
     }
 
     if (foundTool.status !== 'dostępne') {
-      alert('Narzędzie nie jest dostępne do wydania');
+      alert(t('dashboard.quick.issue.errors.toolNotAvailable'));
       return;
     }
 
     if (!selectedEmployee) {
-      alert('Wybierz pracownika, któremu chcesz wydać narzędzie');
+      alert(t('dashboard.quick.issue.errors.noEmployeeSelected'));
       return;
     }
 
@@ -312,9 +328,9 @@ const DashboardScreen = ({ user }) => {
       if (response) {
         // Znajdź dane wybranego pracownika do wyświetlenia w komunikacie
         const employee = employees.find(emp => emp.id.toString() === selectedEmployee);
-        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : 'pracownikowi';
+        const employeeName = employee ? `${employee.first_name} ${employee.last_name}` : t('dashboard.labels.employeeFallback');
         
-        alert(`Pomyślnie wydano narzędzie "${foundTool.name}" pracownikowi: ${employeeName}`);
+        alert(t('dashboard.quick.issue.successSingle', { tool: foundTool.name, employee: employeeName }));
         setShowQuickIssueModal(false);
         setSearchCode('');
         setFoundTool(null);
@@ -324,14 +340,14 @@ const DashboardScreen = ({ user }) => {
       }
     } catch (error) {
       console.error('Błąd podczas wydawania narzędzia:', error);
-      const errorMessage = error.response?.data?.message || 'Błąd podczas wydawania narzędzia';
+      const errorMessage = error.response?.data?.message || t('dashboard.quick.issue.errorGeneral');
       alert(errorMessage);
     }
   };
 
   const handleQuickReturn = async (tool) => {
     if (!tool) {
-      alert('Błąd: Brak danych narzędzia');
+      alert(t('dashboard.quick.return.errors.noToolData'));
       return;
     }
 
@@ -342,7 +358,7 @@ const DashboardScreen = ({ user }) => {
       });
 
       if (response) {
-        alert(`Pomyślnie zwrócono narzędzie "${tool.toolName}" od pracownika: ${tool.employeeName}`);
+        alert(t('dashboard.quick.return.successSingle', { tool: tool.toolName, employee: tool.employeeName }));
         // Odśwież listę wydanych narzędzi
         fetchIssuedTools();
         // Odśwież dane dashboard
@@ -350,7 +366,7 @@ const DashboardScreen = ({ user }) => {
       }
     } catch (error) {
       console.error('Błąd podczas zwracania narzędzia:', error);
-      const errorMessage = error.response?.data?.message || 'Błąd podczas zwracania narzędzia';
+      const errorMessage = error.response?.data?.message || t('dashboard.quick.return.errorGeneral');
       alert(errorMessage);
     }
   };
@@ -359,17 +375,41 @@ const DashboardScreen = ({ user }) => {
     try {
       setLoading(true);
       
+      // Ustal, czy zalogowany użytkownik jest pracownikiem i znajdź jego employee_id
+      const isEmployee = String(user?.role) === 'employee';
+      let currentEmployeeId = null;
+      if (isEmployee) {
+        try {
+          const allEmployees = await api.get('/api/employees');
+          const matched = (Array.isArray(allEmployees) ? allEmployees : []).find(e => String(e.login || '') === String(user?.username || ''));
+          if (matched?.id) currentEmployeeId = matched.id;
+        } catch (e) {
+          console.warn('Nie udało się pobrać listy pracowników do filtrowania dashboardu:', e?.message || e);
+        }
+      }
+
       // Pobierz statystyki z nowego endpointu
       const statsRes = await api.get('/api/dashboard/stats');
       
-      // Pobierz historię wydań/zwrotów narzędzi
-      const toolHistoryRes = await api.get('/api/tool-issues?limit=6');
+      // Pobierz historię wydań/zwrotów narzędzi (jeśli są uprawnienia)
+      let toolHistoryRes = null;
+      try {
+        if (hasPermission(user, PERMISSIONS.VIEW_TOOL_HISTORY)) {
+          toolHistoryRes = await api.get(
+            `/api/tool-issues?limit=6${currentEmployeeId ? `&employee_id=${currentEmployeeId}` : ''}`
+          );
+        }
+      } catch (e) {
+        console.warn('Nie udało się pobrać historii narzędzi (może brak uprawnień):', e?.message || e);
+      }
       
       // Pobierz historię wydań/zwrotów BHP (jeśli są uprawnienia)
       let bhpHistoryRes = null;
       try {
-        if (hasPermission(user, PERMISSIONS.VIEW_BHP)) {
-          bhpHistoryRes = await api.get('/api/bhp-issues?limit=6');
+        if (hasPermission(user, PERMISSIONS.VIEW_BHP_HISTORY)) {
+          bhpHistoryRes = await api.get(
+            `/api/bhp-issues?limit=6${currentEmployeeId ? `&employee_id=${currentEmployeeId}` : ''}`
+          );
         }
       } catch (e) {
         console.warn('Nie udało się pobrać historii BHP (może brak uprawnień):', e?.message || e);
@@ -436,6 +476,7 @@ const DashboardScreen = ({ user }) => {
         toolName: issue.tool_name,
         toolId: issue.tool_id,
         employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
+        issuedByName: issue.issued_by_user_name || '',
         time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at),
         quantity: issue.quantity
       })) || [];
@@ -447,6 +488,7 @@ const DashboardScreen = ({ user }) => {
         bhpInventoryNumber: issue.bhp_inventory_number,
         bhpModel: issue.bhp_model,
         employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
+        issuedByName: issue.issued_by_user_name || '',
         time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at)
       })) || [];
       
@@ -527,8 +569,15 @@ const DashboardScreen = ({ user }) => {
   };
 
   const getActionText = (action) => {
-    return action === 'wydanie' ? 'Wydano' : 'Zwrócono';
+    return action === 'wydanie' ? t('dashboard.action.issued') : t('dashboard.action.returned');
   };
+
+  // Przywitanie z wyróżnionym imieniem/nazwiskiem
+  const welcomeTemplate = t('dashboard.welcome');
+  const displayName = user?.full_name || user?.username;
+  const welcomeParts = (typeof welcomeTemplate === 'string' && welcomeTemplate.includes('{name}'))
+    ? welcomeTemplate.split('{name}')
+    : [welcomeTemplate, ''];
 
   return (
     <div className="space-y-8 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
@@ -536,9 +585,11 @@ const DashboardScreen = ({ user }) => {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 transition-colors duration-200">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200">{t('dashboard.title')}</h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 transition-colors duration-200">
-              Witaj, <span className="font-semibold text-indigo-600 dark:text-indigo-400">{user?.full_name || user?.username}</span>! Oto przegląd systemu zarządzania.
+              {welcomeParts[0]}
+              <span className="text-indigo-600 dark:text-indigo-400">{displayName}</span>
+              {welcomeParts[1]}
             </p>
           </div>
           <div className="hidden md:block">
@@ -549,10 +600,11 @@ const DashboardScreen = ({ user }) => {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - ukryj dla roli 'employee' */}
+      {String(user?.role) !== 'employee' && (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Narzędzia w systemie"
+          title={t('dashboard.stats.tools')}
           value={stats.totalTools}
           icon={
             <WrenchScrewdriverIcon />
@@ -561,7 +613,7 @@ const DashboardScreen = ({ user }) => {
         />
         
         <StatCard
-          title="Sprzęt BHP"
+          title={t('dashboard.stats.bhp')}
           value={stats.totalBhp}
           icon={
             <InboxIcon />
@@ -570,7 +622,7 @@ const DashboardScreen = ({ user }) => {
         />
         
         <StatCard
-          title="Pracownicy"
+          title={t('dashboard.stats.employees')}
           value={stats.totalEmployees}
           icon={
             <UsersIcon />
@@ -579,7 +631,7 @@ const DashboardScreen = ({ user }) => {
         />
         
         <StatCard
-          title="Przeglądy przeterminowane"
+          title={t('dashboard.stats.overdueInspections')}
           value={stats.overdueInspections}
           icon={
             <ClockIcon />
@@ -588,19 +640,21 @@ const DashboardScreen = ({ user }) => {
           tooltip={
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">Narzędzia:</span>
+                <span className="font-semibold">{t('dashboard.stats.tooltip.tools')}</span>
                 <span>{stats.overdueToolsCount}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">BHP:</span>
+                <span className="font-semibold">{t('dashboard.stats.tooltip.bhp')}</span>
                 <span>{stats.overdueBhpCount}</span>
               </div>
             </div>
           }
         />
       </div>
+      )}
 
       {/* Quick Actions */}
+      {hasPermission(user, PERMISSIONS.VIEW_QUICK_ACTIONS) && (
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
         <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
@@ -608,7 +662,7 @@ const DashboardScreen = ({ user }) => {
               <BoltIcon className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-              Szybkie akcje
+              {t('dashboard.quick.title')}
             </h3>
           </div>
         </div>
@@ -621,10 +675,10 @@ const DashboardScreen = ({ user }) => {
                   <PlusIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" aria-hidden="true" />
                 </div>
                 <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-                  Dodaj pracownika
+                  {t('dashboard.quick.createEmployeeTitle')}
                 </span>
                 <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                  Utwórz nowy profil pracownika
+                  {t('dashboard.quick.createEmployee')}
                 </span>
               </button>
             )}
@@ -636,10 +690,10 @@ const DashboardScreen = ({ user }) => {
                 <QrCodeIcon className="h-6 w-6 text-green-600 dark:text-green-400" aria-hidden="true" />
               </div>
               <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200">
-                Szybkie wydanie
+                {t('dashboard.quick.issue.title')}
               </span>
               <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Skanuj kod narzędzia
+                {t('dashboard.quick.issue.subtitle')}
               </span>
             </button>
             
@@ -650,15 +704,16 @@ const DashboardScreen = ({ user }) => {
                 <ArrowUturnLeftIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" aria-hidden="true" />
               </div>
               <span className="mt-3 block text-sm font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">
-                Szybki zwrot
+                {t('dashboard.quick.return.title')}
               </span>
               <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Zwróć wydane narzędzia
+                {t('dashboard.quick.return.subtitle')}
               </span>
             </button>
           </div>
         </div>
       </div>
+      )}
 
       {/* Tool History */}
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
@@ -669,17 +724,23 @@ const DashboardScreen = ({ user }) => {
                 <ClockIcon className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-                Historia wydań/zwrotów narzędzi
+                {t('dashboard.history.tools.title')}
               </h3>
             </div>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 transition-colors duration-200">
-              Ostatnie {stats.toolHistory.length}
+              {t('dashboard.history.recentCount', { count: stats.toolHistory.length })}
             </span>
           </div>
         </div>
         
         <div className="p-6">
-          {loading ? (
+          {!hasPermission(user, PERMISSIONS.VIEW_TOOL_HISTORY) ? (
+            <div className="text-center py-8">
+              <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">{t('common.noPermissionsTitle')}</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">{t('dashboard.history.tools.noPermissions')}</p>
+            </div>
+          ) : loading ? (
             <div className="animate-pulse space-y-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="flex space-x-4">
@@ -713,16 +774,22 @@ const DashboardScreen = ({ user }) => {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-200">
-                                {getActionText(item.action)} narzędzie: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{item.toolName}</span>
+                                {getActionText(item.action)} {t('dashboard.history.labels.tool')}: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{item.toolName}</span>
                               </p>
                               <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 transition-colors duration-200">
                                 <span className="flex items-center">
                                   <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                   {item.employeeName}
                                 </span>
+                                {item.issuedByName && (
+                                  <span className="flex items-center">
+                                    <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+                                    {t('dashboard.history.labels.issuedBy')}: {item.issuedByName}
+                                  </span>
+                                )}
                                 <span className="flex items-center">
                                   <Bars3Icon className="w-4 h-4 mr-1" aria-hidden="true" />
-                                  Ilość: {item.quantity}
+                                  {t('dashboard.history.labels.quantity')}: {item.quantity}
                                 </span>
                               </div>
                             </div>
@@ -743,8 +810,8 @@ const DashboardScreen = ({ user }) => {
           ) : (
             <div className="text-center py-8">
               <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">Brak historii</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">Nie ma jeszcze żadnych wydań lub zwrotów narzędzi.</p>
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">{t('dashboard.history.noDataTitle')}</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">{t('dashboard.history.tools.noData')}</p>
             </div>
           )}
         </div>
@@ -759,21 +826,21 @@ const DashboardScreen = ({ user }) => {
                 <ClockIcon className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
-                Historia wydań/zwrotów BHP
+                {t('dashboard.history.bhp.title')}
               </h3>
             </div>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors duration-200">
-              Ostatnie {stats.bhpHistory?.length || 0}
+              {t('dashboard.history.recentCount', { count: stats.bhpHistory?.length || 0 })}
             </span>
           </div>
         </div>
 
         <div className="p-6">
-          {!hasPermission(user, PERMISSIONS.VIEW_BHP) ? (
+          {!hasPermission(user, PERMISSIONS.VIEW_BHP_HISTORY) ? (
             <div className="text-center py-8">
               <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">Brak uprawnień</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">Nie masz uprawnień, aby przeglądać historię BHP.</p>
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">{t('common.noPermissionsTitle')}</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">{t('dashboard.history.bhp.noPermissions')}</p>
             </div>
           ) : loading ? (
             <div className="animate-pulse space-y-4">
@@ -809,13 +876,19 @@ const DashboardScreen = ({ user }) => {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-200">
-                                {getActionText(item.action)} sprzęt BHP: <span className="font-semibold text-green-600 dark:text-green-400">{item.bhpLabel}</span>
+                                {getActionText(item.action)} {t('dashboard.history.labels.bhp')}: <span className="font-semibold text-green-600 dark:text-green-400">{item.bhpLabel}</span>
                               </p>
                               <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 transition-colors duration-200">
                                 <span className="flex items-center">
                                   <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                   {item.employeeName}
                                 </span>
+                                {item.issuedByName && (
+                                  <span className="flex items-center">
+                                    <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+                                    {t('dashboard.history.labels.issuedBy')}: {item.issuedByName}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="text-right">
@@ -835,8 +908,8 @@ const DashboardScreen = ({ user }) => {
           ) : (
             <div className="text-center py-8">
               <InboxIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">Brak historii</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">Nie ma jeszcze żadnych wydań lub zwrotów sprzętu BHP.</p>
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-200">{t('dashboard.history.noDataTitle')}</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">{t('dashboard.history.bhp.noData')}</p>
             </div>
           )}
         </div>
@@ -860,7 +933,7 @@ const DashboardScreen = ({ user }) => {
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Szybkie wydanie narzędzia
+                  {t('dashboard.quick.issue.modalTitle')}
                 </h3>
                 <button
                   onClick={() => setShowQuickIssueModal(false)}
@@ -872,14 +945,14 @@ const DashboardScreen = ({ user }) => {
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Kod kreskowy / QR narzędzia
+                  {t('dashboard.search.label')}
                 </label>
                 <div className="flex space-x-2">
                   <input
                     type="text"
                     value={searchCode}
                     onChange={handleSearchChange}
-                    placeholder="Zeskanuj lub wpisz kod narzędzia..."
+                    placeholder={t('dashboard.search.placeholder')}
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
                     autoFocus
                   />
@@ -897,7 +970,7 @@ const DashboardScreen = ({ user }) => {
                   <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                      <span className="text-sm text-blue-600 dark:text-blue-400">Wyszukiwanie...</span>
+                      <span className="text-sm text-blue-600 dark:text-blue-400">{t('dashboard.search.searching')}</span>
                     </div>
                   </div>
                 )}
@@ -907,9 +980,9 @@ const DashboardScreen = ({ user }) => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium text-green-800 dark:text-green-200">{foundTool.name}</h4>
-                        <p className="text-sm text-green-600 dark:text-green-400">SKU: {foundTool.sku}</p>
-                        <p className="text-sm text-green-600 dark:text-green-400">Status: {foundTool.status}</p>
-                        <p className="text-sm text-green-600 dark:text-green-400">Lokalizacja: {foundTool.location}</p>
+                        <p className="text-sm text-green-600 dark:text-green-400">{t('dashboard.search.sku')}: {foundTool.sku}</p>
+                        <p className="text-sm text-green-600 dark:text-green-400">{t('dashboard.search.status')}: {foundTool.status}</p>
+                        <p className="text-sm text-green-600 dark:text-green-400">{t('dashboard.search.location')}: {foundTool.location}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">{foundTool.status === 'dostępne' ? '✅' : '❌'}</span>
@@ -919,7 +992,7 @@ const DashboardScreen = ({ user }) => {
                             onClick={addFoundToolToList}
                             className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
                           >
-                            Dodaj
+                            {t('dashboard.search.add')}
                           </button>
                         )}
                       </div>
@@ -930,7 +1003,7 @@ const DashboardScreen = ({ user }) => {
                 {/* Lista pozycji do wydania */}
                 {quickIssueItems.length > 0 && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pozycje do wydania</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dashboard.quickIssue.itemsLabel')}</label>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {quickIssueItems.map((it, idx) => (
                         <div key={it.tool?.id || idx} className="flex items-center justify-between p-2 border rounded-md bg-white dark:bg-gray-700 dark:border-gray-600">
@@ -951,14 +1024,14 @@ const DashboardScreen = ({ user }) => {
                               onClick={() => removeItem(idx)}
                               className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md"
                             >
-                              Usuń
+                              {t('common.remove')}
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
                     <div className="mt-2 flex justify-end">
-                      <button type="button" onClick={clearItems} className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">Wyczyść listę</button>
+                      <button type="button" onClick={clearItems} className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">{t('common.clearList')}</button>
                     </div>
                   </div>
                 )}
@@ -967,12 +1040,12 @@ const DashboardScreen = ({ user }) => {
                 {quickIssueItems.length > 0 && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Wybierz pracownika
+                      {t('common.selectEmployee')}
                     </label>
                     {employeesLoading ? (
                       <div className="flex items-center justify-center py-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                        <span className="text-sm text-gray-500">Ładowanie pracowników...</span>
+                        <span className="text-sm text-gray-500">{t('loading.employees')}</span>
                       </div>
                     ) : (
                       <select
@@ -980,7 +1053,7 @@ const DashboardScreen = ({ user }) => {
                         onChange={(e) => setSelectedEmployee(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
                       >
-                        <option value="">-- Wybierz pracownika --</option>
+                        <option value="">{t('common.selectEmployee')}</option>
                         {employees.map((employee) => (
                           <option key={employee.id} value={employee.id}>
                             {employee.first_name} {employee.last_name} ({employee.brand_number || employee.id}) - {employee.position}
@@ -994,7 +1067,7 @@ const DashboardScreen = ({ user }) => {
                 {searchCode.length >= 3 && !searchLoading && !foundTool && quickIssueItems.length === 0 && (
                   <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700">
                     <p className="text-sm text-red-600 dark:text-red-400">
-                      Nie znaleziono narzędzia o kodzie: {searchCode}
+                      {t('dashboard.search.notFoundCode', { code: searchCode })}
                     </p>
                   </div>
                 )}
@@ -1011,7 +1084,7 @@ const DashboardScreen = ({ user }) => {
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
                 >
-                  Anuluj
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleQuickIssueBatch}
@@ -1020,7 +1093,7 @@ const DashboardScreen = ({ user }) => {
                     quickIssueItems.length > 0 && selectedEmployee ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  Wydaj pozycje
+                  {t('dashboard.quick.issue.submitBatch')}
                 </button>
               </div>
             </div>
@@ -1044,7 +1117,7 @@ const DashboardScreen = ({ user }) => {
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Szybki zwrot narzędzi
+                  {t('dashboard.quick.return.title')}
                 </h3>
                 <button
                   onClick={() => {
@@ -1059,17 +1132,17 @@ const DashboardScreen = ({ user }) => {
 
               <div className="mb-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Lista narzędzi wydanych pracownikom:
+                  {t('dashboard.quick.return.listTitle')}
                 </p>
                 
                 {issuedToolsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    <span className="ml-2 text-gray-600 dark:text-gray-400">Ładowanie wydanych narzędzi...</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">{t('loading.issuedTools')}</span>
                   </div>
                 ) : issuedTools.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">Brak wydanych narzędzi</p>
+                    <p className="text-gray-500 dark:text-gray-400">{t('noData.issuedTools')}</p>
                   </div>
                 ) : (
                   <div className="max-h-96 overflow-y-auto">
@@ -1081,17 +1154,17 @@ const DashboardScreen = ({ user }) => {
                               {tool.toolName}
                             </h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Pracownik: {tool.employeeName}
+                              {t('dashboard.labels.employee')} {tool.employeeName}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-500">
-                              Ilość: {tool.quantity} | Wydano: {formatTimeAgo(tool.issuedAt)}
+                              {t('dashboard.labels.quantity')}: {tool.quantity} | {t('dashboard.labels.issuedAt')}: {formatTimeAgo(tool.issuedAt)}
                             </p>
                           </div>
                           <button
                             onClick={() => handleQuickReturn(tool)}
                             className="ml-4 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors duration-200"
                           >
-                            Zwróć
+                            {t('dashboard.quick.return.submit')}
                           </button>
                         </div>
                       ))}
@@ -1108,7 +1181,7 @@ const DashboardScreen = ({ user }) => {
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
                 >
-                  Zamknij
+                  {t('common.close')}
                 </button>
               </div>
             </div>

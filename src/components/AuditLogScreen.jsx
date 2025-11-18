@@ -3,9 +3,11 @@ import api from '../api';
 import { AUDIT_ACTIONS } from '../constants';
 import { toast } from 'react-toastify';
 import ConfirmationModal from './ConfirmationModal';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Komponent dziennika audytu
 function AuditLogScreen({ user }) {
+  const { t } = useLanguage();
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -273,7 +275,7 @@ function AuditLogScreen({ user }) {
         title="Usuń logi audytu"
         message="Czy na pewno chcesz usunąć wszystkie logi audytu? Tej operacji nie można cofnąć."
         confirmText="Usuń logi"
-        cancelText="Anuluj"
+        cancelText={t('common.cancel')}
         type="danger"
         loading={deleteLoading}
       />

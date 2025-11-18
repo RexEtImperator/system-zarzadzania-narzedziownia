@@ -6,8 +6,10 @@ import { PERMISSIONS, hasPermission } from '../constants';
 import BarcodeScannerComponent from './BarcodeScanner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { useLanguage } from '../contexts/LanguageContext.jsx';
 
 function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
+  const { t } = useLanguage();
   const formatDateForInput = (value) => {
     if (!value) return '';
     try {
@@ -393,7 +395,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
 
     const html = `
       <html><head><meta charset=\"utf-8\" />
-      <title>Eksport BHP — szczegóły ${detailsItem.inventory_number || ''}</title>
+      <title>${t('bhp.export.detailsTitle')} ${detailsItem.inventory_number || ''}</title>
       <style>
         body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
         h1 { font-size: 18px; margin: 0 0 8px; }
@@ -406,13 +408,13 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       </style>
       </head>
       <body>
-        <h1>Szczegóły BHP: ${detailsItem.inventory_number || ''}</h1>
-        <div class=\"meta\">Wygenerowano: ${stamp}</div>
+        <h1>${t('bhp.export.detailsHeader')}: ${detailsItem.inventory_number || ''}</h1>
+        <div class=\"meta\">${t('bhp.export.generatedAt')}: ${stamp}</div>
         <table>
           <thead>
             <tr>
-              <th>Pole</th>
-              <th>Wartość</th>
+              <th>${t('bhp.export.field')}</th>
+              <th>${t('bhp.export.value')}</th>
             </tr>
           </thead>
           <tbody>
@@ -466,9 +468,9 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       );
     }
 
-    const ws = XLSX.utils.aoa_to_sheet([['Pole', 'Wartość'], ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([[t('bhp.export.field'), t('bhp.export.value')], ...rows]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Szczegóły');
+    XLSX.utils.book_append_sheet(wb, ws, t('bhp.export.sheetName'));
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
     const base = detailsItem.inventory_number || 'pozycja';
@@ -1076,15 +1078,15 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
     <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sprzęt BHP</h1>
-          <p className="text-slate-600 dark:text-slate-400">Zarządzaj wyposażeniem BHP (wydania, zwroty, przeglądy)</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('bhp.title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{t('bhp.manageDescription')}</p>
         </div>
         {canManageBhp ? (
           <button
             onClick={() => openModal()}
             className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
           >
-            Dodaj sprzęt
+            {t('bhp.actions.addEquipment')}
           </button>
         ) : null}
       </div>
@@ -1093,47 +1095,47 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Wyszukaj</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.search')}</label>
             <input
               type="text"
-              placeholder="nr ewid., producent, model, seryjny..."
+              placeholder={t('bhp.filters.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.status')}</label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">Wszystkie</option>
-              <option value="dostępne">Dostępne</option>
-              <option value="wydane">Wydane</option>
+              <option value="">{t('bhp.filters.all')}</option>
+              <option value="dostępne">{t('bhp.status.available')}</option>
+              <option value="wydane">{t('bhp.status.issued')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sortowanie</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.sort')}</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="inspection">Data przeglądu</option>
-              <option value="inventory">Nr ewidencyjny</option>
+              <option value="inspection">{t('bhp.sort.inspectionDate')}</option>
+              <option value="inventory">{t('bhp.sort.inventoryNumber')}</option>
             </select>
           </div>
           {sortBy === 'inspection' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Przeglądy</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.reviews')}</label>
               <button
                 type="button"
                 onClick={() => setReviewsFilter(prev => !prev)}
                 className={`w-full px-3 py-2 rounded-lg border ${reviewsFilter ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'}`}
               >
-                {reviewsFilter ? 'Najbliższy przegląd' : 'Najdalszy przegląd'}
+                {reviewsFilter ? t('bhp.filters.nearestReview') : t('bhp.filters.farthestReview')}
               </button>
             </div>
           )}
@@ -1144,14 +1146,14 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
             onClick={exportListToPDF}
             className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90"
           >
-            Eksportuj jako PDF
+            {t('bhp.export.exportPDF')}
           </button>
           <button
             type="button"
             onClick={exportListToXLSX}
             className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800"
           >
-            Eksportuj jako EXCEL
+            {t('bhp.export.exportXLSX')}
           </button>
         </div>
       </div>
@@ -1161,12 +1163,12 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Nr. ew.</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Producent / Model</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Seryjny / Katalogowy</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Przegląd</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Status</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Akcje</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.inventoryShort')}</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.manufacturerModel')}</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.serialCatalog')}</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.inspection')}</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.status')}</th>
+              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
@@ -1182,23 +1184,23 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                         const hasShock = !!(item.shock_absorber_name || item.shock_absorber_model || item.shock_absorber_serial || item.shock_absorber_catalog_number);
                         const hasSrd = !!(item.srd_manufacturer || item.srd_model || item.srd_serial_number || item.srd_catalog_number);
                         if (hasShock) {
-                          parts.push(`Amortyzator ${item.shock_absorber_name || '-'} ${item.shock_absorber_model || ''} • nr ${item.shock_absorber_serial || '-'} • kat. ${item.shock_absorber_catalog_number || '-'}`.trim());
+                          parts.push(`${t('bhp.set.shock')} ${item.shock_absorber_name || '-'} ${item.shock_absorber_model || ''} • ${t('bhp.labels.numberAbbrev')} ${item.shock_absorber_serial || '-'} • ${t('bhp.labels.catalogAbbrev')} ${item.shock_absorber_catalog_number || '-'}`.trim());
                         }
                         if (hasSrd) {
-                          parts.push(`Urządzenie samohamowne ${item.srd_manufacturer || '-'} ${item.srd_model || ''} • nr ${item.srd_serial_number || '-'} • kat. ${item.srd_catalog_number || '-'}`.trim());
+                          parts.push(`${t('bhp.set.srd')} ${item.srd_manufacturer || '-'} ${item.srd_model || ''} • ${t('bhp.labels.numberAbbrev')} ${item.srd_serial_number || '-'} • ${t('bhp.labels.catalogAbbrev')} ${item.srd_catalog_number || '-'}`.trim());
                         }
                         const summary = parts.length ? parts.join(' | ') : '-';
-                        return `Zestaw: ${summary}`;
+                        return `${t('bhp.set.label')}: ${summary}`;
                       })()}
                     </div>
                   ) : null}
                   {item.assigned_employee_first_name || item.assigned_employee_last_name ? (
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Przypisano: {item.assigned_employee_first_name || ''} {item.assigned_employee_last_name || ''}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{t('bhp.labels.assignedLabel')}: {item.assigned_employee_first_name || ''} {item.assigned_employee_last_name || ''}</div>
                   ) : null}
                 </td>
                 <td className="p-4 text-slate-700 dark:text-slate-200">
                   <div>{item.serial_number || '-'}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Kat.: {item.catalog_number || '-'}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{t('bhp.labels.catalogAbbrev')}: {item.catalog_number || '-'}</div>
                 </td>
                 <td className="p-4">
                   <div className="text-slate-700 dark:text-slate-200">{item.inspection_date ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '-'}</div>
@@ -1210,23 +1212,23 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     item.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
                     'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                   }`}>
-                    {item.status || 'nieznany'}
+                    {item.status || t('bhp.status.unknown')}
                   </span>
                 </td>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <div className="flex gap-3">
                     {canManageBhp ? (
                       <>
-                        <button onClick={() => openModal(item)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">Edytuj</button>
-                        <button onClick={() => deleteItem(item.id)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium">Usuń</button>
+                        <button onClick={() => openModal(item)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">{t('bhp.actions.edit')}</button>
+                        <button onClick={() => deleteItem(item.id)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium">{t('bhp.actions.delete')}</button>
                         {item.status !== 'wydane' ? (
-                          <button onClick={() => openIssue(item)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 text-sm font-medium">Wydaj</button>
+                          <button onClick={() => openIssue(item)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 text-sm font-medium">{t('bhp.actions.issue')}</button>
                         ) : (
-                          <button onClick={() => openReturn(item)} className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">Zwrot</button>
+                          <button onClick={() => openReturn(item)} className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">{t('bhp.actions.return')}</button>
                         )}
                       </>
                     ) : (
-                      <span className="text-xs text-slate-500 dark:text-slate-400">Brak uprawnień do akcji</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{t('bhp.actions.noPermission')}</span>
                     )}
                   </div>
                 </td>
@@ -1251,12 +1253,12 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   </div>
                   {item.is_set ? (
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Zestaw: amortyzator {item.shock_absorber_name || '-'} {item.shock_absorber_model || ''} • nr {item.shock_absorber_serial || '-'} • kat. {item.shock_absorber_catalog_number || '-'}
+                      {t('bhp.set.label')}: {t('bhp.set.shock')} {item.shock_absorber_name || '-'} {item.shock_absorber_model || ''} • {t('bhp.labels.numberAbbrev')} {item.shock_absorber_serial || '-'} • {t('bhp.labels.catalogAbbrev')} {item.shock_absorber_catalog_number || '-'}
                     </div>
                   ) : null}
                   {item.assigned_employee_first_name || item.assigned_employee_last_name ? (
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Przypisano: {item.assigned_employee_first_name || ''} {item.assigned_employee_last_name || ''}
+                      {t('bhp.labels.assignedLabel')}: {item.assigned_employee_first_name || ''} {item.assigned_employee_last_name || ''}
                     </div>
                   ) : null}
                 </div>
@@ -1271,19 +1273,19 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
 
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Nr ewidencyjny:</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.inventoryLabel')}:</span>
                 <span className="text-slate-900 dark:text-slate-100 font-mono text-xs">{item.inventory_number || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Seryjny:</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.serialLabel')}:</span>
                 <span className="text-slate-900 dark:text-slate-100">{item.serial_number || '-'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Katalogowy:</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.catalogLabel')}:</span>
                 <span className="text-slate-900 dark:text-slate-100">{item.catalog_number || '-'}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 dark:text-slate-400">Przegląd:</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.inspectionLabel')}:</span>
                 <span className="text-slate-900 dark:text-slate-100">{item.inspection_date ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '-'}</span>
               </div>
               <div>
@@ -1298,32 +1300,32 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     onClick={() => openModal(item)}
                     className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium"
                   >
-                    Edytuj
+                    {t('bhp.actions.edit')}
                   </button>
                   <button
                     onClick={() => deleteItem(item.id)}
                     className="flex-1 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 py-2 px-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors text-sm font-medium"
                   >
-                    Usuń
+                    {t('bhp.actions.delete')}
                   </button>
                   {item.status !== 'wydane' ? (
                     <button
                       onClick={() => openIssue(item)}
                       className="flex-1 bg-emerald-50 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 py-2 px-3 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors text-sm font-medium"
                     >
-                      Wydaj
+                      {t('bhp.actions.issue')}
                     </button>
                   ) : (
                     <button
                       onClick={() => openReturn(item)}
                       className="flex-1 bg-orange-50 dark:bg-orange-900 text-orange-600 dark:text-orange-300 py-2 px-3 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-800 transition-colors text-sm font-medium"
                     >
-                      Zwrot
+                      {t('bhp.actions.return')}
                     </button>
                   )}
                 </>
               ) : (
-                <span className="text-xs text-slate-500 dark:text-slate-400">Brak uprawnień do akcji</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t('bhp.actions.noPermission')}</span>
               )}
             </div>
           </div>
@@ -1335,12 +1337,12 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{editingItem ? 'Edytuj pozycję BHP' : 'Dodaj pozycję BHP'}</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{editingItem ? t('bhp.modal.editTitle') : t('bhp.modal.addTitle')}</h2>
             </div>
             <form onSubmit={saveItem} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nr ewidencyjny *</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.inventoryNumberRequired')}</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -1353,7 +1355,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                       type="button"
                       onClick={() => setShowBarcodeScanner(true)}
                       className="px-3 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                      title="Skanuj kod"
+                      title={t('bhp.form.scanCode')}
                     >
                       📷
                     </button>
@@ -1361,34 +1363,34 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                       type="button"
                       onClick={generateInventoryWithPrefix}
                       className="px-3 py-2 bg-slate-600 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-700 dark:hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
-                      title="Generuj kod z prefiksem"
+                      title={t('bhp.form.generateWithPrefix')}
                     >
                       ⚙️
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Producent</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.manufacturer')}</label>
                   <input type="text" list="manufacturerOptions" value={formData.manufacturer} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.model')}</label>
                   <input type="text" list="modelOptions" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Numer seryjny</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.serialNumber')}</label>
                   <input type="text" value={formData.serial_number} onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Numer katalogowy</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.catalogNumber')}</label>
                   <input type="text" list="catalogOptions" value={formData.catalog_number} onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data produkcji (szelek)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.productionDateHarness')}</label>
                   <input type="date" value={formData.production_date || ''} onChange={(e) => setFormData({ ...formData, production_date: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data rozpoczęcia użytkowania</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('bhp.form.harnessStartDate')}</label>
                   <input type="date" value={formData.harness_start_date || ''} onChange={(e) => setFormData({ ...formData, harness_start_date: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div>

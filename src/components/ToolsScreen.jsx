@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import { PERMISSIONS, hasPermission } from '../constants';
+import SkeletonList from './SkeletonList';
 
 function ToolsScreen({ initialSearchTerm = '', user }) {
   const [tools, setTools] = useState([]);
@@ -180,6 +181,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   }, [filteredTools]);
 
   const canViewTools = hasPermission(user, PERMISSIONS.VIEW_TOOLS);
+
   const canManageTools = hasPermission(user, PERMISSIONS.MANAGE_TOOLS);
 
   useEffect(() => {
@@ -233,6 +235,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     };
     fetchCategories();
   }, [canViewTools]);
+
 
   // Bramka uprawnień: jeśli brak VIEW_TOOLS, pokaż komunikat i nie renderuj reszty UI
   if (!canViewTools) {
@@ -317,7 +320,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     try {
       setLoading(true);
       const response = await api.get('/api/tools');
-      setTools(response || []);
+      const list = Array.isArray(response)
+        ? response
+        : (Array.isArray(response?.data) ? response.data : []);
+      setTools(list);
     } catch (error) {
       console.error('Error fetching tools:', error);
       setTools([]);
@@ -1252,10 +1258,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     );
   };
 
+  // Fallback ładowania (po zarejestrowaniu wszystkich hooków i definicji fetchTools)
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen dark:bg-slate-900">
-        <span className="text-slate-500 dark:text-slate-400">Ładowanie...</span>
+      <div className="p-6">
+        <SkeletonList rows={10} cols={4} />
       </div>
     );
   }

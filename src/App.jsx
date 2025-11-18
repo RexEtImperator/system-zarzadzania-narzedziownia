@@ -1,21 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import 'react-toastify/dist/ReactToastify.css';
 import api from './api';
-import { 
-  DepartmentManagementScreen, 
-  PositionManagementScreen,
-  AppConfigScreen,
-  InventoryScreen,
-  LabelsManager,
-  DbViewerScreen
-} from './components';
+// Ekrany ładowane dynamicznie (code-splitting)
+const LoginScreen = lazy(() => import('./components/LoginScreen'));
+const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
+const ToolsScreen = lazy(() => import('./components/ToolsScreen'));
+const BhpScreen = lazy(() => import('./components/BhpScreen'));
+const EmployeesScreen = lazy(() => import('./components/EmployeesScreen'));
+const AnalyticsScreen = lazy(() => import('./components/AnalyticsScreen'));
+const AuditLogScreen = lazy(() => import('./components/AuditLogScreen'));
+const TopBar = lazy(() => import('./components/TopBar'));
+const UserSettingsScreen = lazy(() => import('./components/UserSettingsScreen'));
+const UserManagementScreen = lazy(() => import('./components/UserManagementScreen'));
+const ReportsScreen = lazy(() => import('./components/ReportsScreen'));
+const AppConfigScreen = lazy(() => import('./components/AppConfigScreen'));
+const DepartmentManagementScreen = lazy(() => import('./components/DepartmentManagementScreen'));
+const PositionManagementScreen = lazy(() => import('./components/PositionManagementScreen'));
+const LabelsManager = lazy(() => import('./components/LabelsManager'));
+const InventoryScreen = lazy(() => import('./components/InventoryScreen'));
+const DbViewerScreen = lazy(() => import('./components/DbViewerScreen'));
 import { ThemeProvider } from './contexts/ThemeContext';
-import PermissionsModal from './components/PermissionsModal';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+const PermissionsModal = lazy(() => import('./components/PermissionsModal'));
 
-import { PERMISSIONS, hasPermission } from './constants';
+import { PERMISSIONS, hasPermission, setDynamicRolePermissions } from './constants';
+import Preloader from './components/Preloader';
 
 // Stałe akcji audytu
 const AUDIT_ACTIONS = {
@@ -97,7 +109,6 @@ const getConfiguredPositions = async () => {
   }
 };
 
-// Komponent modalny potwierdzenia
 function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirmText = "Potwierdź", cancelText = "Anuluj", type = "default" }) {
   if (!isOpen) return null;
 
@@ -140,23 +151,25 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
   );
 }
 
-// Komponenty interfejsu
 function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
   const [now, setNow] = useState(new Date());
+  const { t, language } = useLanguage();
   useEffect(() => {
     const i = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(i);
   }, []);
-  const formattedDateTime = now.toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'medium' });
+  const locale = language === 'en' ? 'en-GB' : (language === 'de' ? 'de-DE' : 'pl-PL');
+  const formattedDateTime = now.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'medium' });
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '🏠', permission: null },
-    { id: 'tools', label: 'Narzędzia', icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
-    { id: 'bhp', label: 'BHP', icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
-    { id: 'inventory', label: 'Inwentaryzacja', icon: '📦', permission: PERMISSIONS.VIEW_INVENTORY },
-    { id: 'employees', label: 'Pracownicy', icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
-    { id: 'labels', label: 'Etykiety', icon: '🔖', permission: PERMISSIONS.VIEW_LABELS },
-    { id: 'analytics', label: 'Analityka', icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
-    { id: 'admin', label: 'Ustawienia', icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
+    { id: 'dashboard', label: t('sidebar.dashboard'), icon: '🏠', permission: null },
+    { id: 'tools', label: t('sidebar.tools'), icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
+    { id: 'bhp', label: t('sidebar.bhp'), icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
+    { id: 'inventory', label: t('sidebar.inventory'), icon: '📦', permission: PERMISSIONS.VIEW_INVENTORY },
+    { id: 'employees', label: t('sidebar.employees'), icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
+    { id: 'labels', label: t('sidebar.labels'), icon: '🔖', permission: PERMISSIONS.VIEW_LABELS },
+    { id: 'analytics', label: t('sidebar.analytics'), icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
+    { id: 'report', label: t('sidebar.report'), icon: '🚩', permission: null },
+    { id: 'admin', label: t('sidebar.admin'), icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
   ];
 
   const filteredItems = menuItems.filter(item => 
@@ -206,21 +219,10 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
 }
 
 function MobileHeader({ onMenuToggle, user, currentScreen }) {
+  const { t } = useLanguage();
   const getScreenTitle = (screen) => {
-    const titles = {
-      dashboard: 'Dashboard',
-      tools: 'Narzędzia',
-      bhp: 'BHP',
-      employees: 'Pracownicy',
-      analytics: 'Analityka',
-      labels: 'Etykiety',
-      admin: 'Ustawienia',
-      'user-management': 'Zarządzanie użytkownikami',
-      config: 'Konfiguracja',
-      audit: 'Dziennik audytu',
-      'user-settings': 'Ustawienia użytkownika'
-    };
-    return titles[screen] || 'Zarządzanie Narzędziami';
+    const title = t(`screens.${screen}`);
+    return title || t('screens.defaultTitle');
   };
 
   return (
@@ -232,16 +234,7 @@ function MobileHeader({ onMenuToggle, user, currentScreen }) {
 }
 
 // Import komponentów z osobnych plików
-import LoginScreen from './components/LoginScreen';
-import DashboardScreen from './components/DashboardScreen';
-import ToolsScreen from './components/ToolsScreen';
-import BhpScreen from './components/BhpScreen';
-import EmployeesScreen from './components/EmployeesScreen';
-import AnalyticsScreen from './components/AnalyticsScreen';
-import AuditLogScreen from './components/AuditLogScreen';
-import TopBar from './components/TopBar';
-import UserSettingsScreen from './components/UserSettingsScreen';
-import UserManagementScreen from './components/UserManagementScreen';
+// Powyżej zadeklarowano lazy importy; poniższe bezpośrednie importy nie są już potrzebne
 
 // Panel administracyjny
 function AdminPanel({ user, onNavigate }) {
@@ -253,6 +246,7 @@ function AdminPanel({ user, onNavigate }) {
   const [showDeleteToolReturnsConfirm, setShowDeleteToolReturnsConfirm] = useState(false);
   const [showDeleteBhpIssuesConfirm, setShowDeleteBhpIssuesConfirm] = useState(false);
   const [showDeleteBhpReturnsConfirm, setShowDeleteBhpReturnsConfirm] = useState(false);
+  const { t } = useLanguage();
 
   const handleDeleteHistory = async () => {
     try {
@@ -290,7 +284,6 @@ function AdminPanel({ user, onNavigate }) {
     }
   };
 
-  // Nowe akcje: kasowanie historii wydań/zwrotów (Narzędzia i BHP)
   const handleDeleteToolIssuesHistory = async () => {
     try {
       await api.delete('/api/tools/history/issues');
@@ -342,8 +335,8 @@ function AdminPanel({ user, onNavigate }) {
   return (
     <div className="p-6 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ustawienia</h1>
-        <p className="text-slate-600 dark:text-slate-400">Zarządzaj systemem i konfiguracją</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t('admin.settings.title')}</h1>
+        <p className="text-slate-600 dark:text-slate-400">{t('admin.settings.subtitle')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* App Configuration */}
@@ -354,8 +347,8 @@ function AdminPanel({ user, onNavigate }) {
                 <span className="text-2xl">🎛️</span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Ustawienia aplikacji</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj parametry systemu</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.appConfig.card.title')}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.appConfig.card.subtitle')}</p>
               </div>
             </div>
             <div className="flex-1"></div>
@@ -363,7 +356,7 @@ function AdminPanel({ user, onNavigate }) {
               onClick={() => onNavigate('app-config')}
               className="w-full bg-indigo-600 dark:bg-indigo-700 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-800 transition-colors"
             >
-              Otwórz ustawienia
+              {t('admin.appConfig.card.open')}
             </button>
           </div>
         )}
@@ -375,8 +368,8 @@ function AdminPanel({ user, onNavigate }) {
               <span className="text-2xl">📋</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dziennik audytu</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Przeglądaj historię operacji</p>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.audit.card.title')}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.audit.card.subtitle')}</p>
             </div>
           </div>
           <div className="flex-1"></div>
@@ -384,7 +377,7 @@ function AdminPanel({ user, onNavigate }) {
             onClick={() => onNavigate('audit')}
             className="w-full bg-purple-600 dark:bg-purple-700 text-white py-2 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors"
           >
-            Zobacz dziennik
+            {t('admin.audit.card.open')}
           </button>
         </div>
 
@@ -395,22 +388,22 @@ function AdminPanel({ user, onNavigate }) {
               <span className="text-2xl">🎭</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Role i uprawnienia</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Konfiguruj role użytkowników</p>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.roles.card.title')}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.roles.card.subtitle')}</p>
             </div>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="dark:text-slate-300">👑 Administrator</span>
-              <span className="text-slate-600 dark:text-slate-400">Pełny dostęp</span>
+              <span className="dark:text-slate-300">👑 {t('users.roles.administrator')}</span>
+              <span className="text-slate-600 dark:text-slate-400">{t('users.descriptions.administrator')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="dark:text-slate-300">👔 Kierownik</span>
-              <span className="text-slate-600 dark:text-slate-400">Zarządzanie + analityka</span>
+              <span className="dark:text-slate-300">👔 {t('users.roles.manager')}</span>
+              <span className="text-slate-600 dark:text-slate-400">{t('users.descriptions.manager')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="dark:text-slate-300">👷 Pracownik</span>
-              <span className="text-slate-600 dark:text-slate-400">Podstawowe operacje</span>
+              <span className="dark:text-slate-300">👷 {t('users.roles.employee')}</span>
+              <span className="text-slate-600 dark:text-slate-400">{t('users.descriptions.employee')}</span>
             </div>
           </div>
           <div className="mt-4">
@@ -418,7 +411,7 @@ function AdminPanel({ user, onNavigate }) {
               onClick={() => setShowPermissionsModal(true)}
               className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
             >
-              Zarządzaj uprawnieniami
+              {t('admin.roles.manage')}
             </button>
           </div>
         </div>
@@ -428,8 +421,8 @@ function AdminPanel({ user, onNavigate }) {
       {hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) && (
         <div className="mt-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Danger Zone</h1>
-            <p className="text-slate-600 dark:text-slate-400">Bezpowrotne usunięcie danych</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t('admin.danger.title')}</h1>
+            <p className="text-slate-600 dark:text-slate-400">{t('admin.danger.subtitle')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Sekcja: Narzędzia */}
@@ -439,8 +432,8 @@ function AdminPanel({ user, onNavigate }) {
                   <span className="text-2xl">🗑️</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Narzędzia</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych narzędzi</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.danger.tools.title')}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.danger.tools.subtitle')}</p>
                 </div>
               </div>
               <div className="flex-1"></div>
@@ -453,7 +446,7 @@ function AdminPanel({ user, onNavigate }) {
                           onClick={() => setShowDeleteToolIssuesConfirm(true)}
                           className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
                         >
-                          Usuń historię wydań
+                          {t('admin.actions.deleteIssues')}
                         </button>
                       )}
                       {hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY) && (
@@ -461,7 +454,7 @@ function AdminPanel({ user, onNavigate }) {
                           onClick={() => setShowDeleteToolReturnsConfirm(true)}
                           className="w-full bg-red-600 dark:bg-red-700 text-white py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
                         >
-                          Usuń historię zwrotów
+                          {t('admin.actions.deleteReturns')}
                         </button>
                       )}
                     </div>
@@ -476,8 +469,8 @@ function AdminPanel({ user, onNavigate }) {
                   <span className="text-2xl">🗑️</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Sprzęt BHP</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych sprzętu BHP</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.danger.bhp.title')}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.danger.bhp.subtitle')}</p>
                 </div>
               </div>
               <div className="space-y-6">
@@ -489,7 +482,7 @@ function AdminPanel({ user, onNavigate }) {
                           onClick={() => setShowDeleteBhpIssuesConfirm(true)}
                           className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
                         >
-                          Usuń historię wydań
+                          {t('admin.actions.deleteIssues')}
                         </button>
                       )}
                       {hasPermission(user, PERMISSIONS.DELETE_RETURN_HISTORY) && (
@@ -497,7 +490,7 @@ function AdminPanel({ user, onNavigate }) {
                           onClick={() => setShowDeleteBhpReturnsConfirm(true)}
                           className="w-full bg-orange-600 dark:bg-orange-700 text-white py-2 px-4 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-800 transition-colors"
                         >
-                          Usuń historię zwrotów
+                          {t('admin.actions.deleteReturns')}
                         </button>
                       )}
                     </div>
@@ -512,8 +505,8 @@ function AdminPanel({ user, onNavigate }) {
                   <span className="text-2xl">🗑️</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Serwisowanie</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych serwisowania</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.danger.service.title')}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.danger.service.subtitle')}</p>
                 </div>
               </div>
               <div className="space-y-6">
@@ -523,7 +516,7 @@ function AdminPanel({ user, onNavigate }) {
                       onClick={() => setShowDeleteServiceHistoryConfirm(true)}
                       className="w-full bg-rose-600 dark:bg-rose-700 text-white py-2 px-4 rounded-lg hover:bg-rose-700 dark:hover:bg-rose-800 transition-colors"
                     >
-                      Usuń historię serwisowania
+                      {t('admin.actions.deleteServiceHistory')}
                     </button>
                   </div>
                 )}
@@ -537,8 +530,8 @@ function AdminPanel({ user, onNavigate }) {
                   <span className="text-2xl">🗑️</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Pracownicy</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Wyczyść bazę danych pracowników</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('admin.danger.employees.title')}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('admin.danger.employees.subtitle')}</p>
                 </div>
               </div>
               <div className="space-y-6">
@@ -547,7 +540,7 @@ function AdminPanel({ user, onNavigate }) {
                     onClick={() => setShowDeleteEmployeesConfirm(true)}
                     className="w-full bg-yellow-600 dark:bg-yellow-700 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-800 transition-colors"
                   >
-                    Usuń dane pracowników
+                    {t('admin.actions.deleteEmployees')}
                   </button>
                 </div>
               </div>
@@ -562,10 +555,10 @@ function AdminPanel({ user, onNavigate }) {
         isOpen={showDeleteHistoryConfirm}
         onClose={() => setShowDeleteHistoryConfirm(false)}
         onConfirm={handleDeleteHistory}
-        title="Usuń historię wszystkich wydań"
-        message="Czy na pewno chcesz usunąć całą historię wydawania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie dane o wydaniach i zwrotach narzędzi."
-        confirmText="Usuń historię"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteAllIssues.title')}
+        message={t('admin.modals.deleteAllIssues.message')}
+        confirmText={t('admin.modals.deleteAllIssues.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
 
@@ -574,10 +567,10 @@ function AdminPanel({ user, onNavigate }) {
         isOpen={showDeleteServiceHistoryConfirm}
         onClose={() => setShowDeleteServiceHistoryConfirm(false)}
         onConfirm={handleDeleteServiceHistory}
-        title="Usuń historię serwisowania"
-        message="Czy na pewno chcesz usunąć całą historię serwisowania narzędzi? Ta operacja jest nieodwracalna i usunie wszystkie powiązane wpisy."
-        confirmText="Usuń historię serwisowania"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteServiceHistory.title')}
+        message={t('admin.modals.deleteServiceHistory.message')}
+        confirmText={t('admin.modals.deleteServiceHistory.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
 
@@ -586,20 +579,20 @@ function AdminPanel({ user, onNavigate }) {
         isOpen={showDeleteToolIssuesConfirm}
         onClose={() => setShowDeleteToolIssuesConfirm(false)}
         onConfirm={handleDeleteToolIssuesHistory}
-        title="Usuń historię wydań narzędzi"
-        message="Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH narzędzi? Operacja jest nieodwracalna."
-        confirmText="Usuń historię wydań"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteToolIssues.title')}
+        message={t('admin.modals.deleteToolIssues.message')}
+        confirmText={t('admin.modals.deleteToolIssues.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
       <ConfirmationModal
         isOpen={showDeleteToolReturnsConfirm}
         onClose={() => setShowDeleteToolReturnsConfirm(false)}
         onConfirm={handleDeleteToolReturnsHistory}
-        title="Usuń historię zwrotów narzędzi"
-        message="Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH narzędzi? Operacja jest nieodwracalna."
-        confirmText="Usuń historię zwrotów"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteToolReturns.title')}
+        message={t('admin.modals.deleteToolReturns.message')}
+        confirmText={t('admin.modals.deleteToolReturns.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
 
@@ -608,20 +601,20 @@ function AdminPanel({ user, onNavigate }) {
         isOpen={showDeleteBhpIssuesConfirm}
         onClose={() => setShowDeleteBhpIssuesConfirm(false)}
         onConfirm={handleDeleteBhpIssuesHistory}
-        title="Usuń historię wydań sprzętu BHP"
-        message="Czy na pewno chcesz usunąć wszystkie wpisy o WYDANIACH sprzętu BHP? Operacja jest nieodwracalna."
-        confirmText="Usuń historię wydań"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteBhpIssues.title')}
+        message={t('admin.modals.deleteBhpIssues.message')}
+        confirmText={t('admin.modals.deleteBhpIssues.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
       <ConfirmationModal
         isOpen={showDeleteBhpReturnsConfirm}
         onClose={() => setShowDeleteBhpReturnsConfirm(false)}
         onConfirm={handleDeleteBhpReturnsHistory}
-        title="Usuń historię zwrotów sprzętu BHP"
-        message="Czy na pewno chcesz usunąć wszystkie wpisy o ZWROTACH sprzętu BHP? Operacja jest nieodwracalna."
-        confirmText="Usuń historię zwrotów"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteBhpReturns.title')}
+        message={t('admin.modals.deleteBhpReturns.message')}
+        confirmText={t('admin.modals.deleteBhpReturns.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
 
@@ -630,10 +623,10 @@ function AdminPanel({ user, onNavigate }) {
         isOpen={showDeleteEmployeesConfirm}
         onClose={() => setShowDeleteEmployeesConfirm(false)}
         onConfirm={handleDeleteEmployees}
-        title="Usuń wszystkich pracowników"
-        message="Czy na pewno chcesz usunąć wszystkich pracowników z bazy danych? Ta operacja jest nieodwracalna i usunie wszystkie dane pracowników."
-        confirmText="Usuń pracowników"
-        cancelText="Anuluj"
+        title={t('admin.modals.deleteEmployees.title')}
+        message={t('admin.modals.deleteEmployees.message')}
+        confirmText={t('admin.modals.deleteEmployees.confirm')}
+        cancelText={t('common.cancel')}
         type="danger"
       />
 
@@ -669,6 +662,8 @@ function App() {
         setUser(parsedUser);
         // Ustaw token w API client
         api.setToken(token);
+        // Załaduj uprawnienia ról z backendu
+        loadRolePermissions();
         
         // Przywróć ostatni ekran jeśli istnieje
         if (savedScreen) {
@@ -688,6 +683,8 @@ function App() {
       fetchTools();
       fetchEmployees();
       fetchAppConfig();
+      // Odśwież uprawnienia ról po zalogowaniu/zmianie użytkownika
+      loadRolePermissions();
     }
   }, [user]);
 
@@ -802,6 +799,8 @@ function App() {
         
         // Ustaw token w API client PRZED wywołaniem addAuditLog
         api.setToken(response.token);
+        // Załaduj uprawnienia ról z backendu po zalogowaniu
+        await loadRolePermissions();
         
         // Dodaj wpis do dziennika audytu (poprawne argumenty: user, action, details)
         await addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
@@ -814,6 +813,18 @@ function App() {
       console.error('Login error:', error);
       toast.error(error.message || 'Błąd logowania');
       throw error;
+    }
+  };
+
+  // Ładowanie mapy uprawnień ról z backendu do silnika uprawnień
+  const loadRolePermissions = async () => {
+    try {
+      const data = await api.get('/api/role-permissions');
+      setDynamicRolePermissions(data || null);
+    } catch (error) {
+      console.error('Błąd pobierania uprawnień ról:', error);
+      // Brak danych – korzystamy z statycznego fallbacku
+      setDynamicRolePermissions(null);
     }
   };
 
@@ -836,14 +847,19 @@ function App() {
 
   if (!user) {
     return (
-      <ThemeProvider>
-        <LoginScreen onLogin={handleLogin} />
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <Suspense fallback={<Preloader fullscreen label="Ładowanie…" /> }>
+            <LoginScreen onLogin={handleLogin} />
+          </Suspense>
+        </ThemeProvider>
+      </LanguageProvider>
     );
   }
 
   return (
-    <ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
       <div className="flex h-screen bg-slate-50 dark:bg-gray-900 overflow-hidden transition-colors duration-200">
         <Sidebar 
           onNav={handleNavigation} 
@@ -854,47 +870,52 @@ function App() {
         />
         
         <div className="flex-1 flex flex-col min-w-0">
-          {/* TopBar */}
-          <TopBar 
-            user={user} 
-            onLogout={handleLogout} 
-            onToggleSidebar={toggleMobileMenu}
-            isSidebarOpen={isMobileMenuOpen}
-            appName={appName}
-            onNavigate={handleNavigation}
-          />
-          
+          {/* TopBar + content w Suspense, aby nie blokować pierwszego renderu */}
+          <Suspense fallback={<div className="h-14 border-b border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800"/>}>
+            <TopBar 
+              user={user} 
+              onLogout={handleLogout} 
+              onToggleSidebar={toggleMobileMenu}
+              isSidebarOpen={isMobileMenuOpen}
+              appName={appName}
+              onNavigate={handleNavigation}
+            />
+          </Suspense>
+
           <MobileHeader 
             onMenuToggle={toggleMobileMenu}
             user={user}
             currentScreen={currentScreen}
           />
-          
-          <div className="flex-1 overflow-auto">
-            {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
-            {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
-            {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
-            {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
-            {currentScreen === 'labels' && <LabelsManager user={user} />}
-            {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
-            {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
-            {currentScreen === 'audit' && <AuditLogScreen user={user} />}
-            {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
-            {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
-            {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
-            {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
-            {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
-            {currentScreen === 'db-viewer' && (
-              user?.role === 'administrator' ? (
-                <DbViewerScreen user={user} />
-              ) : (
-                <div className="p-6">
-                  <h2 className="text-sm font-medium text-gray-900 dark:text-white">Brak uprawnień</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Panel podglądu bazy danych jest dostępny tylko dla administratora.</p>
-                </div>
-              )
-            )}
-          </div>
+
+          <Suspense fallback={<Preloader fullscreen label="Ładowanie…" /> }>
+            <div className="flex-1 overflow-auto">
+              {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
+              {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
+              {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
+              {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
+              {currentScreen === 'labels' && <LabelsManager user={user} />}
+              {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
+              {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
+              {currentScreen === 'audit' && <AuditLogScreen user={user} />}
+              {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
+              {currentScreen === 'report' && <ReportsScreen user={user} employees={employees} tools={tools} />}
+              {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
+              {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
+              {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
+              {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
+              {currentScreen === 'db-viewer' && (
+                user?.role === 'administrator' ? (
+                  <DbViewerScreen user={user} />
+                ) : (
+                  <div className="p-6">
+                    <h2 className="text-sm font-medium text-gray-900 dark:text-white">Brak uprawnień</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Panel podglądu bazy danych jest dostępny tylko dla administratora.</p>
+                  </div>
+                )
+              )}
+            </div>
+          </Suspense>
         </div>
         
         <ToastContainer
@@ -912,7 +933,8 @@ function App() {
           bodyClassName="text-sm"
         />
       </div>
-    </ThemeProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
 

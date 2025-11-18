@@ -81,19 +81,14 @@ const Sidebar = ({
         />
       )}
 
-      {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} `}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 bg-indigo-600">
             <img src="/logo.png" alt="Logo" className="h-10 object-contain" />
           </div>
-          {/* Date & time under logo */}
           <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200 bg-gray-50">
             {formattedDateTime}
           </div>
-
-          {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {filteredMenuItems.map((item) => (
               <button

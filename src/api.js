@@ -84,9 +84,10 @@ class ApiClient {
         } catch (_) {}
 
         // Jeśli token jest nieprawidłowy lub wygasł, wyczyść go aby wymusić ponowne logowanie
+        // Tylko 401 (Unauthorized) lub jawny komunikat o nieprawidłowym tokenie powinien wymuszać wylogowanie.
+        // 403 (Forbidden) często oznacza brak uprawnień – nie wylogowujemy w takim przypadku.
         if (
           response.status === 401 ||
-          response.status === 403 ||
           (typeof message === 'string' && message.includes('Nieprawidłowy token'))
         ) {
           console.warn('[API] Invalid or expired token detected. Clearing token and requiring re-login.');
@@ -189,10 +190,8 @@ class ApiClient {
           const parsed = JSON.parse(errorText);
           if (parsed && parsed.message) message = parsed.message;
         } catch (_) {}
-
         if (
           response.status === 401 ||
-          response.status === 403 ||
           (typeof message === 'string' && message.includes('Nieprawidłowy token'))
         ) {
           console.warn('[API] Invalid or expired token detected (multipart). Clearing token and requiring re-login.');

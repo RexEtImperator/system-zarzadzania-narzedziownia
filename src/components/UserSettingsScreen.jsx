@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import api from '../api';
 import { toast } from 'react-toastify';
 
 function UserSettingsScreen({ user }) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('security');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -12,22 +14,22 @@ function UserSettingsScreen({ user }) {
   const [saved, setSaved] = useState(false);
 
   const tabs = [
-    { id: 'security', name: 'Bezpieczeństwo', icon: '🔐' }
+    { id: 'security', name: t('userSettings.tabs.security'), icon: '🔐' }
   ];
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('Wypełnij wszystkie pola');
+      toast.error(t('userSettings.errors.fillAllFields'));
       return;
     }
     if (newPassword.length < 6) {
-      toast.error('Nowe hasło musi mieć co najmniej 6 znaków');
+      toast.error(t('userSettings.errors.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Nowe hasło i potwierdzenie nie są zgodne');
+      toast.error(t('userSettings.errors.passwordMismatch'));
       return;
     }
 
@@ -45,13 +47,13 @@ function UserSettingsScreen({ user }) {
       });
 
       setSaved(true);
-      toast.success('Hasło zostało zmienione');
+      toast.success(t('userSettings.toast.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
-      const msg = error?.message || 'Nie udało się zmienić hasła';
+      const msg = error?.message || t('userSettings.errors.changeFailed');
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -61,10 +63,10 @@ function UserSettingsScreen({ user }) {
   const renderSecurityTab = () => (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Zmień hasło</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('userSettings.changePassword.title')}</h3>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nazwa użytkownika</label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('userSettings.changePassword.username')}</label>
             <input
               type="text"
               id="username"
@@ -76,7 +78,7 @@ function UserSettingsScreen({ user }) {
             />
           </div>
           <div>
-            <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Aktualne hasło</label>
+            <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('userSettings.changePassword.current')}</label>
             <input
               type="password"
               id="current-password"
@@ -89,7 +91,7 @@ function UserSettingsScreen({ user }) {
             />
           </div>
           <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nowe hasło</label>
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('userSettings.changePassword.new')}</label>
             <input
               type="password"
               id="new-password"
@@ -102,7 +104,7 @@ function UserSettingsScreen({ user }) {
             />
           </div>
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Potwierdź nowe hasło</label>
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('userSettings.changePassword.confirm')}</label>
             <input
               type="password"
               id="confirm-password"
@@ -123,16 +125,16 @@ function UserSettingsScreen({ user }) {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Zapisywanie...
+                  {t('common.saving')}
                 </>
               ) : (
                 <>
                   <CheckIcon className="w-4 h-4 mr-2" aria-hidden="true" />
-                  Zapisz zmiany
+                  {t('common.saveChanges')}
                 </>
               )}
             </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Hasło będzie aktualizowane dla Twojego konta</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('userSettings.changePassword.notice')}</span>
           </div>
         </form>
       </div>
@@ -145,8 +147,8 @@ function UserSettingsScreen({ user }) {
     <div className="space-y-8 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ustawienia użytkownika</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">Zarządzaj bezpieczeństwem swojego konta</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('userSettings.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">{t('userSettings.subtitle')}</p>
         </div>
       </div>
 
@@ -157,7 +159,7 @@ function UserSettingsScreen({ user }) {
               <CheckCircleIcon className="h-5 w-5 text-green-400 dark:text-green-300" aria-hidden="true" />
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">Hasło zostało zapisane pomyślnie!</p>
+              <p className="text-sm font-medium text-green-800 dark:text-green-300">{t('userSettings.toast.passwordSaved')}</p>
             </div>
           </div>
         </div>
@@ -194,7 +196,7 @@ function UserSettingsScreen({ user }) {
                 {activeTabMeta.name}
               </h2>
             </div>
-            {activeTab === 'security' && renderSecurityTab()}
+              {activeTab === 'security' && renderSecurityTab()}
           </main>
         </div>
       </div>

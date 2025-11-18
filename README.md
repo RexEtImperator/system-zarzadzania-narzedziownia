@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-1.9.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.9.0)
+[![Wersja](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.0.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
@@ -186,11 +186,40 @@ Uwagi:
 
 ## Funkcjonalności
 
+### Analityka
+- W pełni zlokalizowane nagłówki, komunikaty, chipy i stany widoku.
+- Eksport serwisu narzędzi do PDF/XLSX z tłumaczonymi tytułami, nagłówkami i nazwami plików.
+- Daty w eksporcie formatowane zgodnie z wybranym językiem (locale PL/EN/DE).
+- Informacje o uprawnieniach i brakach danych prezentowane w języku użytkownika.
+
 ### Konfiguracja aplikacji
 - Pionowe zakładki z lewym panelem nawigacyjnym i treścią po prawej
 - Sticky lewy panel na wysokich ekranach
 - Dynamiczny nagłówek sekcji po prawej (ikona + nazwa aktywnej zakładki)
 - Spójne style i placeholdery w modalach
+
+### Tłumaczenia (i18n)
+- Zakładka „Tłumaczenie” w sekcji „Kody qr/kreskowe” pozwala edytować tłumaczenia dla języków `PL/EN/DE`.
+- Przełącznik języka na górze (PL/EN/DE) — edycja dotyczy tylko wybranego języka.
+- Wyszukiwanie po kluczu, szybkie edytowanie i zapis zmian (`Zapisz zmiany`).
+- Dodawanie nowych tłumaczeń przez „Dodaj tłumaczenie” (modal: pola `Klucz`, `PL`, `EN`, `DE`).
+- Walidacja kolizji klucza — ostrzeżenie i zablokowanie dodania, jeśli klucz już istnieje.
+- Tłumaczenia są przechowywane w tabeli bazy danych `translate`; nadpisują wartości z plików `src/i18n/*.json`.
+- Frontend ładuje nadpisania dla aktywnego języka i stosuje je w `t()` (priorytet: baza → plik).
+
+Endpointy backendu (i18n):
+- `GET /api/translations/:lang` — publiczny, zwraca mapę tłumaczeń dla danego języka (`{ translations: { key: value } }`).
+- `GET /api/translate` — administracyjny (wymaga `SYSTEM_SETTINGS`), filtrowanie i podgląd tłumaczeń.
+- `PUT /api/translate/bulk` — administracyjny (wymaga `SYSTEM_SETTINGS`), masowa aktualizacja tłumaczeń.
+
+Inicjalizacja bazy:
+- Przy pierwszym uruchomieniu po dodaniu funkcji, tabela `translate` jest tworzona i automatycznie wypełniana kluczami z `pl.json`, `en.json`, `de.json`.
+- Jeśli backend działał wcześniej, zrestartuj go po aktualizacji, aby utworzyć tabelę i wykonać seed.
+
+Uwagi techniczne:
+- `LanguageContext` pobiera nadpisania przez `GET /api/translations/:lang` i stosuje je w funkcji `t()`.
+- Błędy użycia `useTheme` poza `ThemeProvider` są tłumaczone kluczem `Theme.useThemeProvider`.
+- `src/utils/dateUtils.js` formatuje daty i komunikaty relative time w `PL/EN/DE` (pluralizacja PL, locale `pl-PL/en-GB/de-DE`).
 
 ### Dashboard
 - Przegląd statystyk narzędzi i pracowników
@@ -253,6 +282,9 @@ flowchart LR
 ### Skaner kodów
 - Skanowanie kodów QR i kreskowych (kamera urządzenia)
 - Generowanie i wykorzystanie kodów w procesach wydań
+- Zlokalizowane komunikaty o zgodności przeglądarki, dostępie do kamery i stanie skanowania.
+- Wskazówki skanowania dostosowane językowo; obsługa latarki (torch) tam gdzie wspierane.
+- Czytelne komunikaty przy odmowie uprawnień kamery oraz bezpieczne wyłączenie strumienia.
 
 ### Konfiguracja / Backup
 - Podgląd ostatniej kopii zapasowej i listy plików
@@ -266,6 +298,12 @@ flowchart LR
 - Toasty informacyjne/sukcesu/błędu dla operacji (React Toastify)
 - Globalna konfiguracja: `ToastContainer` z `autoClose=2500ms`, ukrytym paskiem postępu, motywem `colored` i spójnym stylem.
 - Ujednolicone helpery na ekranie „Konfiguracja” (`notifySuccess`/`notifyError`).
+
+### Języki (i18n)
+- Obsługa wielu języków interfejsu: polski (`pl`), angielski (`en`) i niemiecki (`de`).
+- Kontekst języka: `src/contexts/LanguageContext.jsx` z metodą `t(key, params)` i wyborem języka.
+- Słowniki: `src/i18n/pl.json`, `src/i18n/en.json`, `src/i18n/de.json` — dodawaj nowe klucze według konwencji kropkowej.
+- Integracja m.in. w ekranach: Analityka, Skaner kodów, Ustawienia użytkownika, Logowanie, Modale potwierdzeń.
 
 ### Prefiksy kodów
 - Prefiks dla narzędzi (`toolsCodePrefix`).
@@ -306,10 +344,10 @@ Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w p
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [1.9.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.9.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [2.0.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.0.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 1.9.0
+System Zarządzania Narzędziownią - wersja 2.0.0

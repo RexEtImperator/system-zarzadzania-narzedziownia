@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { PencilSquareIcon, TrashIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import api from '../api';
 import EmployeeModal from './EmployeeModal';
 import { PERMISSIONS, hasPermission } from '../constants';
+import { useLanguage } from '../contexts/LanguageContext';
+import SkeletonList from './SkeletonList';
 
 const AUDIT_ACTIONS = {
   EMPLOYEE_VIEW: 'EMPLOYEE_VIEW',
   EMPLOYEE_ADD: 'EMPLOYEE_ADD',
   EMPLOYEE_EDIT: 'EMPLOYEE_EDIT',
-  EMPLOYEE_DELETE: 'EMPLOYEE_DELETE'
+  EMPLOYEE_DELETE: 'EMPLOYEE_DELETE',
+  EMPLOYEE_SEND_CREDENTIALS: 'EMPLOYEE_SEND_CREDENTIALS'
 };
 
 const addAuditLog = async (user, action, details) => {
@@ -26,6 +30,7 @@ const addAuditLog = async (user, action, details) => {
 };
 
 function EmployeesScreen({ employees, setEmployees, user }) {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterPosition, setFilterPosition] = useState('all');
@@ -35,6 +40,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Zbiór nazw działów i stanowisk do filtrowania: UNION danych z bazy i istniejących w pracownikach
@@ -52,6 +58,30 @@ function EmployeesScreen({ employees, setEmployees, user }) {
     fetchDepartments();
     fetchPositions();
   }, []);
+
+  // Przenieś pobieranie pracowników do ekranu
+  useEffect(() => {
+    const canView = hasPermission(user, PERMISSIONS.VIEW_EMPLOYEES);
+    if (!canView) return;
+    let cancelled = false;
+    const loadEmployees = async () => {
+      try {
+        setInitialLoading(true);
+        const data = await api.get('/api/employees');
+        if (!cancelled) setEmployees(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error fetching employees:', err);
+        if (!cancelled) setEmployees([]);
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    };
+    // Ładuj tylko gdy lista jest pusta – ograniczenie kosztu
+    if (!employees || employees.length === 0) {
+      loadEmployees();
+    }
+    return () => { cancelled = true; };
+  }, [user]);
 
   const fetchDepartments = async () => {
     try {
@@ -91,6 +121,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
         first_name: employeeData.firstName,
         last_name: employeeData.lastName,
         phone: employeeData.phone,
+        email: employeeData.email,
         department: departments.find(d => d.id.toString() === employeeData.departmentId)?.name || '',
         position: positions.find(p => p.id.toString() === employeeData.positionId)?.name || '',
         brand_number: employeeData.brandNumber || ''
@@ -99,14 +130,14 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       const newEmployee = await api.post('/api/employees', apiData);
       setEmployees(prev => [...prev, newEmployee]);
       setShowAddModal(false);
-      toast.success('Pracownik został dodany pomyślnie');
+      toast.success(t('employees.addedSuccess'));
       
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_ADD, 
         `Dodano pracownika: ${employeeData.firstName} ${employeeData.lastName}`);
     } catch (error) {
       console.error('Error adding employee:', error);
-      toast.error('Błąd podczas dodawania pracownika');
-      setError('Błąd podczas dodawania pracownika');
+      toast.error(t('employees.addError'));
+      setError(t('employees.addError'));
     } finally {
       setLoading(false);
     }
@@ -120,6 +151,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
         first_name: employeeData.firstName,
         last_name: employeeData.lastName,
         phone: employeeData.phone,
+        email: employeeData.email,
         department: departments.find(d => d.id.toString() === employeeData.departmentId)?.name || '',
         position: positions.find(p => p.id.toString() === employeeData.positionId)?.name || '',
         brand_number: employeeData.brandNumber || editingEmployee.brand_number
@@ -131,21 +163,21 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       ));
       setShowEditModal(false);
       setEditingEmployee(null);
-      toast.success('Dane pracownika zostały zaktualizowane');
+      toast.success(t('employees.updatedSuccess'));
       
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_EDIT, 
         `Edytowano pracownika: ${employeeData.firstName} ${employeeData.lastName}`);
     } catch (error) {
       console.error('Error updating employee:', error);
-      toast.error('Błąd podczas aktualizacji danych pracownika');
-      setError('Błąd podczas aktualizacji danych pracownika');
+      toast.error(t('employees.updateError'));
+      setError(t('employees.updateError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteEmployee = async (employee) => {
-    if (!window.confirm(`Czy na pewno chcesz usunąć pracownika ${employee.first_name} ${employee.last_name}?`)) {
+    if (!window.confirm(`${t('employees.confirmDelete')} ${employee.first_name} ${employee.last_name}?`)) {
       return;
     }
 
@@ -153,14 +185,44 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       setLoading(true);
       await api.delete(`/api/employees/${employee.id}`);
       setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
-      toast.success('Pracownik został usunięty');
+      toast.success(t('employees.deletedSuccess'));
       
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_DELETE, 
         `Usunięto pracownika: ${employee.first_name} ${employee.last_name}`);
     } catch (error) {
       console.error('Error deleting employee:', error);
-      toast.error('Błąd podczas usuwania pracownika');
-      setError('Błąd podczas usuwania pracownika');
+      toast.error(t('employees.deleteError'));
+      setError(t('employees.deleteError'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendCredentials = async (employee) => {
+    try {
+      if (!employee?.email) {
+        toast.warn('Brak adresu e-mail dla pracownika');
+        return;
+      }
+      setLoading(true);
+      const resp = await api.post(`/api/employees/${employee.id}/send-credentials`, {});
+      const emailSent = resp?.emailSent;
+      const createdLogin = resp?.createdLogin;
+      const updatedEmployee = resp?.employee;
+      if (updatedEmployee) {
+        setEmployees(prev => prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e));
+      }
+      if (emailSent) {
+        toast.success(createdLogin ? 'Utworzono login i wysłano dane' : 'Wysłano dane logowania');
+      } else {
+        toast.info(createdLogin ? 'Utworzono login, ale e-mail nie wysłany' : 'E-mail nie został wysłany');
+      }
+      // Logowanie audytowe
+      await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_SEND_CREDENTIALS, 
+        `Wysłano dane logowania dla pracownika ID=${employee.id}, login=${updatedEmployee?.login || employee.login || 'brak'}, emailSent=${emailSent}, createdLogin=${createdLogin}`);
+    } catch (error) {
+      console.error('Error sending credentials:', error);
+      toast.error('Błąd wysyłki danych logowania');
     } finally {
       setLoading(false);
     }
@@ -184,20 +246,27 @@ function EmployeesScreen({ employees, setEmployees, user }) {
     return brandA - brandB;
   });
 
+  // Skeleton dla tabeli pracowników
+  const renderSkeleton = (
+    <div className="p-4">
+      <SkeletonList rows={8} cols={4} />
+    </div>
+  );
+
   const getDepartmentName = (department) => {
-    return department || 'Nieznany';
+    return department || t('employees.unknownDept');
   };
 
   const getPositionName = (position) => {
-    return position || 'Nieznana';
+    return position || t('employees.unknownPos');
   };
 
   return (
     <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Zarządzanie Pracownikami</h1>
-          <p className="text-slate-600 dark:text-slate-400">Zarządzaj danymi pracowników w systemie</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('employees.title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{t('employees.subtitle')}</p>
         </div>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
@@ -206,7 +275,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
               <span>+</span>
-              Dodaj pracownika
+              {t('employees.add')}
             </button>
           )}
         </div>
@@ -231,36 +300,36 @@ function EmployeesScreen({ employees, setEmployees, user }) {
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-4 md:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Wyszukaj</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('employees.search')}</label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Imię, nazwisko, numer służbowy..."
+              placeholder={t('employees.searchPlaceholder')}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dział</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('employees.department')}</label>
             <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="all">Wszystkie działy</option>
+              <option value="all">{t('employees.allDepartments')}</option>
               {departmentNames.map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Stanowisko</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('employees.position')}</label>
             <select
               value={filterPosition}
               onChange={(e) => setFilterPosition(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="all">Wszystkie stanowiska</option>
+              <option value="all">{t('employees.allPositions')}</option>
               {positionNames.map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
@@ -275,22 +344,25 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               }}
               className="w-full px-4 py-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
-              Wyczyść filtry
+              {t('employees.clearFilters')}
             </button>
           </div>
         </div>
       </div>
 
       {/* Lista pracowników */}
+      {initialLoading && employees.length === 0 ? (
+        renderSkeleton
+      ) : (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         {filteredEmployees.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">👥</div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Brak pracowników</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('employees.none')}</h3>
             <p className="text-slate-600 dark:text-slate-400">
               {employees.length === 0 
-                ? 'Nie dodano jeszcze żadnych pracowników.' 
-                : 'Nie znaleziono pracowników spełniających kryteria wyszukiwania.'
+                ? t('employees.noneAdded') 
+                : t('employees.noneFound')
               }
             </p>
           </div>
@@ -301,13 +373,13 @@ function EmployeesScreen({ employees, setEmployees, user }) {
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Imię i nazwisko</th>
-                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Numer służbowy</th>
-                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Telefon</th>
-                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Dział</th>
-                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Stanowisko</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.fullName')}</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.brandNumber')}</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.phone')}</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.departmentCol')}</th>
+                    <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.positionCol')}</th>
                     {user?.role === 'administrator' && (
-                      <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">Akcje</th>
+                      <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('employees.actions')}</th>
                     )}
                   </tr>
                 </thead>
@@ -318,6 +390,16 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                         <div className="font-medium text-slate-900 dark:text-slate-100">
                           {employee.first_name} {employee.last_name}
                         </div>
+                        {employee.login && (
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                            LOGIN: {employee.login}
+                          </div>
+                        )}
+                        {employee.email && (
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                            EMAIL: {employee.email}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4 font-mono text-sm text-slate-600 dark:text-slate-400">
                         {employee.brand_number || '-'}
@@ -335,19 +417,32 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                         <td className="p-4">
                           <div className="flex gap-2">
                             <button
+                              onClick={() => handleSendCredentials(employee)}
+                              disabled={!employee?.email}
+                              className={`p-2 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors ${!employee?.email ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              aria-label="Wyślij dane logowania"
+                              title={!employee?.email ? 'Uzupełnij e‑mail pracownika, aby wysłać' : 'Wyślij dane logowania'}
+                            >
+                              <EnvelopeIcon className="h-5 w-5" aria-hidden="true" />
+                            </button>
+                            <button
                               onClick={() => {
                                 setEditingEmployee(employee);
                                 setShowEditModal(true);
                               }}
-                              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                              className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                              aria-label={t('employees.edit')}
+                              title={t('employees.edit')}
                             >
-                              Edytuj
+                              <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
                             </button>
                             <button
                               onClick={() => handleDeleteEmployee(employee)}
-                              className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                              className="p-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                              aria-label={t('employees.delete')}
+                              title={t('employees.delete')}
                             >
-                              Usuń
+                              <TrashIcon className="h-5 w-5" aria-hidden="true" />
                             </button>
                           </div>
                         </td>
@@ -367,26 +462,49 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {employee.first_name} {employee.last_name}
                     </h3>
+                    {employee.login && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        LOGIN: {employee.login}
+                      </p>
+                    )}
+                    {employee.email && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        EMAIL: {employee.email}
+                      </p>
+                    )}
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
-                      Numer służbowy: {employee.brand_number || '-'}
+                      {t('employees.brandNumber')}: {employee.brand_number || '-'}
                     </p>
                   </div>
                     {user?.role === 'administrator' && (
                       <div className="flex gap-2">
                         <button
+                          onClick={() => handleSendCredentials(employee)}
+                          disabled={!employee?.email}
+                          className={`p-2 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors ${!employee?.email ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          aria-label="Wyślij dane logowania"
+                          title={!employee?.email ? 'Uzupełnij e‑mail pracownika, aby wysłać' : 'Wyślij dane logowania'}
+                        >
+                          <EnvelopeIcon className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                        <button
                           onClick={() => {
                             setEditingEmployee(employee);
                             setShowEditModal(true);
                           }}
-                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                          className="p-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                          aria-label="Edytuj"
+                          title="Edytuj"
                         >
-                          Edytuj
+                          <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => handleDeleteEmployee(employee)}
-                          className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                          className="p-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                          aria-label="Usuń"
+                          title="Usuń"
                         >
-                          Usuń
+                          <TrashIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
                     )}
@@ -394,15 +512,15 @@ function EmployeesScreen({ employees, setEmployees, user }) {
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Telefon:</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('employees.mobilePhone')}</span>
                       <span className="text-slate-900 dark:text-slate-100">{employee.phone || '-'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Dział:</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('employees.mobileDepartment')}</span>
                       <span className="text-slate-900 dark:text-slate-100">{getDepartmentName(employee.department)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Stanowisko:</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('employees.mobilePosition')}</span>
                       <span className="text-slate-900 dark:text-slate-100">{getPositionName(employee.position)}</span>
                     </div>
                   </div>
@@ -412,6 +530,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
           </>
         )}
       </div>
+      )}
 
       {/* Modals */}
       <EmployeeModal
@@ -434,6 +553,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
           firstName: editingEmployee.first_name,
           lastName: editingEmployee.last_name,
           phone: editingEmployee.phone,
+          email: editingEmployee.email,
           departmentId: departments.find(d => d.name === editingEmployee.department)?.id?.toString() || '',
           positionId: positions.find(p => p.name === editingEmployee.position)?.id?.toString() || '',
           brandNumber: editingEmployee.brand_number,

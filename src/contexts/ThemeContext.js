@@ -1,11 +1,40 @@
 import React, { createContext, useContext, useState, useLayoutEffect } from 'react';
+import pl from '../i18n/pl.json';
+import en from '../i18n/en.json';
+import de from '../i18n/de.json';
+
+const dictionaries = { pl, en, de };
+
+const resolveKey = (dict, key) => {
+  if (!dict || !key) return key;
+  const parts = key.split('.');
+  let cur = dict;
+  for (const p of parts) {
+    if (cur && Object.prototype.hasOwnProperty.call(cur, p)) {
+      cur = cur[p];
+    } else {
+      return key;
+    }
+  }
+  return typeof cur === 'string' ? cur : key;
+};
+
+const tImmediate = (key) => {
+  try {
+    const lang = localStorage.getItem('language');
+    const dict = dictionaries[lang] || dictionaries.pl;
+    return resolveKey(dict, key);
+  } catch (_) {
+    return key;
+  }
+};
 
 const ThemeContext = createContext();
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme musi być używany w ramach ThemeProvider');
+    throw new Error(tImmediate('Theme.useThemeProvider'));
   }
   return context;
 };

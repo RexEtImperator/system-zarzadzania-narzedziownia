@@ -1,62 +1,58 @@
-// Stałe uprawnień używane w aplikacji
 export const PERMISSIONS = {
-  // Zarządzanie użytkownikami
+  // Users management
   MANAGE_USERS: 'manage_users',
   VIEW_USERS: 'view_users',
   CREATE_USERS: 'create_users',
   EDIT_USERS: 'edit_users',
   DELETE_USERS: 'delete_users',
-  
-  // Administracja systemu
+  // System administration
   VIEW_ADMIN: 'view_admin',
   SYSTEM_SETTINGS: 'system_settings',
   MANAGE_DEPARTMENTS: 'manage_departments',
   MANAGE_POSITIONS: 'manage_positions',
-  // Zarządzanie rolami
+  // Manage roles
   MANAGE_ROLES: 'manage_roles',
   VIEW_ROLES: 'view_roles',
-  // Usuń historię wydań i serwisów
+  // Delete issue, return, and service history
   DELETE_ISSUE_HISTORY: 'delete_issue_history',
   DELETE_RETURN_HISTORY: 'delete_return_history',
   DELETE_SERVICE_HISTORY: 'delete_service_history',
-  // Baza danych
+  // Database
   VIEW_DATABASE: 'view_database',
   MANAGE_DATABASE: 'manage_database',
-  
-  // Audyt i logi
+  // Audit logs
   VIEW_AUDIT_LOG: 'view_audit_log',
-  
-  // Analityka
+  // Analytics
   VIEW_ANALYTICS: 'view_analytics',
-
-  // Widok i zarządzanie narzędziami
+  // Tools management
   VIEW_TOOLS: 'view_tools',
   MANAGE_TOOLS: 'manage_tools',
-  
-  // Etykiety
+  // Tools history visibility
+  VIEW_TOOL_HISTORY: 'view_tool_history',
+  // Labels
   VIEW_LABELS: 'view_labels',
-
-  // Pracownicy
+  // Employees
   VIEW_EMPLOYEES: 'view_employees',
   MANAGE_EMPLOYEES: 'manage_employees',
-  
   // BHP
   VIEW_BHP: 'view_bhp',
   MANAGE_BHP: 'manage_bhp',
-
-  // Inwentaryzacja
+  // BHP history visibility
+  VIEW_BHP_HISTORY: 'view_bhp_history',
+  // Dashboard / Quick actions
+  VIEW_QUICK_ACTIONS: 'view_quick_actions',
+  // Inventory check
   VIEW_INVENTORY: 'view_inventory',
   INVENTORY_MANAGE_SESSIONS: 'inventory_manage_sessions',
   INVENTORY_SCAN: 'inventory_scan',
   INVENTORY_ACCEPT_CORRECTION: 'inventory_accept_correction',
   INVENTORY_DELETE_CORRECTION: 'inventory_delete_correction',
   INVENTORY_EXPORT_CSV: 'inventory_export_csv',
-
-  // Pomocnicze (dla czytelności wywołań)
+  // Auxiliary (for readability of calls)
   ADMIN: 'admin'
 };
 
-// Role użytkowników
+// User roles
 export const ROLES = {
   ADMIN: 'admin',
   MANAGER: 'manager',
@@ -65,20 +61,20 @@ export const ROLES = {
   EMPLOYEE: 'employee',
 };
 
-// Statusy użytkowników
+// User statuses
 export const USER_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
   SUSPENDED: 'suspended'
 };
 
-// Statusy działów
+// Department status
 export const DEPARTMENT_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive'
 };
 
-// Typy akcji w audycie
+// Audit actions
 export const AUDIT_ACTIONS = {
   CREATE: 'create',
   UPDATE: 'update',
@@ -88,53 +84,53 @@ export const AUDIT_ACTIONS = {
   VIEW: 'view'
 };
 
-// Konfiguracja paginacji
+// Pagination config
 export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 10,
   PAGE_SIZE_OPTIONS: [5, 10, 20, 50, 100]
 };
 
-// Konfiguracja API
+// Config API
 export const API_CONFIG = {
   BASE_URL: 'http://localhost:3000',
   TIMEOUT: 30000,
   RETRY_ATTEMPTS: 3
 };
 
-// Endpointy API
+// Endpoints API
 export const API_ENDPOINTS = {
-  // Autoryzacja
+  // auth
   LOGIN: '/api/auth/login',
   LOGOUT: '/api/auth/logout',
   REFRESH_TOKEN: '/api/auth/refresh',
   
-  // Użytkownicy
+  // Users
   USERS: '/api/users',
   USER_BY_ID: (id) => `/api/users/${id}`,
   
-  // Departamenty
+  // Departments
   DEPARTMENTS: '/api/departments',
   DEPARTMENT_BY_ID: (id) => `/api/departments/${id}`,
   
-  // Stanowiska
+  // Positions
   POSITIONS: '/api/positions',
   POSITION_BY_ID: (id) => `/api/positions/${id}`,
   
-  // Role
+  // Roles
   ROLES: '/api/roles',
   ROLE_BY_ID: (id) => `/api/roles/${id}`,
   
-  // Audyt
+  // Audit
   AUDIT_LOG: '/api/audit',
   
-  // Analityka
+  // Analytics
   ANALYTICS: '/api/analytics',
   
-  // Konfiguracja aplikacji
+  // Application configuration
   CONFIG: '/api/config'
 };
 
-// Komunikaty błędów
+// Error messages
 export const ERROR_MESSAGES = {
   NETWORK_ERROR: 'Błąd połączenia z serwerem',
   UNAUTHORIZED: 'Brak uprawnień do wykonania tej operacji',
@@ -145,7 +141,7 @@ export const ERROR_MESSAGES = {
   UNKNOWN_ERROR: 'Wystąpił nieznany błąd'
 };
 
-// Komunikaty sukcesu
+// Success messages
 export const SUCCESS_MESSAGES = {
   USER_CREATED: 'Użytkownik został utworzony pomyślnie',
   USER_UPDATED: 'Dane użytkownika zostały zaktualizowane',
@@ -159,7 +155,7 @@ export const SUCCESS_MESSAGES = {
   SETTINGS_SAVED: 'Ustawienia zostały zapisane'
 };
 
-// Kolory motywu
+// Theme colors
 export const THEME_COLORS = {
   PRIMARY: '#3b82f6',
   SECONDARY: '#64748b',
@@ -169,7 +165,18 @@ export const THEME_COLORS = {
   INFO: '#06b6d4'
 };
 
-// Funkcja sprawdzająca uprawnienia użytkownika
+// Function to check user permissions
+// Dynamic permissions loaded from the backend
+let dynamicRolePermissions = null;
+export const setDynamicRolePermissions = (permissionsMap) => {
+  try {
+    // We expect the object: { administrator: [perm...], manager: [...], employee: [...] }
+    dynamicRolePermissions = permissionsMap && typeof permissionsMap === 'object' ? permissionsMap : null;
+  } catch (_) {
+    dynamicRolePermissions = null;
+  }
+};
+
 export const hasPermission = (user, permission) => {
   if (!user || !user.role) {
     return false;
@@ -187,11 +194,11 @@ export const hasPermission = (user, permission) => {
   };
 
   const normalizedRole = normalizeRole(user.role);
-  // Admin ma wszystkie uprawnienia
+  // Admin has all permissions
   if (normalizedRole === ROLES.ADMIN) {
     return true;
   }
-  // Mapowanie ról do uprawnień
+  // Mapping roles to permissions (default values ​​– used when there is no data from the backend)
   const rolePermissions = {
     [ROLES.MANAGER]: [
       PERMISSIONS.VIEW_USERS,
@@ -199,6 +206,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.EDIT_USERS,
       PERMISSIONS.VIEW_ANALYTICS,
       PERMISSIONS.VIEW_TOOLS,
+      PERMISSIONS.VIEW_TOOL_HISTORY,
       PERMISSIONS.VIEW_LABELS,
       PERMISSIONS.MANAGE_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
@@ -206,6 +214,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.MANAGE_DEPARTMENTS,
       PERMISSIONS.MANAGE_POSITIONS,
       PERMISSIONS.VIEW_BHP,
+      PERMISSIONS.VIEW_BHP_HISTORY,
       PERMISSIONS.MANAGE_BHP,
       PERMISSIONS.VIEW_INVENTORY,
       PERMISSIONS.INVENTORY_MANAGE_SESSIONS,
@@ -225,13 +234,25 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_ANALYTICS
     ],
     [ROLES.EMPLOYEE]: [
-      PERMISSIONS.VIEW_TOOLS,
-      PERMISSIONS.VIEW_EMPLOYEES,
-      PERMISSIONS.VIEW_BHP
+      PERMISSIONS.VIEW_TOOL_HISTORY,
+      PERMISSIONS.VIEW_BHP_HISTORY
     ],
     [ROLES.USER]: []
   };
+  // If we have dynamic permissions from the backend, use them first
+  if (dynamicRolePermissions) {
+    // Map internal role names to API keys
+    const apiRoleKey =
+      normalizedRole === ROLES.ADMIN ? 'administrator' :
+      normalizedRole === ROLES.MANAGER ? 'manager' :
+      normalizedRole === ROLES.HR ? 'hr' :
+      normalizedRole === ROLES.EMPLOYEE ? 'employee' : normalizedRole;
 
+    const apiRolePerms = dynamicRolePermissions[apiRoleKey] || [];
+    return Array.isArray(apiRolePerms) && apiRolePerms.includes(permission);
+  }
+
+  // Fallback to static maps if dynamic permissions are missing
   const userPermissions = rolePermissions[normalizedRole] || [];
   return userPermissions.includes(permission);
 };

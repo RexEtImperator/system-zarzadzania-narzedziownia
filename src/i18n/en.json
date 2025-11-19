@@ -134,7 +134,9 @@
       "error": "Failed to submit report",
       "fetchError": "Failed to fetch reports",
       "statusUpdated": "Report status updated",
-      "statusError": "Failed to update status"
+      "statusError": "Failed to update status",
+      "deleted": "Report deleted",
+      "deleteError": "Failed to delete report"
     }
   },
   "inventory": {
@@ -374,9 +376,245 @@
     "updateError": "Error updating employee",
     "deletedSuccess": "Employee deleted",
     "deleteError": "Error deleting employee",
-    "confirmDelete": "Are you sure you want to delete employee"
-  }
-  ,
+    "confirmDelete": "Are you sure you want to delete employee",
+    "modal": {
+      "title": { "add": "Add New Employee", "edit": "Edit Employee" },
+      "labels": {
+        "firstName": "First Name *",
+        "lastName": "Last Name *",
+        "phone": "Phone",
+        "email": "Email",
+        "brandNumber": "Badge Number",
+        "department": "Department *",
+        "position": "Position *",
+        "status": "Status"
+      },
+      "placeholders": {
+        "firstName": "e.g. John",
+        "lastName": "e.g. Doe",
+        "phone": "e.g. 500 600 700",
+        "email": "e.g. john.doe@example.com",
+        "brandNumber": "e.g. ID-1234"
+      },
+      "select": { "department": "Select department", "position": "Select position" },
+      "buttons": { "save": "Save", "saving": "Saving...", "cancel": "Cancel" },
+      "errors": {
+        "firstNameRequired": "First name is required",
+        "lastNameRequired": "Last name is required",
+        "departmentRequired": "Department is required",
+        "positionRequired": "Position is required",
+        "submitFailed": "An error occurred while saving"
+      }
+    },
+    "status": { "active": "Active", "inactive": "Inactive", "suspended": "Suspended" }
+  },
+  "departments": {
+    "modal": {
+      "title": { "add": "Add Department", "edit": "Edit Department" },
+      "labels": {
+        "name": "Name *",
+        "description": "Description",
+        "manager": "Department Manager"
+      },
+      "placeholders": {
+        "name": "e.g. Sales",
+        "description": "Short department description"
+      },
+      "buttons": { "save": "Save", "cancel": "Cancel" },
+      "errors": { "nameRequired": "Name is required", "submit": "An error occurred while saving" }
+    }
+  },
+  "positions": {
+    "list": {
+      "statusMissing": "Missing in database",
+      "departmentPrefix": "Department: "
+    },
+    "delete": {
+      "title": "Delete Position",
+      "message": "Are you sure you want to delete the position",
+      "confirmText": "Delete"
+    },
+    "modal": {
+      "title": { "add": "Add Position", "edit": "Edit Position" },
+      "labels": { "department": "Department", "description": "Description" },
+      "select": { "department": "Select department" },
+      "placeholders": { "description": "Short position description" },
+      "buttons": { "save": "Save", "cancel": "Cancel" },
+      "errors": { "departmentRequired": "Department is required" }
+    }
+  },
+  "auth": { "invalid": "Invalid authentication event: {reason}" },
+  "appConfig": {
+    "header": {
+      "title": "Application Configuration",
+      "subtitle": "Manage system settings and translations"
+    },
+    "tabs": {
+      "general": "General",
+      "security": "Security",
+      "email": "Email",
+      "users": "Users",
+      "features": "Features",
+      "departments": "Departments",
+      "positions": "Positions",
+      "categories": "Categories",
+      "codes": "Codes (QR/Bar)",
+      "translations": "Translations",
+      "backup": "Backups"
+    },
+    "save": {
+      "success": "Configuration saved",
+      "error": "Failed to save configuration"
+    },
+    "general": {
+      "title": "General settings",
+      "appName": "Application name",
+      "companyName": "Company name",
+      "timezone": "Time zone",
+      "timezones": {
+        "warsaw": "Warsaw",
+        "london": "London",
+        "newYork": "New York",
+        "tokyo": "Tokyo"
+      },
+      "language": "Interface language",
+      "language_pl": "Polish",
+      "language_en": "English",
+      "language_de": "German",
+      "dateFormat": "Date format"
+    },
+    "logo": {
+      "title": "Application logo",
+      "currentAlt": "Current logo",
+      "dimensionsHint": "Allowed size: {minW}x{minH}–{maxW}x{maxH}px",
+      "uploadLabel": "Upload logo (PNG)",
+      "saveNew": "Save new logo",
+      "historyTitle": "Logo history",
+      "historyEmpty": "No logo history",
+      "apply": "Apply",
+      "onlyPng": "Only PNG files are allowed",
+      "fileTooLarge": "File is too large",
+      "dimensionsOutOfRange": "Image dimensions out of range",
+      "invalidImageFile": "Invalid image file",
+      "selectPng": "Select a PNG file",
+      "updated": "Logo updated",
+      "uploadError": "Logo upload error",
+      "rollbackSuccess": "Previous logo restored",
+      "rollbackError": "Error restoring previous logo",
+      "deleteSuccess": "Logo deleted",
+      "deleteError": "Failed to delete logo",
+      "deleteTitle": "Delete logo",
+      "deleteMessagePrefix": "Delete file",
+      "deleteMessage": "Delete logo?"
+    },
+    "security": {
+      "title": "Security",
+      "sessionTimeout": "Session timeout (minutes)",
+      "passwordMinLength": "Minimum password length",
+      "maxLoginAttempts": "Max login attempts",
+      "lockoutDuration": "Lockout duration (minutes)",
+      "requireSpecialChars": "Require special characters",
+      "requireNumbers": "Require digits"
+    },
+    "email": {
+      "title": "Email",
+      "host": "SMTP host",
+      "port": "Port",
+      "secure": "Encryption",
+      "yes": "YES",
+      "no": "NO",
+      "user": "User",
+      "pass": "Password",
+      "from": "Sender address",
+      "description": "Email sending settings",
+      "fixConfig": "Complete email configuration",
+      "test": {
+        "title": "Sending test",
+        "description": "Send a test message to a chosen address",
+        "recipient": "Recipient address",
+        "recipientPlaceholder": "e.g. john.doe@example.com",
+        "fixConfig": "Complete email configuration",
+        "invalidRecipient": "Invalid recipient address",
+        "success": "Test message sent",
+        "error": "Sending error",
+        "sending": "Sending…",
+        "send": "Send test"
+      },
+      "validation": {
+        "hostRequired": "Enter SMTP host",
+        "portInvalid": "Invalid port",
+        "fromInvalid": "Invalid sender address"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "email": "Email",
+      "sms": "SMS",
+      "push": "Push"
+    },
+    "features": {
+      "title": "Features",
+      "auditLog": "Audit log",
+      "auditLogDesc": "Record important user actions",
+      "reports": "Reports",
+      "reportsDesc": "Generate reports and summaries",
+      "mobileApp": "Mobile app",
+      "mobileAppDesc": "Use the app in the field",
+      "apiAccess": "API access",
+      "apiAccessDesc": "Integrate with external tools",
+      "dataExport": "Data export",
+      "dataExportDesc": "Export data to files",
+      "otherSettings": "Other settings",
+      "auditRetention": "Audit log retention (days)",
+      "backupFrequency": "Backup frequency",
+      "frequency": {
+        "daily": "daily",
+        "weekly": "weekly",
+        "monthly": "monthly"
+      }
+    },
+    "codes": {
+      "title": "Code prefixes",
+      "toolsPrefix": "Tools code prefix",
+      "toolsPrefixPlaceholder": "e.g. TL",
+      "bhpPrefix": "BHP code prefix",
+      "bhpPrefixPlaceholder": "e.g. BHP",
+      "categoryPrefixesTitle": "Tool category prefixes",
+      "categoryPrefixesDesc": "Define prefixes for individual categories",
+      "categoryPrefixPlaceholder": "e.g. HM",
+      "toolsCountSuffix": "tools",
+      "categoryPrefixNote": "Changing prefix does not modify existing numbers"
+    },
+    "translations": {
+      "title": "Translations",
+      "addTranslation": "Add translation",
+      "searchPlaceholder": "Search by key",
+      "loading": "Loading translations…",
+      "empty": "No translations",
+      "key": "Key",
+      "keyPlaceholder": "e.g. appConfig.header.title",
+      "keyExists": "Such key already exists",
+      "saved": "Translations saved",
+      "saveError": "Failed to save translations",
+      "added": "Translation added",
+      "addError": "Failed to add translation"
+    },
+    "backup": {
+      "title": "Backup",
+      "lastFromConfig": "Last from configuration",
+      "lastFile": "Last file",
+      "running": "Creating backup…",
+      "run": "Create backup",
+      "adminRequired": "Administrator permissions required"
+    },
+    "categories": {
+      "title": "Tool categories",
+      "newCategory": "New category",
+      "newCategoryPlaceholder": "e.g. Hammers",
+      "add": "Add",
+      "edit": "Edit"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome, {name}! Here’s an overview of the system.",
@@ -403,8 +641,11 @@
         "errorItem": "Issue error: {name}",
         "errors": {
           "toolNotFound": "Tool not found for provided code",
+          "toolNotFoundWithCode": "No tool found with code: {code}",
           "toolNotAvailable": "Tool is not available for issuing",
           "toolNotAvailableSimple": "Tool is not available",
+          "toolUnavailableDetails": "Unavailable: {name} (SKU: {sku})",
+          "addByCode": "Error adding by code",
           "noEmployeeSelected": "Select an employee to issue the tool"
         }
       },
@@ -484,21 +725,25 @@
       "updateRoleError": "Error updating user role"
     },
     "labels": {
+      "VIEW_USERS": "Users - view",
+      "CREATE_USERS": "Users - create",
+      "MANAGE_USERS": "Users - manage",
       "EDIT_USERS": "Users - edit",
       "DELETE_USERS": "Users - delete",
       "VIEW_EMPLOYEES": "Employees - view",
       "MANAGE_EMPLOYEES": "Employees - manage",
       "VIEW_ANALYTICS": "Analytics - view",
-  "VIEW_TOOLS": "Tools - view",
-  "VIEW_TOOL_HISTORY": "Tool issue/return history - view",
+      "VIEW_TOOLS": "Tools - view",
+      "VIEW_TOOL_HISTORY": "Tool issue/return history - view",
       "MANAGE_DEPARTMENTS": "Departments - manage",
       "MANAGE_POSITIONS": "Positions - manage",
       "SYSTEM_SETTINGS": "System settings",
       "VIEW_ADMIN": "Admin panel",
       "VIEW_AUDIT_LOG": "Audit log - view",
-  "VIEW_BHP": "BHP - view",
-  "VIEW_BHP_HISTORY": "BHP issue/return history - view",
+      "VIEW_BHP": "BHP - view",
+      "VIEW_BHP_HISTORY": "BHP issue/return history - view",
       "MANAGE_BHP": "BHP - manage",
+      "VIEW_QUICK_ACTIONS": "Actions - view",
       "DELETE_ISSUE_HISTORY": "Delete issue history",
       "DELETE_RETURN_HISTORY": "Delete return history",
       "DELETE_SERVICE_HISTORY": "Delete service history",
@@ -517,13 +762,6 @@
     "settings": {
       "title": "Settings",
       "subtitle": "Manage system and configuration"
-    },
-    "appConfig": {
-      "card": {
-        "title": "Application settings",
-        "subtitle": "Configure system parameters",
-        "open": "Open settings"
-      }
     },
     "audit": {
       "card": {
@@ -564,6 +802,22 @@
       "deleteReturns": "Delete return history",
       "deleteServiceHistory": "Delete servicing history",
       "deleteEmployees": "Delete employee data"
+    },
+    "toast": {
+      "historyDeleted": "Issue history deleted",
+      "historyDeleteError": "Error deleting history",
+      "employeesDeleted": "All employees deleted",
+      "employeesDeleteError": "Error deleting employees",
+      "serviceHistoryDeleted": "Servicing history deleted",
+      "serviceHistoryDeleteError": "Error deleting servicing history",
+      "toolIssuesHistoryDeleted": "Tool ISSUE history deleted",
+      "toolIssuesHistoryDeleteError": "Error deleting tool issue history",
+      "toolReturnsHistoryDeleted": "Tool RETURN history deleted",
+      "toolReturnsHistoryDeleteError": "Error deleting tool return history",
+      "bhpIssuesHistoryDeleted": "BHP ISSUE history deleted",
+      "bhpIssuesHistoryDeleteError": "Error deleting BHP issue history",
+      "bhpReturnsHistoryDeleted": "BHP RETURN history deleted",
+      "bhpReturnsHistoryDeleteError": "Error deleting BHP return history"
     },
     "modals": {
       "deleteAllIssues": {
@@ -849,6 +1103,58 @@
       "NotReadableError": "Camera is used by another application. Close other apps using the camera.",
       "OverconstrainedError": "Cannot start camera with selected settings. Try again.",
       "Generic": "An error occurred while starting the camera: {message}"
+    }
+  },
+  "tools": {
+    "errors": {
+      "noManagePermission": "No permission to manage tools (MANAGE_TOOLS)",
+      "deleteFailed": "An error occurred while deleting the tool"
+    },
+    "confirm": {
+      "deleteTool": "Are you sure you want to delete this tool?"
+    },
+    "suggestions": { "loadFailed": "Failed to fetch suggestions from backend, using local data" },
+    "prefix": { "loadFailed": "Failed to load tool code prefix" },
+    "service": {
+      "chooseQty": "Choose quantity from 1 to",
+      "sendSuccess": "Sent tools to service",
+      "sendFailed": "Failed to send to service",
+      "receiveNone": "No items in service to receive",
+      "receiveSuccess": "Received from service",
+      "receiveFailed": "Failed to receive from service"
+    },
+    "labels": {
+      "generateError": "Error while generating label",
+      "generateQrError": "Error while generating label (QR)",
+      "generateBarcodeError": "Error while generating label (barcode)",
+      "sku": "SKU",
+      "scanPrompt": "Scan the code to check status",
+      "filenameLabel": "label",
+      "filenameQr": "label-qr",
+      "filenameBarcode": "label-barcode"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "categoryRequired": "Category is required",
+      "quantityMin": "Quantity must be greater than 0",
+      "inventoryInUse": "Inventory number is already in use",
+      "skuExists": "A tool with this SKU already exists",
+      "minStockInvalid": "Invalid minimum stock (number ≥ 0)",
+      "maxStockInvalid": "Invalid maximum stock (number ≥ 0)",
+      "maxLessThanMin": "Maximum stock cannot be less than minimum"
+    },
+    "save": {
+      "updateSuccess": "Tool data updated successfully",
+      "error": "An error occurred while saving the tool"
+    },
+    "weldInspection": {
+      "title": "Welding inspection: ",
+      "in": " in ",
+      "days": " days",
+      "lessEqual30": " (<=30 days)"
+    },
+    "common": {
+      "tool": "tool"
     }
   }
 }

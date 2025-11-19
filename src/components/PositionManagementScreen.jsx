@@ -559,7 +559,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         </div>
                         {position.isMissing && (
                           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                            Brak w bazie
+                            {t('positions.list.statusMissing')}
                           </span>
                         )}
                         <div className="ml-2">
@@ -570,7 +570,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         {position.description}
                       </div>
                       <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        Dział: {position.departmentName}
+                        {t('positions.list.departmentPrefix')}{position.departmentName}
                       </div>
                     </div>
                   </div>
@@ -649,7 +649,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                           errors.departmentId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-gray-600'
                         }`}
                       >
-                        <option value="">Wybierz departament</option>
+                        <option value="">{t('positions.modal.select.department')}</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
@@ -657,13 +657,13 @@ const PositionManagementScreen = ({ apiClient }) => {
                         ))}
                       </select>
                       {errors.departmentId && (
-                        <p className="mt-1 text-sm text-red-600">{errors.departmentId}</p>
+                        <p className="mt-1 text-sm text-red-600">{t('positions.modal.errors.departmentRequired')}</p>
                       )}
                     </div>
 
                     <div>
                       <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Opis
+                        {t('positions.modal.labels.description')}
                       </label>
                       <textarea
                         name="description"
@@ -671,7 +671,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                         rows={3}
                         value={formData.description}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Krótki opis stanowiska"
+                        placeholder={t('positions.modal.placeholders.description')}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
@@ -716,7 +716,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                     type="submit"
                     className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                   >
-                    Zapisz
+                    {t('positions.modal.buttons.save')}
                   </button>
                   <button
                     type="button"
@@ -737,9 +737,9 @@ const PositionManagementScreen = ({ apiClient }) => {
         isOpen={showDeleteModal}
         onClose={() => { if (!deleteLoading) { setShowDeleteModal(false); setDeleteTarget(null); } }}
         onConfirm={handleConfirmDelete}
-        title="Usuń stanowisko"
-        message={`Czy na pewno chcesz usunąć stanowisko "${deleteTarget?.name || ''}"?`}
-        confirmText="Usuń"
+        title={t('positions.delete.title')}
+        message={`${t('positions.delete.message')} "${deleteTarget?.name || ''}"?`}
+        confirmText={t('positions.delete.confirmText')}
         cancelText={t('common.cancel')}
         type="danger"
         loading={deleteLoading}

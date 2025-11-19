@@ -7,8 +7,11 @@ import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import { PERMISSIONS, hasPermission } from '../constants';
 import SkeletonList from './SkeletonList';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function ToolsScreen({ initialSearchTerm = '', user }) {
+  const { t, language } = useLanguage();
+  const locale = language === 'EN' ? 'en-GB' : (language === 'DE' ? 'de-DE' : 'pl-PL');
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -97,7 +100,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
             production_year: Array.isArray(safe.production_year) ? safe.production_year : []
           });
         } catch (e) {
-          console.warn('Nie udało się pobrać sugestii z backendu, używam danych lokalnych');
+          console.warn(t('tools.suggestions.loadFailed'));
         }
       })();
     }
@@ -131,11 +134,12 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const key = `${t.id || t.name}-${t.inspection_date || ''}`;
       if (notifiedUpcomingRef.current.has(key)) return;
       notifiedUpcomingRef.current.add(key);
-
-      const label = t.inventory_number || t.name || 'narzędzie';
-      const message = d <= 7
-        ? `Przegląd spawalniczy: ${label} za ${d} dni`
-        : `Przegląd spawalniczy: ${label} za ${d} dni (<=30 dni)`;
+      const label = t.inventory_number || t.name || t('tools.common.tool');
+      const title = t('tools.weldInspection.title');
+      const inTxt = t('tools.weldInspection.in');
+      const daysTxt = t('tools.weldInspection.days');
+      const extra = d <= 7 ? '' : t('tools.weldInspection.lessEqual30');
+      const message = `${title}${label}${inTxt}${d}${daysTxt}${extra}`;
       if (d <= 7) {
         toast.warn(message);
       } else {
@@ -167,7 +171,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   // Sort tools by inventory number ascending (empty values last)
   const sortedTools = useMemo(() => {
-    const collator = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
+    const collator = new Intl.Collator(locale.startsWith('pl') ? 'pl' : (locale.startsWith('de') ? 'de' : 'en'), { numeric: true, sensitivity: 'base' });
     return [...filteredTools].sort((a, b) => {
       const aInv = String(a.inventory_number || '').trim();
       const bInv = String(b.inventory_number || '').trim();
@@ -214,7 +218,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
         setToolsCodePrefix(tPrefix || '');
         setToolCategoryPrefixes(cfg?.toolCategoryPrefixes || {});
       } catch (err) {
-        console.warn('Nie udało się załadować prefiksu narzędzi', err);
+        console.warn(t('tools.prefix.loadFailed'), err);
       }
     };
     loadPrefixes();
@@ -305,7 +309,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       ));
       setErrors(prev => ({
         ...prev,
-        sku: conflict ? 'Narzędzie o tym SKU już istnieje' : null
+        sku: conflict ? t('tools.validation.skuExists') : null
       }));
     }, 300);
 
@@ -344,15 +348,15 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     const newErrors = {};
     
     if (!formData.name.trim()) {
-      newErrors.name = 'Nazwa jest wymagana';
+      newErrors.name = t('tools.validation.nameRequired');
     }
     
     if (!formData.category.trim()) {
-      newErrors.category = 'Kategoria jest wymagana';
+      newErrors.category = t('tools.validation.categoryRequired');
     }
     
     if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = 'Ilość musi być większa od 0';
+      newErrors.quantity = t('tools.validation.quantityMin');
     }
 
     // Sprawdzenie duplikatu numeru ewidencyjnego na submit
@@ -364,7 +368,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
         t.id !== (editingTool?.id)
       ));
       if (conflict) {
-        newErrors.inventory_number = 'Numer ewidencyjny jest już używany';
+        newErrors.inventory_number = t('tools.validation.inventoryInUse');
       }
     }
     
@@ -399,17 +403,17 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     if (minProvided) {
       minParsed = parseInt(minValRaw, 10);
       if (Number.isNaN(minParsed) || minParsed < 0) {
-        newErrors.min_stock = 'Nieprawidłowy minimalny stan (liczba ≥ 0)';
+        newErrors.min_stock = t('tools.validation.minStockInvalid');
       }
     }
     if (maxProvided) {
       maxParsed = parseInt(maxValRaw, 10);
       if (Number.isNaN(maxParsed) || maxParsed < 0) {
-        newErrors.max_stock = 'Nieprawidłowy maksymalny stan (liczba ≥ 0)';
+        newErrors.max_stock = t('tools.validation.maxStockInvalid');
       }
     }
     if (!newErrors.min_stock && !newErrors.max_stock && minProvided && maxProvided && maxParsed < minParsed) {
-      newErrors.max_stock = 'Maksymalny stan nie może być mniejszy niż minimalny';
+      newErrors.max_stock = t('tools.validation.maxLessThanMin');
     }
     
     return newErrors;
@@ -418,7 +422,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
     
@@ -481,7 +485,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
             tool.id === editingTool.id ? { ...tool, ...dataToSubmit } : tool
           )
         );
-        toast.success('Pomyślnie zaktualizowano dane narzędzia');
+        toast.success(t('tools.save.updateSuccess'));
       } else {
         const response = await api.post('/api/tools', dataToSubmit);
         // API client zwraca bezpośrednio obiekt narzędzia, nie { data }
@@ -491,13 +495,13 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving tool:', error);
-      let apiMsg = 'Wystąpił błąd podczas zapisywania narzędzia';
+      let apiMsg = t('tools.save.error');
       if (error && typeof error.message === 'string' && error.message.trim().length > 0) {
         apiMsg = error.message;
       }
       const normalized = (apiMsg || '').toLowerCase();
       if (normalized.includes('sku') || normalized.includes('unique constraint')) {
-        const msg = 'Narzędzie o tym SKU już istnieje';
+        const msg = t('tools.validation.skuExists');
         setErrors(prev => ({ ...prev, sku: msg }));
         toast.error(msg);
       } else if (normalized.includes('numerze ewidencyjnym') || normalized.includes('inventory')) {
@@ -517,7 +521,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleOpenModal = (tool = null) => {
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
     setEditingTool(tool);
@@ -587,10 +591,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleDelete = async (toolId) => {
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
-    if (!window.confirm('Czy na pewno chcesz usunąć to narzędzie?')) {
+    if (!window.confirm(t('tools.confirm.deleteTool'))) {
       return;
     }
 
@@ -599,7 +603,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       setTools(prevTools => prevTools.filter(tool => tool.id !== toolId));
     } catch (error) {
       console.error('Error deleting tool:', error);
-      alert('Wystąpił błąd podczas usuwania narzędzia');
+      alert(t('tools.errors.deleteFailed'));
     }
   };
 
@@ -610,7 +614,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleOpenServiceModal = (tool) => {
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
     setServiceTool(tool);
@@ -628,13 +632,13 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleConfirmService = async () => {
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
     if (!serviceTool) return;
     const maxQty = (serviceTool.quantity || 0) - (serviceTool.service_quantity || 0);
     if (serviceQuantity < 1 || serviceQuantity > maxQty) {
-      toast.error(`Wybierz ilość od 1 do ${maxQty}`);
+      toast.error(`${t('tools.service.chooseQty')} ${maxQty}`);
       return;
     }
     try {
@@ -644,23 +648,23 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       if (selectedTool?.id === updated.id) {
         setSelectedTool(prev => ({ ...prev, ...updated }));
       }
-      toast.success(resp?.message || 'Wysłano narzędzia na serwis');
+      toast.success(resp?.message || t('tools.service.sendSuccess'));
       handleCloseServiceModal();
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Nie udało się wysłać na serwis';
+      const msg = err?.response?.data?.message || t('tools.service.sendFailed');
       toast.error(msg);
     }
   };
 
   const handleServiceReceive = async () => {
     if (!canManageTools) {
-      toast.error('Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)');
+      toast.error(t('tools.errors.noManagePermission'));
       return;
     }
     if (!selectedTool) return;
     const current = selectedTool.service_quantity || 0;
     if (current <= 0) {
-      toast.info('Brak sztuk w serwisie do odebrania');
+      toast.info(t('tools.service.receiveNone'));
       return;
     }
     try {
@@ -668,9 +672,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const updated = resp?.tool || resp;
       setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
       setSelectedTool(prev => ({ ...prev, ...updated }));
-      toast.success(resp?.message || 'Odebrano z serwisu');
+      toast.success(resp?.message || t('tools.service.receiveSuccess'));
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Nie udało się odebrać z serwisu';
+      const msg = err?.response?.data?.message || t('tools.service.receiveFailed');
       toast.error(msg);
     }
   };
@@ -795,7 +799,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       // SKU (larger font)
       ctx.font = `${18 * scale}px Arial`;
       ctx.shadowColor = 'transparent';
-      ctx.fillText(`SKU: ${tool.sku}`, canvas.width / 2, 70 * scale);
+      ctx.fillText(`${t('tools.labels.sku')}: ${tool.sku}`, canvas.width / 2, 70 * scale);
       
       // Generate and draw QR code
       const qrContent = getToolCodeText(tool);
@@ -815,11 +819,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
               // Add informational text
               ctx.font = `${14 * scale}px Arial`;
               ctx.textAlign = 'center';
-              ctx.fillText('Zeskanuj kod aby sprawdzić status', canvas.width / 2, 280 * scale);
-              
+              ctx.fillText(t('tools.labels.scanPrompt'), canvas.width / 2, 280 * scale);
+
               // Download the image
               const link = document.createElement('a');
-              link.download = `etykieta-${tool.sku}.png`;
+              link.download = `${t('tools.labels.filenameLabel')}-${tool.sku}.png`;
               link.href = canvas.toDataURL('image/png', 1.0);
               link.click();
             };
@@ -830,7 +834,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       }
     } catch (error) {
       console.error('Error generating label:', error);
-      alert('Wystąpił błąd podczas generowania etykiety');
+      alert(t('tools.labels.generateError'));
     }
   };
 
@@ -859,7 +863,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
       // Subtitle: SKU
       ctx.font = `${18 * scale}px Arial`;
-      ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
+      ctx.fillText(`${t('tools.labels.sku')}: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
 
       const qrCodeUrl = await generateQRCode(getToolCodeText(tool) || '', 800);
       if (qrCodeUrl) {
@@ -871,7 +875,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           ctx.drawImage(qrImg, x, y, size, size);
 
           const link = document.createElement('a');
-          link.download = `etykieta-qr-${tool.sku || 'narzędzie'}.png`;
+          link.download = `${t('tools.labels.filenameQr')}-${tool.sku || t('tools.common.tool')}.png`;
           link.href = canvas.toDataURL('image/png', 1.0);
           link.click();
         };
@@ -879,7 +883,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       }
     } catch (error) {
       console.error('Error generating QR-only label:', error);
-      alert('Wystąpił błąd podczas generowania etykiety (QR)');
+      alert(t('tools.labels.generateQrError'));
     }
   };
 
@@ -908,7 +912,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
       // Subtitle: SKU
       ctx.font = `${18 * scale}px Arial`;
-      ctx.fillText(`SKU: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
+      ctx.fillText(`${t('tools.labels.sku')}: ${tool.sku || ''}`, canvas.width / 2, 70 * scale);
 
       const barcodeUrl = generateBarcode(getToolCodeText(tool) || '');
       if (barcodeUrl) {
@@ -921,7 +925,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           ctx.drawImage(barcodeImg, x, y, w, h);
 
           const link = document.createElement('a');
-          link.download = `etykieta-kreskowy-${tool.sku || 'narzędzie'}.png`;
+          link.download = `${t('tools.labels.filenameBarcode')}-${tool.sku || t('tools.common.tool')}.png`;
           link.href = canvas.toDataURL('image/png', 1.0);
           link.click();
         };
@@ -929,7 +933,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       }
     } catch (error) {
       console.error('Error generating barcode-only label:', error);
-      alert('Wystąpił błąd podczas generowania etykiety (kod kreskowy)');
+      alert(t('tools.labels.generateBarcodeError'));
     }
   };
 
@@ -947,7 +951,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   };
 
   const exportListToPDF = () => {
-    const stamp = new Date().toLocaleString('pl-PL');
+    const stamp = new Date().toLocaleString(locale);
     const itemsArr = filteredTools || [];
 
     const headerCells = [

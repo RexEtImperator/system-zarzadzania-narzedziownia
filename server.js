@@ -19,7 +19,6 @@ try {
   ipp = null;
 }
 
-// Inicjalizacja aplikacji Express
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
@@ -32,14 +31,14 @@ const allowedOrigins = [
   'http://127.0.0.1:8082',
   'https://localhost:3000',
   'https://localhost:3001',
-  // Dopuszczamy adresy LAN w trakcie developmentu (np. Expo Web na innym IP)
+  // Allow LAN origins during development (e.g., Expo Web on another IP)
   'http://192.168.10.99:8082',
   'http://192.168.10.99:3000'
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Zezwól na brak origin (np. narzędzia CLI) oraz lokalne/lAN-owe pochodzenia
+    // Allow missing origin (e.g., CLI tools) and local/LAN origins
     const lanPattern = /^http:\/\/192\.168\.\d+\.\d+:\d+$/;
     const localhostPattern = /^https?:\/\/localhost:\d+$/;
     if (!origin || allowedOrigins.includes(origin) || lanPattern.test(origin) || localhostPattern.test(origin)) {
@@ -52,17 +51,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Obsługa preflight dla tras API (Express 5: używamy wyrażenia regularnego)
+// Handle preflight for API routes (Express 5: using a regular expression)
 app.options(/^\/api\/.*$/, cors());
 
 app.use(express.json());
 
-// Połączenie z bazą danych
+// Database connection
 const db = new sqlite3.Database(path.join(__dirname, 'database.db'), (err) => {
   if (err) {
-    console.error('Błąd podczas łączenia z bazą danych:', err.message);
+    console.error('Error connecting to database:', err.message);
   } else {
-    console.log('Połączono z bazą danych SQLite');
+    console.log('Connected to SQLite database');
     initializeDatabase();
   }
 });
@@ -80,9 +79,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Inicjalizacja bazy danych
 function initializeDatabase() {
-  // Tabela konfiguracji aplikacji (ustawienia ogólne)
   db.run(`CREATE TABLE IF NOT EXISTS app_config (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     app_name TEXT NOT NULL,
@@ -98,73 +95,73 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli app_config:', err.message);
+      console.error('Error creating app_config table:', err.message);
     } else {
-      // Dodaj brakujące kolumny jeśli nie istnieją
+      // Add missing columns if they do not exist
       db.all("PRAGMA table_info(app_config)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli app_config:', err.message);
+          console.error('Error checking app_config table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           if (!columnNames.includes('backup_frequency')) {
             db.run('ALTER TABLE app_config ADD COLUMN backup_frequency TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny backup_frequency:', err.message);
+              if (err) console.error('Error adding backup_frequency column:', err.message);
             });
           }
           if (!columnNames.includes('last_backup_at')) {
             db.run('ALTER TABLE app_config ADD COLUMN last_backup_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny last_backup_at:', err.message);
+              if (err) console.error('Error adding last_backup_at column:', err.message);
             });
           }
           if (!columnNames.includes('tools_code_prefix')) {
             db.run('ALTER TABLE app_config ADD COLUMN tools_code_prefix TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny tools_code_prefix:', err.message);
+              if (err) console.error('Error adding tools_code_prefix column:', err.message);
             });
           }
           if (!columnNames.includes('bhp_code_prefix')) {
             db.run('ALTER TABLE app_config ADD COLUMN bhp_code_prefix TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny bhp_code_prefix:', err.message);
+              if (err) console.error('Error adding bhp_code_prefix column:', err.message);
             });
           }
           if (!columnNames.includes('tool_category_prefixes')) {
             db.run('ALTER TABLE app_config ADD COLUMN tool_category_prefixes TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny tool_category_prefixes:', err.message);
+              if (err) console.error('Error adding tool_category_prefixes column:', err.message);
             });
           }
           // SMTP configuration columns
           if (!columnNames.includes('smtp_host')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_host TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_host:', err.message);
+              if (err) console.error('Error adding smtp_host column:', err.message);
             });
           }
           if (!columnNames.includes('smtp_port')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_port INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_port:', err.message);
+              if (err) console.error('Error adding smtp_port column:', err.message);
             });
           }
           if (!columnNames.includes('smtp_secure')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_secure INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_secure:', err.message);
+              if (err) console.error('Error adding smtp_secure column:', err.message);
             });
           }
           if (!columnNames.includes('smtp_user')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_user TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_user:', err.message);
+              if (err) console.error('Error adding smtp_user column:', err.message);
             });
           }
           if (!columnNames.includes('smtp_pass')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_pass TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_pass:', err.message);
+              if (err) console.error('Error adding smtp_pass column:', err.message);
             });
           }
           if (!columnNames.includes('smtp_from')) {
             db.run('ALTER TABLE app_config ADD COLUMN smtp_from TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny smtp_from:', err.message);
+              if (err) console.error('Error adding smtp_from column:', err.message);
             });
           }
-          // Migracja: usuń legacy kolumny code_prefix i default_item_name, jeśli istnieją
+          // Migration: remove legacy columns code_prefix and default_item_name if present
           if (columnNames.includes('code_prefix') || columnNames.includes('default_item_name')) {
-            console.log('Rozpoczynam migrację app_config: usunięcie code_prefix i default_item_name');
+            console.log('Starting app_config migration: removing code_prefix and default_item_name');
             db.serialize(() => {
               db.run('BEGIN TRANSACTION');
               db.run(`CREATE TABLE IF NOT EXISTS app_config_new (
@@ -182,7 +179,7 @@ function initializeDatabase() {
                 updated_at DATETIME DEFAULT (datetime('now'))
               )`, (err1) => {
                 if (err1) {
-                  console.error('Błąd tworzenia app_config_new:', err1.message);
+                  console.error('Error creating app_config_new:', err1.message);
                   db.run('ROLLBACK');
                   return;
                 }
@@ -190,27 +187,27 @@ function initializeDatabase() {
                         SELECT id, app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes, updated_at
                         FROM app_config WHERE id = 1`, (err2) => {
                   if (err2) {
-                    console.error('Błąd kopiowania danych do app_config_new:', err2.message);
+                    console.error('Error copying data to app_config_new:', err2.message);
                     db.run('ROLLBACK');
                     return;
                   }
                   db.run('DROP TABLE app_config', (err3) => {
                     if (err3) {
-                      console.error('Błąd usuwania starej tabeli app_config:', err3.message);
+                      console.error('Error dropping old app_config table:', err3.message);
                       db.run('ROLLBACK');
                       return;
                     }
                     db.run('ALTER TABLE app_config_new RENAME TO app_config', (err4) => {
                       if (err4) {
-                        console.error('Błąd zmiany nazwy app_config_new na app_config:', err4.message);
+                        console.error('Error renaming app_config_new to app_config:', err4.message);
                         db.run('ROLLBACK');
                         return;
                       }
                       db.run('COMMIT', (err5) => {
                         if (err5) {
-                          console.error('Błąd zatwierdzania migracji app_config:', err5.message);
+                          console.error('Error committing app_config migration:', err5.message);
                         } else {
-                          console.log('Migracja app_config zakończona pomyślnie.');
+                          console.log('app_config migration completed successfully.');
                         }
                       });
                     });
@@ -221,17 +218,17 @@ function initializeDatabase() {
           }
         }
       });
-      // Upewnij się, że istnieje rekord z domyślnymi ustawieniami
+      // Ensure a default configuration record exists
       db.get('SELECT COUNT(*) as count FROM app_config WHERE id = 1', [], (err, row) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania app_config:', err.message);
+          console.error('Error checking app_config:', err.message);
         } else if (row.count === 0) {
           db.run(
             `INSERT INTO app_config (id, app_name, company_name, timezone, language, date_format, backup_frequency) 
              VALUES (1, ?, ?, ?, ?, ?, ?)`,
             [
-              'SZN - System Zarządzania Narzędziownią',
-              'Moja Firma',
+              'Management System',
+              'My Company',
               'Europe/Warsaw',
               'pl',
               'DD/MM/YYYY',
@@ -239,9 +236,9 @@ function initializeDatabase() {
             ],
             (err) => {
               if (err) {
-                console.error('Błąd podczas inicjalizacji app_config:', err.message);
+                console.error('Error initializing app_config:', err.message);
               } else {
-                console.log('Zainicjalizowano domyślną konfigurację aplikacji (app_config)');
+                console.log('Initialized default application configuration (app_config)');
               }
             }
           );
@@ -249,9 +246,9 @@ function initializeDatabase() {
       });
     }
   });
-  // Inicjuj harmonogram kopii zapasowych
+
   initBackupScheduler();
-  // Tabela kategorii narzędzi
+
   db.run(`CREATE TABLE IF NOT EXISTS tool_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
@@ -259,23 +256,22 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli tool_categories:', err.message);
+      console.error('Error creating tool_categories table:', err.message);
     } else {
-      // Zainicjuj domyślne kategorie, jeśli tabela jest pusta
       db.get('SELECT COUNT(*) as count FROM tool_categories', [], (err, row) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania tool_categories:', err.message);
+          console.error('Error checking tool_categories:', err.message);
         } else if ((row?.count || 0) === 0) {
-          const defaults = ['Ręczne', 'Elektronarzędzia', 'Spawalnicze', 'Pneumatyczne', 'Akumulatorowe'];
+          const defaults = ['Hand Tools', 'Power Tools', 'Welding', 'Pneumatic', 'Battery Powered'];
           const stmt = db.prepare('INSERT INTO tool_categories (name) VALUES (?)');
           defaults.forEach((name) => stmt.run(name));
           stmt.finalize();
-          console.log('Zainicjalizowano domyślne kategorie narzędzi');
+          console.log('Initialized default tool categories');
         }
       });
     }
   });
-  // Tabela użytkowników
+  // Users table
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -286,61 +282,61 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli users:', err.message);
+      console.error('Error creating users table:', err.message);
     } else {
-      // Sprawdź czy tabela ma nowe kolumny, jeśli nie - dodaj je
+      // Check if the table has new columns; if not, add them
       db.all("PRAGMA table_info(users)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli users:', err.message);
+          console.error('Error checking users table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           
-          // Dodaj brakujące kolumny jeśli nie istnieją
+          // Add missing columns if they don't exist
           if (!columnNames.includes('full_name')) {
             db.run('ALTER TABLE users ADD COLUMN full_name TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny full_name:', err.message);
+              if (err) console.error('Error adding full_name column:', err.message);
             });
           }
           if (!columnNames.includes('created_at')) {
             db.run('ALTER TABLE users ADD COLUMN created_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny created_at:', err.message);
+              if (err) console.error('Error adding created_at column:', err.message);
             });
           }
           if (!columnNames.includes('updated_at')) {
             db.run('ALTER TABLE users ADD COLUMN updated_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny updated_at:', err.message);
+              if (err) console.error('Error adding updated_at column:', err.message);
             });
           }
         }
       });
 
-      // Dodanie domyślnego użytkownika dbrzezinsky/natalka9
-      const hashedPassword = bcrypt.hashSync('natalka9', 10);
+      // Add default user
+      const hashedPassword = bcrypt.hashSync('admin', 5);
       
-      // Poczekaj na dodanie kolumn przed sprawdzeniem użytkownika
+      // Wait for columns to be added before checking the user
       setTimeout(() => {
-        db.get('SELECT * FROM users WHERE username = ?', ['dbrzezinsky'], (err, user) => {
+        db.get('SELECT * FROM users WHERE username = ?', ['admintest'], (err, user) => {
           if (err) {
-            console.error('Błąd podczas sprawdzania użytkownika:', err.message);
+            console.error('Error checking user:', err.message);
           } else if (!user) {
             db.run('INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))', 
-              ['dbrzezinsky', hashedPassword, 'administrator', 'Dawid Brzeziński'], 
+              ['admintest', hashedPassword, 'administrator', 'Gall Anonim'], 
               (err) => {
                 if (err) {
-                  console.error('Błąd podczas dodawania użytkownika dbrzezinsky:', err.message);
+                  console.error('Error adding user admintest:', err.message);
                 } else {
-                  console.log('Dodano domyślnego użytkownika dbrzezinsky');
+                  console.log('Added default user admintest');
                 }
               });
           } else if (!user.full_name) {
-            // Aktualizuj istniejącego użytkownika o brakujące dane
+            // Update existing user with missing data
             db.run('UPDATE users SET full_name = ?, role = ?, updated_at = datetime(\'now\') WHERE username = ?', 
-              ['Dawid Brzeziński', 'administrator', 'dbrzezinsky'], 
+              ['Gall Anonim', 'administrator', 'admintest'], 
               (err) => {
                 if (err) {
-                  console.error('Błąd podczas aktualizacji użytkownika dbrzezinsky:', err.message);
+                  console.error('Error updating user admintest:', err.message);
                 } else {
-                  console.log('Zaktualizowano dane użytkownika dbrzezinsky');
+                  console.log('Updated user admintest');
                 }
               });
           }
@@ -348,8 +344,8 @@ function initializeDatabase() {
       }, 100);
     }
   });
-
-  // Tabela narzędzi
+  
+  // Tools table
   db.run(`CREATE TABLE IF NOT EXISTS tools (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -369,176 +365,170 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli tools:', err.message);
+      console.error('Error creating tools table:', err.message);
     } else {
-      // Sprawdź czy tabela ma nowe kolumny, jeśli nie - dodaj je
+      // Check if the table has new columns; if not, add them
       db.all("PRAGMA table_info(tools)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli:', err.message);
+          console.error('Error checking tools table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           
-          // Dodaj brakujące kolumny jeśli nie istnieją
+          // Add missing columns if they don't exist
           if (!columnNames.includes('sku')) {
             db.run('ALTER TABLE tools ADD COLUMN sku TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny sku:', err.message);
+              if (err) console.error('Error adding sku column:', err.message);
             });
           }
           if (!columnNames.includes('quantity')) {
             db.run('ALTER TABLE tools ADD COLUMN quantity INTEGER DEFAULT 1', (err) => {
-              if (err) console.error('Błąd dodawania kolumny quantity:', err.message);
+              if (err) console.error('Error adding quantity column:', err.message);
             });
           }
           if (!columnNames.includes('description')) {
             db.run('ALTER TABLE tools ADD COLUMN description TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny description:', err.message);
+              if (err) console.error('Error adding description column:', err.message);
             });
           }
           if (!columnNames.includes('barcode')) {
             db.run('ALTER TABLE tools ADD COLUMN barcode TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny barcode:', err.message);
+              if (err) console.error('Error adding barcode column:', err.message);
             });
           }
           if (!columnNames.includes('qr_code')) {
             db.run('ALTER TABLE tools ADD COLUMN qr_code TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny qr_code:', err.message);
+              if (err) console.error('Error adding qr_code column:', err.message);
             });
           }
           if (!columnNames.includes('serial_unreadable')) {
             db.run('ALTER TABLE tools ADD COLUMN serial_unreadable INTEGER DEFAULT 0', (err) => {
-              if (err) console.error('Błąd dodawania kolumny serial_unreadable:', err.message);
+              if (err) console.error('Error adding serial_unreadable column:', err.message);
             });
           }
           if (!columnNames.includes('status')) {
             db.run('ALTER TABLE tools ADD COLUMN status TEXT DEFAULT "dostępne"', (err) => {
-              if (err) console.error('Błąd dodawania kolumny status:', err.message);
+              if (err) console.error('Error adding status column:', err.message);
             });
           }
           if (!columnNames.includes('issued_to_employee_id')) {
             db.run('ALTER TABLE tools ADD COLUMN issued_to_employee_id INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny issued_to_employee_id:', err.message);
+              if (err) console.error('Error adding issued_to_employee_id column:', err.message);
             });
           }
           if (!columnNames.includes('issued_at')) {
             db.run('ALTER TABLE tools ADD COLUMN issued_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny issued_at:', err.message);
+              if (err) console.error('Error adding issued_at column:', err.message);
             });
           }
           if (!columnNames.includes('issued_by_user_id')) {
             db.run('ALTER TABLE tools ADD COLUMN issued_by_user_id INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny issued_by_user_id:', err.message);
+              if (err) console.error('Error adding issued_by_user_id column:', err.message);
             });
           }
           if (!columnNames.includes('serial_number')) {
             db.run('ALTER TABLE tools ADD COLUMN serial_number TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny serial_number:', err.message);
+              if (err) console.error('Error adding serial_number column:', err.message);
             });
           }
           if (!columnNames.includes('inventory_number')) {
             db.run('ALTER TABLE tools ADD COLUMN inventory_number TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny inventory_number:', err.message);
+              if (err) console.error('Error adding inventory_number column:', err.message);
             });
           }
-
-          // Serwis: ilość wysłana na serwis oraz data wysyłki
           if (!columnNames.includes('service_quantity')) {
             db.run('ALTER TABLE tools ADD COLUMN service_quantity INTEGER DEFAULT 0', (err) => {
-              if (err) console.error('Błąd dodawania kolumny service_quantity:', err.message);
+              if (err) console.error('Error adding service_quantity column:', err.message);
             });
           }
           if (!columnNames.includes('service_sent_at')) {
             db.run('ALTER TABLE tools ADD COLUMN service_sent_at DATETIME NULL', (err) => {
-              if (err) console.error('Błąd dodawania kolumny service_sent_at:', err.message);
+              if (err) console.error('Error adding service_sent_at column:', err.message);
             });
           }
           if (!columnNames.includes('service_order_number')) {
             db.run('ALTER TABLE tools ADD COLUMN service_order_number TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny service_order_number:', err.message);
+              if (err) console.error('Error adding service_order_number column:', err.message);
             });
           }
-
-          // Data przeglądu narzędzia
           if (!columnNames.includes('inspection_date')) {
             db.run('ALTER TABLE tools ADD COLUMN inspection_date DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny inspection_date:', err.message);
+              if (err) console.error('Error adding inspection_date column:', err.message);
             });
           }
-
-          // Atrybuty dla kategorii Elektronarzędzia
           if (!columnNames.includes('manufacturer')) {
             db.run('ALTER TABLE tools ADD COLUMN manufacturer TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny manufacturer:', err.message);
+              if (err) console.error('Error adding manufacturer column:', err.message);
             });
           }
           if (!columnNames.includes('model')) {
             db.run('ALTER TABLE tools ADD COLUMN model TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny model:', err.message);
+              if (err) console.error('Error adding model column:', err.message);
             });
           }
           if (!columnNames.includes('production_year')) {
             db.run('ALTER TABLE tools ADD COLUMN production_year INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny production_year:', err.message);
+              if (err) console.error('Error adding production_year column:', err.message);
             });
           }
 
-          // Stany magazynowe dla materiałów zużywalnych
+          // Stock levels for consumables
           if (!columnNames.includes('min_stock')) {
             db.run('ALTER TABLE tools ADD COLUMN min_stock INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny min_stock:', err.message);
+              if (err) console.error('Error adding min_stock column:', err.message);
             });
           }
           if (!columnNames.includes('max_stock')) {
             db.run('ALTER TABLE tools ADD COLUMN max_stock INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny max_stock:', err.message);
+              if (err) console.error('Error adding max_stock column:', err.message);
             });
           }
           if (!columnNames.includes('is_consumable')) {
             db.run('ALTER TABLE tools ADD COLUMN is_consumable INTEGER DEFAULT 0', (err) => {
-              if (err) console.error('Błąd dodawania kolumny is_consumable:', err.message);
+              if (err) console.error('Error adding is_consumable column:', err.message);
             });
           }
 
-          // Utwórz unikalny indeks dla numeru ewidencyjnego (jeśli nie istnieje)
-          // Używamy indeksu częściowego, aby zezwolić na NULL w inventory_number
+          // Create a unique index for inventory_number (if it doesn't exist)
+          // We use a partial index to allow NULL values ​​in inventory_number
           db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_tools_inventory_number_unique ON tools(inventory_number) WHERE inventory_number IS NOT NULL', (err) => {
             if (err) {
-              console.error('Błąd tworzenia unikalnego indeksu dla inventory_number:', err.message);
+              console.error('Error creating unique index for inventory_number:', err.message);
             } else {
-              console.log('Zapewniono unikalny indeks dla inventory_number w tabeli tools');
+              console.log('Ensured unique index for inventory_number in tools table');
             }
           });
         }
       });
 
-      // Dodanie przykładowych narzędzi z nową strukturą
+      // Insert sample tools with the new structure
       db.get('SELECT COUNT(*) as count FROM tools', (err, result) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania narzędzi:', err.message);
+          console.error('Error checking tools:', err.message);
         } else if (result.count === 0) {
           const sampleTools = [
-            ['Wiertarka Bosch', 'QR17590493791001', 2, 'Magazyn A', 'Elektronarzędzia', 'Wiertarka udarowa 18V', 'QR17590493791001', 'QR17590493791001', 'SN-BOSCH-001'],
-            ['Młot pneumatyczny', 'QR17590493791002', 1, 'Budowa 1', 'Pneumatyczne', 'Młot pneumatyczny 5kg', 'QR17590493791002', 'QR17590493791002', 'SN-PNEUM-002'],
-            ['Szlifierka kątowa', 'QR17590493791003', 3, 'Magazyn B', 'Elektronarzędzia', 'Szlifierka 125mm', 'QR17590493791003', 'QR17590493791003', 'SN-SZLIF-003'],
-            ['Spawarka', 'QR17590493791004', 1, 'Magazyn B', 'Spawalnicze', 'Spawarka MIG/MAG 200A', 'QR17590493791004', 'QR17590493791004', 'SN-SPAWN-004'],
-            ['Piła łańcuchowa', 'QR17590493791005', 2, 'Budowa 2', 'Elektronarzędzia', 'Piła łańcuchowa 40cm', 'QR17590493791005', 'QR17590493791005', 'SN-PILA-005']
+            ['Bosch Drill', 'QR17590493791001', 2, 'Warehouse A', 'Power Tools', 'Hammer drill 18V', 'QR17590493791001', 'QR17590493791001', 'SN-BOSCH-001'],
+            ['Pneumatic Hammer', 'QR17590493791002', 1, 'Site 1', 'Pneumatic', 'Pneumatic hammer 5kg', 'QR17590493791002', 'QR17590493791002', 'SN-PNEUM-002'],
+            ['Angle Grinder', 'QR17590493791003', 3, 'Warehouse B', 'Power Tools', 'Grinder 125mm', 'QR17590493791003', 'QR17590493791003', 'SN-GRIND-003'],
+            ['Welder', 'QR17590493791004', 1, 'Warehouse B', 'Welding', 'MIG/MAG welder 200A', 'QR17590493791004', 'QR17590493791004', 'SN-WELD-004'],
+            ['Chainsaw', 'QR17590493791005', 2, 'Site 2', 'Power Tools', 'Chainsaw 40cm', 'QR17590493791005', 'QR17590493791005', 'SN-SAW-005']
           ];
 
           const stmt = db.prepare('INSERT INTO tools (name, sku, quantity, location, category, description, barcode, qr_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
           sampleTools.forEach(tool => {
             stmt.run(tool, (err) => {
               if (err) {
-                console.error('Błąd podczas dodawania narzędzia:', err.message);
+                console.error('Error adding tool:', err.message);
               }
             });
           });
           stmt.finalize();
-          console.log('Dodano przykładowe narzędzia z kodami');
+          console.log('Inserted sample tools with codes');
         }
       });
     }
   });
 
-  // Tabela wydań narzędzi (nowa struktura dla wydawania pojedynczych sztuk)
+// Tool issues table (new structure for issuing single items)
   db.run(`CREATE TABLE IF NOT EXISTS tool_issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tool_id INTEGER NOT NULL,
@@ -553,13 +543,13 @@ function initializeDatabase() {
     FOREIGN KEY (issued_by_user_id) REFERENCES users (id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli tool_issues:', err.message);
+      console.error('Error creating table tool_issues:', err.message);
     } else {
-      console.log('Tabela tool_issues została utworzona lub już istnieje');
+      console.log('Table tool_issues has been created or already exists');
     }
   });
 
-  // Tabela historii serwisowania narzędzi
+// Tool service history table
   db.run(`CREATE TABLE IF NOT EXISTS tool_service_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tool_id INTEGER NOT NULL,
@@ -570,13 +560,13 @@ function initializeDatabase() {
     FOREIGN KEY (tool_id) REFERENCES tools (id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli tool_service_history:', err.message);
+      console.error('Error creating table tool_service_history:', err.message);
     } else {
-      console.log('Tabela tool_service_history została utworzona lub już istnieje');
+      console.log('Table tool_service_history has been created or already exists');
     }
   });
 
-  // Tabela BHP (sprzęt BHP)
+// PPE (BHP) table
   db.run(`CREATE TABLE IF NOT EXISTS bhp (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     inventory_number TEXT UNIQUE NOT NULL,
@@ -594,18 +584,18 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli bhp:', err.message);
+      console.error('Error creating table bhp:', err.message);
     } else {
-      // Sprawdź i dodaj brakujące kolumny
+// Check and add missing columns
       db.all("PRAGMA table_info(bhp)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli bhp:', err.message);
+          console.error('Error checking bhp table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           const ensureColumn = (name, ddl) => {
             if (!columnNames.includes(name)) {
               db.run(`ALTER TABLE bhp ADD COLUMN ${ddl}`, (err) => {
-                if (err) console.error(`Błąd dodawania kolumny ${name}:`, err.message);
+                if (err) console.error(`Error adding column ${name}:`, err.message);
               });
             }
           };
@@ -635,7 +625,7 @@ function initializeDatabase() {
     }
   });
 
-  // Tabela wydań/zwrotów BHP
+// PPE issue/return table
   db.run(`CREATE TABLE IF NOT EXISTS bhp_issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bhp_id INTEGER NOT NULL,
@@ -649,12 +639,12 @@ function initializeDatabase() {
     FOREIGN KEY (issued_by_user_id) REFERENCES users (id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli bhp_issues:', err.message);
+      console.error('Error creating table bhp_issues:', err.message);
     } else {
-      console.log('Tabela bhp_issues została utworzona lub już istnieje');
+      console.log('Table bhp_issues has been created or already exists');
     }
   });
-  // Tabela pracowników
+// Employees table
   db.run(`CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -668,55 +658,55 @@ function initializeDatabase() {
     created_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli employees:', err.message);
+      console.error('Error creating table employees:', err.message);
     } else {
-      // Sprawdź czy tabela ma nowe kolumny, jeśli nie - dodaj je
+// Check if table has new columns; add if missing
       db.all("PRAGMA table_info(employees)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli employees:', err.message);
+          console.error('Error checking employees table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           
-          // Dodaj brakujące kolumny jeśli nie istnieją
+// Add missing columns if they do not exist
           if (!columnNames.includes('first_name')) {
             db.run('ALTER TABLE employees ADD COLUMN first_name TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny first_name:', err.message);
+              if (err) console.error('Error adding column first_name:', err.message);
             });
           }
           if (!columnNames.includes('last_name')) {
             db.run('ALTER TABLE employees ADD COLUMN last_name TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny last_name:', err.message);
+              if (err) console.error('Error adding column last_name:', err.message);
             });
           }
           if (!columnNames.includes('phone')) {
             db.run('ALTER TABLE employees ADD COLUMN phone TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny phone:', err.message);
+              if (err) console.error('Error adding column phone:', err.message);
             });
           }
           if (!columnNames.includes('created_at')) {
             db.run('ALTER TABLE employees ADD COLUMN created_at DATETIME DEFAULT (datetime(\'now\'))', (err) => {
-              if (err) console.error('Błąd dodawania kolumny created_at:', err.message);
+              if (err) console.error('Error adding column created_at:', err.message);
             });
           }
           if (!columnNames.includes('brand_number')) {
             db.run('ALTER TABLE employees ADD COLUMN brand_number TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny brand_number:', err.message);
+              if (err) console.error('Error adding column brand_number:', err.message);
             });
           }
           if (!columnNames.includes('email')) {
             db.run('ALTER TABLE employees ADD COLUMN email TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny email:', err.message);
+              if (err) console.error('Error adding column email:', err.message);
             });
           }
           if (!columnNames.includes('login')) {
             db.run('ALTER TABLE employees ADD COLUMN login TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny login:', err.message);
+              if (err) console.error('Error adding column login:', err.message);
             });
           }
         }
       });
 
-      // Dodanie prawdziwych pracowników
+// Insert real employees
       const realEmployees = [
         ['Dawid', 'Brzeziński', '+48 516 991 404', 'Narzędziowiec', 'Narzędziownia', '43'],
         ['Piotr', 'Mędela', '+48 661 916 914', 'Narzędziowiec', 'Narzędziownia', '-'],
@@ -724,24 +714,24 @@ function initializeDatabase() {
 
       db.get('SELECT COUNT(*) as count FROM employees', (err, result) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania pracowników:', err.message);
+          console.error('Error checking employees:', err.message);
         } else if (result.count === 0) {
           const stmt = db.prepare('INSERT INTO employees (first_name, last_name, phone, position, department, brand_number) VALUES (?, ?, ?, ?, ?, ?)');
           realEmployees.forEach(employee => {
             stmt.run(employee, (err) => {
               if (err) {
-                console.error('Błąd podczas dodawania pracownika:', err.message);
+                console.error('Error adding employee:', err.message);
               }
             });
           });
           stmt.finalize();
-          console.log('Dodano prawdziwych pracowników');
+          console.log('Added real employees');
         }
       });
     }
   });
 
-  // Tabela logów audytu
+// Audit logs table
   db.run(`CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -754,31 +744,31 @@ function initializeDatabase() {
     FOREIGN KEY (user_id) REFERENCES users (id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli audit_logs:', err.message);
+      console.error('Error creating table audit_logs:', err.message);
     } else {
-      console.log('Tabela audit_logs została utworzona lub już istnieje');
-      // Migracja: dodaj brakujące kolumny w audit_logs
+      console.log('Table audit_logs has been created or already exists');
+// Migration: add missing columns in audit_logs
       db.all("PRAGMA table_info(audit_logs)", (infoErr, columns) => {
         if (infoErr) {
-          console.error('Błąd podczas sprawdzania struktury tabeli audit_logs:', infoErr.message);
+          console.error('Error checking audit_logs table structure:', infoErr.message);
           return;
         }
         const columnNames = (columns || []).map(c => c.name);
         if (!columnNames.includes('target_type')) {
           db.run('ALTER TABLE audit_logs ADD COLUMN target_type TEXT', (alterErr) => {
-            if (alterErr) console.error('Błąd dodawania kolumny target_type:', alterErr.message);
+            if (alterErr) console.error('Error adding column target_type:', alterErr.message);
           });
         }
         if (!columnNames.includes('target_id')) {
           db.run('ALTER TABLE audit_logs ADD COLUMN target_id TEXT', (alterErr) => {
-            if (alterErr) console.error('Błąd dodawania kolumny target_id:', alterErr.message);
+            if (alterErr) console.error('Error adding column target_id:', alterErr.message);
           });
         }
       });
     }
   });
 
-  // Tabela działów
+// Departments table
   db.run(`CREATE TABLE IF NOT EXISTS departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
@@ -786,34 +776,34 @@ function initializeDatabase() {
     created_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli departments:', err.message);
+      console.error('Error creating table departments:', err.message);
     } else {
-      console.log('Tabela departments została utworzona lub już istnieje');
-      // Dodaj brakujące kolumny jeśli nie istnieją
+      console.log('Table departments has been created or already exists');
+// Add missing columns if they do not exist
       db.all("PRAGMA table_info(departments)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli departments:', err.message);
+          console.error('Error checking departments table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           if (!columnNames.includes('manager_id')) {
             db.run('ALTER TABLE departments ADD COLUMN manager_id INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny manager_id:', err.message);
+              if (err) console.error('Error adding column manager_id:', err.message);
             });
           }
           if (!columnNames.includes('status')) {
             db.run('ALTER TABLE departments ADD COLUMN status TEXT DEFAULT "active"', (err) => {
-              if (err) console.error('Błąd dodawania kolumny status:', err.message);
+              if (err) console.error('Error adding column status:', err.message);
             });
           }
           if (!columnNames.includes('updated_at')) {
             db.run('ALTER TABLE departments ADD COLUMN updated_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny updated_at:', err.message);
+              if (err) console.error('Error adding column updated_at:', err.message);
             });
           }
 
-          // Migracja: ustaw status='active' dla istniejących rekordów bez statusu
+// Migration: set status='active' for existing records without status
           db.run('UPDATE departments SET status = COALESCE(NULLIF(status, ""), "active") WHERE status IS NULL OR TRIM(status) = ""', (err) => {
-            if (err) console.error('Błąd migracji status w departments:', err.message);
+            if (err) console.error('Error migrating status in departments:', err.message);
           });
         }
       });
@@ -828,51 +818,51 @@ function initializeDatabase() {
     created_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli positions:', err.message);
+      console.error('Error creating table positions:', err.message);
     } else {
-      console.log('Tabela positions została utworzona lub już istnieje');
-      // Dodaj brakujące kolumny jeśli nie istnieją
+      console.log('Table positions has been created or already exists');
+// Add missing columns if they do not exist
       db.all("PRAGMA table_info(positions)", (err, columns) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania struktury tabeli positions:', err.message);
+          console.error('Error checking positions table structure:', err.message);
         } else {
           const columnNames = columns.map(col => col.name);
           if (!columnNames.includes('description')) {
             db.run('ALTER TABLE positions ADD COLUMN description TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny description:', err.message);
+              if (err) console.error('Error adding column description:', err.message);
             });
           }
           if (!columnNames.includes('department_id')) {
             db.run('ALTER TABLE positions ADD COLUMN department_id INTEGER', (err) => {
-              if (err) console.error('Błąd dodawania kolumny department_id:', err.message);
+              if (err) console.error('Error adding column department_id:', err.message);
             });
           }
           if (!columnNames.includes('requirements')) {
             db.run('ALTER TABLE positions ADD COLUMN requirements TEXT', (err) => {
-              if (err) console.error('Błąd dodawania kolumny requirements:', err.message);
+              if (err) console.error('Error adding column requirements:', err.message);
             });
           }
           if (!columnNames.includes('status')) {
             db.run('ALTER TABLE positions ADD COLUMN status TEXT DEFAULT "active"', (err) => {
-              if (err) console.error('Błąd dodawania kolumny status:', err.message);
+              if (err) console.error('Error adding column status:', err.message);
             });
           }
           if (!columnNames.includes('updated_at')) {
             db.run('ALTER TABLE positions ADD COLUMN updated_at DATETIME', (err) => {
-              if (err) console.error('Błąd dodawania kolumny updated_at:', err.message);
+              if (err) console.error('Error adding column updated_at:', err.message);
             });
           }
 
-          // Migracja: ustaw status='active' dla istniejących rekordów bez statusu
+// Migration: set status='active' for existing records without status
           db.run('UPDATE positions SET status = COALESCE(NULLIF(status, ""), "active") WHERE status IS NULL OR TRIM(status) = ""', (err) => {
-            if (err) console.error('Błąd migracji status w positions:', err.message);
+            if (err) console.error('Error migrating status in positions:', err.message);
           });
         }
       });
     }
   });
 
-  // Tabela uprawnień ról
+// Role permissions table
   db.run(`CREATE TABLE IF NOT EXISTS role_permissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     role TEXT NOT NULL,
@@ -881,11 +871,11 @@ function initializeDatabase() {
     UNIQUE(role, permission)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli role_permissions:', err.message);
+      console.error('Error creating table role_permissions:', err.message);
     } else {
-      console.log('Tabela role_permissions została utworzona lub już istnieje');
+      console.log('Table role_permissions has been created or already exists');
       
-      // Inicjalizacja domyślnych uprawnień dla ról (bez roli 'viewer')
+// Initialize default role permissions (excluding 'viewer' role)
       const defaultPermissions = {
         'administrator': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'DELETE_USERS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_TOOL_HISTORY', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'SYSTEM_SETTINGS', 'VIEW_ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOG', 'VIEW_BHP', 'VIEW_BHP_HISTORY', 'MANAGE_BHP', 'VIEW_QUICK_ACTIONS', 'DELETE_ISSUE_HISTORY', 'DELETE_RETURN_HISTORY', 'DELETE_SERVICE_HISTORY', 'MANAGE_EMPLOYEES', 'VIEW_DATABASE', 'MANAGE_DATABASE', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_DELETE_CORRECTION', 'INVENTORY_EXPORT_CSV'],
         'manager': ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS', 'MANAGE_DEPARTMENTS', 'MANAGE_POSITIONS', 'VIEW_ANALYTICS', 'VIEW_TOOLS', 'VIEW_TOOL_HISTORY', 'VIEW_BHP', 'VIEW_BHP_HISTORY', 'MANAGE_BHP', 'VIEW_QUICK_ACTIONS', 'MANAGE_EMPLOYEES', 'VIEW_INVENTORY', 'INVENTORY_MANAGE_SESSIONS', 'INVENTORY_SCAN', 'INVENTORY_ACCEPT_CORRECTION', 'INVENTORY_EXPORT_CSV'],
@@ -894,10 +884,10 @@ function initializeDatabase() {
         'user': []
       };
 
-      // Jeśli tabela role_permissions jest pusta, zasiej domyślne uprawnienia
+// Seed default permissions if role_permissions table is empty
       db.get('SELECT COUNT(*) as count FROM role_permissions', [], (countErr, row) => {
         if (countErr) {
-          console.error('Błąd podczas sprawdzania role_permissions:', countErr.message);
+          console.error('Error checking role_permissions:', countErr.message);
         } else if ((row?.count || 0) === 0) {
           db.serialize(() => {
             const stmt = db.prepare('INSERT INTO role_permissions (role, permission) VALUES (?, ?)');
@@ -907,9 +897,9 @@ function initializeDatabase() {
                   stmt.run([role, perm]);
                 });
               });
-              console.log('Zainicjalizowano domyślne uprawnienia ról w role_permissions');
+              console.log('Initialized default role permissions in role_permissions');
             } catch (seedErr) {
-              console.error('Błąd podczas inicjalizacji uprawnień ról:', seedErr.message);
+              console.error('Error initializing role permissions:', seedErr.message);
             } finally {
               stmt.finalize();
             }
@@ -918,7 +908,7 @@ function initializeDatabase() {
       });
     }
   });
-  // ===== Tabele inwentaryzacji =====
+  // ===== Inventory tables =====
   db.run(`CREATE TABLE IF NOT EXISTS inventory_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -930,9 +920,9 @@ function initializeDatabase() {
     notes TEXT
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli inventory_sessions:', err.message);
+      console.error('Error creating table inventory_sessions:', err.message);
     } else {
-      console.log('Tabela inventory_sessions została utworzona lub już istnieje');
+      console.log('Table inventory_sessions has been created or already exists');
     }
   });
 
@@ -949,9 +939,9 @@ function initializeDatabase() {
     FOREIGN KEY (tool_id) REFERENCES tools(id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli inventory_counts:', err.message);
+      console.error('Error creating table inventory_counts:', err.message);
     } else {
-      console.log('Tabela inventory_counts została utworzona lub już istnieje');
+      console.log('Table inventory_counts has been created or already exists');
       db.run('CREATE INDEX IF NOT EXISTS idx_inventory_counts_session ON inventory_counts(session_id)');
       db.run('CREATE INDEX IF NOT EXISTS idx_inventory_counts_tool ON inventory_counts(tool_id)');
     }
@@ -970,13 +960,13 @@ function initializeDatabase() {
     FOREIGN KEY (tool_id) REFERENCES tools(id)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli inventory_corrections:', err.message);
+      console.error('Error creating table inventory_corrections:', err.message);
     } else {
-      console.log('Tabela inventory_corrections została utworzona lub już istnieje');
+      console.log('Table inventory_corrections has been created or already exists');
     }
   });
 
-  // Tabela zgłoszeń (reports)
+  // Reports table
   db.run(`CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_by_user_id INTEGER,
@@ -995,25 +985,25 @@ function initializeDatabase() {
     updated_at DATETIME DEFAULT (datetime('now'))
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli reports:', err.message);
+      console.error('Error creating table reports:', err.message);
     } else {
       db.run('CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type)');
       db.run('CREATE INDEX IF NOT EXISTS idx_reports_severity ON reports(severity)');
       db.run('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
-      console.log('Tabela reports została utworzona lub już istnieje');
-      // Upewnij się, że brakujące kolumny zostaną dodane (migracje w locie)
+      console.log('Table reports has been created or already exists');
+      // Ensure missing columns are added (on-the-fly migrations)
       db.all("PRAGMA table_info(reports)", (infoErr, columns) => {
         if (infoErr) {
-          console.error('Błąd sprawdzania struktury reports:', infoErr.message);
+          console.error('Error checking reports table structure:', infoErr.message);
           return;
         }
         const names = (columns || []).map(c => c.name);
         if (!names.includes('employee_name_manual')) {
           db.run('ALTER TABLE reports ADD COLUMN employee_name_manual TEXT', (alterErr) => {
             if (alterErr) {
-              console.error('Błąd dodawania kolumny employee_name_manual:', alterErr.message);
+              console.error('Error adding column employee_name_manual:', alterErr.message);
             } else {
-              console.log('Dodano kolumnę employee_name_manual do tabeli reports');
+              console.log('Added column employee_name_manual to reports table');
             }
           });
         }
@@ -1021,7 +1011,7 @@ function initializeDatabase() {
     }
   });
 
-  // Tabela tłumaczeń i18n (przechowuje nadpisania kluczy dla języków)
+  // i18n translations table (stores language key overrides)
   db.run(`CREATE TABLE IF NOT EXISTS translate (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lang TEXT NOT NULL,
@@ -1031,14 +1021,14 @@ function initializeDatabase() {
     UNIQUE(lang, key)
   )`, (err) => {
     if (err) {
-      console.error('Błąd podczas tworzenia tabeli translate:', err.message);
+      console.error('Error creating table translate:', err.message);
     } else {
       seedTranslationsFromFiles();
     }
   });
 }
 
-// Helpery do flatten/unflatten obiektów JSON (kropkowane klucze)
+// Helpers to flatten/unflatten JSON objects (dot keys)
 function flattenObject(obj, prefix = '') {
   const result = {};
   for (const [key, value] of Object.entries(obj || {})) {
@@ -1057,7 +1047,7 @@ function readJsonSafe(jsonPath) {
     const raw = fs.readFileSync(jsonPath, 'utf8');
     return JSON.parse(raw);
   } catch (e) {
-    console.error('Nie udało się odczytać pliku JSON:', jsonPath, e.message);
+    console.error('Failed to read JSON file:', jsonPath, e.message);
     return {};
   }
 }
@@ -1066,12 +1056,12 @@ function seedTranslationsFromFiles() {
   try {
     db.get('SELECT COUNT(*) as cnt FROM translate', [], (err, row) => {
       if (err) {
-        console.error('Błąd podczas sprawdzania zawartości translate:', err.message);
+        console.error('Error checking translate table contents:', err.message);
         return;
       }
       const cnt = row?.cnt || 0;
       if (cnt > 0) {
-        return; // Już istnieją rekordy, nie seeduj ponownie
+        return; // Records exist already; do not reseed
       }
       const plPath = path.join(__dirname, 'src', 'i18n', 'pl.json');
       const enPath = path.join(__dirname, 'src', 'i18n', 'en.json');
@@ -1095,20 +1085,20 @@ function seedTranslationsFromFiles() {
         }
         insertStmt.finalize();
       });
-      console.log('Zasiano tłumaczenia z plików i18n do tabeli translate');
+      console.log('Seeded translations from i18n files into translate table');
     });
   } catch (e) {
-    console.error('Błąd podczas seeda tłumaczeń:', e.message);
+    console.error('Error seeding translations:', e.message);
   }
 }
 
-// Middleware do weryfikacji tokenu JWT
+// JWT token verification middleware
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ message: 'Brak tokenu uwierzytelniającego' });
+    return res.status(401).json({ message: 'Missing authentication token' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -1119,18 +1109,18 @@ function authenticateToken(req, res, next) {
         authHeader,
         tokenSnippet: token ? token.substring(0, 20) + '...' : null
       });
-      return res.status(403).json({ message: 'Nieprawidłowy token' });
+      return res.status(403).json({ message: 'Invalid token' });
     }
     req.user = user;
     next();
   });
 }
 
-// Pomocnicza funkcja: upewnij się, że tabela departments ma wymagane kolumny
+// Helper function: ensure departments table has required columns
 function ensureDepartmentColumns(callback) {
   db.all("PRAGMA table_info(departments)", (err, columns) => {
     if (err) {
-      console.error('Błąd podczas sprawdzania struktury tabeli departments:', err.message);
+      console.error('Error checking departments table structure:', err.message);
       return callback && callback(err);
     }
     const columnNames = columns.map(col => col.name);
@@ -1155,7 +1145,7 @@ function ensureDepartmentColumns(callback) {
       const task = tasks.shift();
       db.run(task.sql, (alterErr) => {
         if (alterErr && !String(alterErr.message).toLowerCase().includes('duplicate column')) {
-          console.error(`Błąd dodawania kolumny ${task.name}:`, alterErr.message);
+          console.error(`Error adding column ${task.name}:`, alterErr.message);
         }
         runNext();
       });
@@ -1164,7 +1154,7 @@ function ensureDepartmentColumns(callback) {
   });
 }
 
-// Endpoint logowania
+// Login endpoint
 app.post('/api/login', (req, res) => {
   console.log('=== LOGIN REQUEST ===');
   console.log('Headers:', req.headers);
@@ -1178,29 +1168,29 @@ app.post('/api/login', (req, res) => {
 
   if (!username || !password) {
     console.log('Missing username or password');
-    return res.status(400).json({ message: 'Wymagane są nazwa użytkownika i hasło' });
+    return res.status(400).json({ message: 'Username and password are required' });
   }
 
   db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
     if (err) {
       console.log('Database error:', err);
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
 
     if (!user) {
       console.log('User not found:', username);
-      return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło' });
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     const passwordIsValid = bcrypt.compareSync(password, user.password);
     console.log('Password valid:', passwordIsValid);
 
     if (!passwordIsValid) {
-      return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło' });
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, {
-      expiresIn: 86400 // 24 godziny
+      expiresIn: 86400 // 24 hours
     });
 
     console.log('Login successful for user:', username);
@@ -1214,7 +1204,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Endpoint pobierania wszystkich wydań narzędzi z paginacją
+// Fetch all tool issues with pagination
 app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HISTORY'), (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -1234,11 +1224,11 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
     whereParams.push(employee_id);
   }
   if (isEmployeeRole) {
-    // Pracownik widzi tylko własną historię (mapowanie po login -> employees.login)
+// Employee sees only own history (login → employees.login mapping)
     return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (err, row) => {
       if (err) {
-        console.error('Błąd przy mapowaniu użytkownika na pracownika:', err);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        console.error('Error mapping user to employee:', err);
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       if (!row || !row.id) {
         return res.json({
@@ -1281,15 +1271,15 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
       `;
       db.get(countQueryLocal, whereParams, (err2, countResult) => {
         if (err2) {
-          console.error('Błąd przy pobieraniu liczby wydań narzędzi:', err2);
-          return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+          console.error('Error fetching tool issues count:', err2);
+          return res.status(500).json({ message: 'Server error', error: err2.message });
         }
         const total = countResult.total;
         const totalPages = Math.ceil(total / limit);
         db.all(dataQueryLocal, [...whereParams, limit, offset], (err3, issues) => {
           if (err3) {
-            console.error('Błąd przy pobieraniu wydań narzędzi:', err3);
-            return res.status(500).json({ message: 'Błąd serwera', error: err3.message });
+            console.error('Error fetching tool issues:', err3);
+            return res.status(500).json({ message: 'Server error', error: err3.message });
           }
           return res.json({
             data: issues,
@@ -1335,8 +1325,8 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
 
   db.get(countQuery, whereParams, (err, countResult) => {
     if (err) {
-      console.error('Błąd przy pobieraniu liczby wydań narzędzi:', err);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      console.error('Error fetching tool issues count:', err);
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
     const total = countResult.total;
@@ -1344,8 +1334,8 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
 
     db.all(dataQuery, [...whereParams, limit, offset], (err, issues) => {
       if (err) {
-        console.error('Błąd przy pobieraniu wydań narzędzi:', err);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        console.error('Error fetching tool issues:', err);
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
       res.json({
@@ -1363,7 +1353,7 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
   });
 });
 
-// Endpoint pobierania wszystkich wydań/zwrotów BHP z paginacją
+// Endpoint: fetch all PPE issues/returns with pagination
 app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTORY'), (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -1384,8 +1374,8 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
   if (isEmployeeRole) {
     return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (err, row) => {
       if (err) {
-        console.error('Błąd przy mapowaniu użytkownika na pracownika (BHP):', err);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        console.error('Error mapping user to employee (BHP):', err);
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       if (!row || !row.id) {
         return res.json({
@@ -1429,15 +1419,15 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
       `;
       db.get(countQueryLocal, whereParams, (err2, countResult) => {
         if (err2) {
-          console.error('Błąd przy pobieraniu liczby wydań BHP:', err2);
-          return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+          console.error('Error fetching BHP issues count:', err2);
+          return res.status(500).json({ message: 'Server error', error: err2.message });
         }
         const total = countResult.total;
         const totalPages = Math.ceil(total / limit);
         db.all(dataQueryLocal, [...whereParams, limit, offset], (err3, issues) => {
           if (err3) {
-            console.error('Błąd przy pobieraniu wydań BHP:', err3);
-            return res.status(500).json({ message: 'Błąd serwera', error: err3.message });
+            console.error('Error fetching BHP issues:', err3);
+            return res.status(500).json({ message: 'Server error', error: err3.message });
           }
           return res.json({
             data: issues,
@@ -1484,8 +1474,8 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
 
   db.get(countQuery, whereParams, (err, countResult) => {
     if (err) {
-      console.error('Błąd przy pobieraniu liczby wydań BHP:', err);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      console.error('Error fetching BHP issues count:', err);
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
     const total = countResult.total;
@@ -1493,8 +1483,8 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
 
     db.all(dataQuery, [...whereParams, limit, offset], (err, issues) => {
       if (err) {
-        console.error('Błąd przy pobieraniu wydań BHP:', err);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        console.error('Error fetching BHP issues:', err);
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
       res.json({
@@ -1512,16 +1502,16 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
   });
 });
 
-// Endpoint rejestracji (tylko dla administratorów)
+// Registration endpoint (administrators only)
 app.post('/api/register', authenticateToken, (req, res) => {
   const { username, password, role } = req.body;
 
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Tylko administrator może dodawać nowych użytkowników' });
+    return res.status(403).json({ message: 'Only administrators can add new users' });
   }
 
   if (!username || !password || !role) {
-    return res.status(400).json({ message: 'Wszystkie pola są wymagane' });
+    return res.status(400).json({ message: 'All fields are required' });
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -1531,16 +1521,16 @@ app.post('/api/register', authenticateToken, (req, res) => {
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ message: 'Użytkownik o tej nazwie już istnieje' });
+          return res.status(400).json({ message: 'User with this username already exists' });
         }
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
 
-      res.status(201).json({ message: 'Użytkownik został zarejestrowany', id: this.lastID });
+      res.status(201).json({ message: 'User registered successfully', id: this.lastID });
     });
 });
 
-// Endpoint wyszukiwania narzędzia po kodzie kreskowym/QR
+// Endpoint: search tool by barcode/QR
 app.get('/api/tools/search', authenticateToken, (req, res) => {
   console.log('=== TOOLS SEARCH REQUEST ===');
   console.log('Query params:', req.query);
@@ -1550,26 +1540,26 @@ app.get('/api/tools/search', authenticateToken, (req, res) => {
   
   if (!code) {
     console.log('No code provided');
-    return res.status(400).json({ message: 'Kod jest wymagany' });
+    return res.status(400).json({ message: 'Code is required' });
   }
 
   console.log('Searching for tool with code:', code);
 
-  // Wyszukaj narzędzie po SKU, kodzie kreskowym lub kodzie QR
+// Search tool by SKU, barcode or QR code
   db.get(
     'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? OR inventory_number = ? LIMIT 1',
     [code, code, code, code],
     (err, tool) => {
       if (err) {
-        console.error('Błąd podczas wyszukiwania narzędzia:', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error searching for tool:', err);
+        return res.status(500).json({ message: 'Server error' });
       }
       
       console.log('Search result:', tool);
       
       if (!tool) {
         console.log('No tool found for code:', code);
-        return res.status(404).json({ message: 'Nie znaleziono narzędzia o podanym kodzie' });
+        return res.status(404).json({ message: 'Tool not found for the given code' });
       }
       
       console.log('Returning tool:', tool);
@@ -1578,21 +1568,21 @@ app.get('/api/tools/search', authenticateToken, (req, res) => {
   );
 });
 
-// Endpoint pobierania narzędzi
+// Tools fetch endpoint
 app.get('/api/tools', authenticateToken, (req, res) => {
   db.all('SELECT * FROM tools', [], (err, tools) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     res.status(200).json(tools);
   });
 });
 
-// Endpoint sugestii dla narzędzi (distinct producent/model/rok produkcji) dla podanej kategorii
+// Tool suggestions endpoint (distinct manufacturer/model/year) for given category
 app.get('/api/tools/suggestions', authenticateToken, (req, res) => {
   const rawCategory = (req.query.category || '').trim();
   if (!rawCategory) {
-    return res.status(400).json({ message: 'Parametr category jest wymagany' });
+    return res.status(400).json({ message: 'Category parameter is required' });
   }
   const sqlManufacturer = 'SELECT DISTINCT manufacturer FROM tools WHERE manufacturer IS NOT NULL AND TRIM(manufacturer) <> "" AND LOWER(category) = LOWER(?) ORDER BY manufacturer COLLATE NOCASE';
   const sqlModel = 'SELECT DISTINCT model FROM tools WHERE model IS NOT NULL AND TRIM(model) <> "" AND LOWER(category) = LOWER(?) ORDER BY model COLLATE NOCASE';
@@ -1602,17 +1592,17 @@ app.get('/api/tools/suggestions', authenticateToken, (req, res) => {
 
   db.all(sqlManufacturer, [rawCategory], (errM, rowsM) => {
     if (errM) {
-      return res.status(500).json({ message: 'Błąd serwera', error: errM.message });
+      return res.status(500).json({ message: 'Server error', error: errM.message });
     }
     out.manufacturer = (rowsM || []).map(r => r.manufacturer).filter(v => typeof v === 'string');
     db.all(sqlModel, [rawCategory], (errMo, rowsMo) => {
       if (errMo) {
-        return res.status(500).json({ message: 'Błąd serwera', error: errMo.message });
+        return res.status(500).json({ message: 'Server error', error: errMo.message });
       }
       out.model = (rowsMo || []).map(r => r.model).filter(v => typeof v === 'string');
       db.all(sqlYear, [rawCategory], (errY, rowsY) => {
         if (errY) {
-          return res.status(500).json({ message: 'Błąd serwera', error: errY.message });
+          return res.status(500).json({ message: 'Server error', error: errY.message });
         }
         out.production_year = (rowsY || []).map(r => r.production_year).filter(v => v !== null && v !== undefined);
         res.json(out);
@@ -1621,29 +1611,29 @@ app.get('/api/tools/suggestions', authenticateToken, (req, res) => {
   });
 });
 
-// Endpoint dodawania narzędzia
+// Endpoint: add tool
 app.post('/api/tools', authenticateToken, (req, res) => {
   const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, inventory_number, inspection_date, min_stock, max_stock, is_consumable, manufacturer, model, production_year } = req.body;
 
   if (!name || !sku) {
-    return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
+    return res.status(400).json({ message: 'Name and SKU are required' });
   }
 
-  // Wymagaj numeru fabrycznego, chyba że zaznaczono, że jest nieczytelny
+// Require serial number unless marked as illegible
   const serialProvided = serial_number && String(serial_number).trim().length > 0;
   const unreadableFlag = !!serial_unreadable;
   if (!serialProvided && !unreadableFlag) {
-    return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
+    return res.status(400).json({ message: 'Factory serial number is required or mark as unreadable' });
   }
 
-  // Walidacja stanów magazynowych
+// Validate stock levels
   const minStockSan = (min_stock === '' || min_stock === null || typeof min_stock === 'undefined') ? null : Math.max(0, parseInt(min_stock, 10));
   const maxStockSan = (max_stock === '' || max_stock === null || typeof max_stock === 'undefined') ? null : Math.max(0, parseInt(max_stock, 10));
   if (minStockSan !== null && maxStockSan !== null && maxStockSan < minStockSan) {
-    return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
+    return res.status(400).json({ message: 'Maximum stock cannot be less than minimum stock' });
   }
 
-  // Normalizuj rok produkcji: może być pusty lub liczba całkowita
+// Normalize production year: empty or integer
   let prodYearSan = null;
   if (typeof production_year !== 'undefined' && production_year !== null && String(production_year).trim() !== '') {
     const parsed = parseInt(production_year, 10);
@@ -1658,18 +1648,18 @@ app.post('/api/tools', authenticateToken, (req, res) => {
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
-          return res.status(400).json({ message: 'Narzędzie o tym numerze ewidencyjnym już istnieje' });
+          return res.status(400).json({ message: 'Tool with this inventory number already exists' });
         }
         if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ message: 'Narzędzie o tym SKU już istnieje' });
+          return res.status(400).json({ message: 'Tool with this SKU already exists' });
         }
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       
-      // Pobierz pełne dane dodanego narzędzia
+      // Fetch full data of the inserted tool
       db.get('SELECT * FROM tools WHERE id = ?', [this.lastID], (err, tool) => {
         if (err) {
-          return res.status(500).json({ message: 'Błąd podczas pobierania danych narzędzia' });
+          return res.status(500).json({ message: 'Error fetching tool data' });
         }
         res.status(201).json(tool);
       });
@@ -1677,27 +1667,27 @@ app.post('/api/tools', authenticateToken, (req, res) => {
   );
 });
 
-// Endpoint aktualizacji narzędzia
+// Endpoint: update tool
 app.put('/api/tools/:id', authenticateToken, (req, res) => {
   const { name, sku, quantity, location, category, description, barcode, qr_code, serial_number, serial_unreadable, status, inventory_number, inspection_date, min_stock, max_stock, is_consumable, manufacturer, model, production_year } = req.body;
   const id = req.params.id;
 
   if (!name || !sku) {
-    return res.status(400).json({ message: 'Wymagane są nazwa i SKU' });
+    return res.status(400).json({ message: 'Name and SKU are required' });
   }
 
-  // W edycji: jeśli numer fabryczny pusty, wymagaj zaznaczenia nieczytelności
+// On edit: if serial empty, require illegible flag
   const serialProvided = serial_number && String(serial_number).trim().length > 0;
   const unreadableFlag = !!serial_unreadable;
   if (!serialProvided && !unreadableFlag) {
-    return res.status(400).json({ message: 'Numer fabryczny jest wymagany lub zaznacz "Numer nieczytelny"' });
+    return res.status(400).json({ message: 'Factory serial number is required or mark as unreadable' });
   }
 
-  // Walidacja stanów magazynowych
+// Validate stock levels
   const minStockSan = (min_stock === '' || min_stock === null || typeof min_stock === 'undefined') ? null : Math.max(0, parseInt(min_stock, 10));
   const maxStockSan = (max_stock === '' || max_stock === null || typeof max_stock === 'undefined') ? null : Math.max(0, parseInt(max_stock, 10));
   if (minStockSan !== null && maxStockSan !== null && maxStockSan < minStockSan) {
-    return res.status(400).json({ message: 'Maksymalny stan nie może być mniejszy niż minimalny' });
+    return res.status(400).json({ message: 'Maximum stock cannot be less than minimum stock' });
   }
 
   let prodYearSan = null;
@@ -1714,59 +1704,59 @@ app.put('/api/tools/:id', authenticateToken, (req, res) => {
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE constraint failed: tools.inventory_number')) {
-          return res.status(400).json({ message: 'Narzędzie o tym numerze ewidencyjnym już istnieje' });
+          return res.status(400).json({ message: 'Tool with this inventory number already exists' });
         }
         if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ message: 'Narzędzie o tym SKU już istnieje' });
+          return res.status(400).json({ message: 'Tool with this SKU already exists' });
         }
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       if (this.changes === 0) {
-        return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+        return res.status(404).json({ message: 'Tool not found' });
       }
-      res.status(200).json({ message: 'Narzędzie zostało zaktualizowane' });
+      res.status(200).json({ message: 'Tool updated successfully' });
     }
   );
 });
 
-// Endpoint usuwania narzędzia
+// Delete tool endpoint
 app.delete('/api/tools/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
 
   db.run('DELETE FROM tools WHERE id = ?', [id], function(err) {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Tool not found' });
     }
-    res.status(200).json({ message: 'Narzędzie zostało usunięte' });
+    res.status(200).json({ message: 'Tool deleted successfully' });
   });
 });
 
-// Endpoint wysyłki narzędzia na serwis (obsługa ilości)
+// Endpoint: send tool to service (quantity supported)
 app.post('/api/tools/:id/service', authenticateToken, (req, res) => {
   const toolId = req.params.id;
   const { quantity, service_order_number } = req.body;
 
-  // Pobierz aktualne dane narzędzia
+// Fetch current tool data
   db.get('SELECT id, quantity, COALESCE(service_quantity, 0) as service_quantity FROM tools WHERE id = ?', [toolId], (err, tool) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!tool) {
-      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Tool not found' });
     }
 
     const sendQuantity = Math.max(1, parseInt(quantity || 1, 10));
     const availableForService = tool.quantity - tool.service_quantity;
     if (sendQuantity > availableForService) {
-      return res.status(400).json({ message: `Maksymalnie można wysłać ${availableForService} szt.` });
+      return res.status(400).json({ message: `Cannot send more than ${availableForService} items` });
     }
 
     const newServiceQuantity = tool.service_quantity + sendQuantity;
 
-    // Ustal nowy status: jeśli całkowita ilość to 1 i coś wysłane -> 'serwis', w przeciwnym wypadku pozostaw bez zmian
+// Determine new status: if total qty is 1 and something sent → 'service'; otherwise leave unchanged
     let updateStatusSql = '';
     let updateParams = [newServiceQuantity, new Date().toISOString(), toolId];
     if (tool.quantity === 1 && newServiceQuantity >= 1) {
@@ -1774,7 +1764,7 @@ app.post('/api/tools/:id/service', authenticateToken, (req, res) => {
       updateParams = [newServiceQuantity, new Date().toISOString(), 'serwis', toolId];
     }
 
-    // Aktualizuj również numer zlecenia serwisowego (jeśli przekazano)
+// Also update service order number (if provided)
     let updateSql = `UPDATE tools SET service_quantity = ?, service_sent_at = ?, service_order_number = COALESCE(?, service_order_number)`;
     let params = [newServiceQuantity, new Date().toISOString(), service_order_number || null];
     if (tool.quantity === 1 && newServiceQuantity >= 1) {
@@ -1789,16 +1779,16 @@ app.post('/api/tools/:id/service', authenticateToken, (req, res) => {
       params,
       function(updateErr) {
         if (updateErr) {
-          return res.status(500).json({ message: 'Błąd serwera' });
+          return res.status(500).json({ message: 'Server error' });
         }
 
-        // Zwróć zaktualizowane narzędzie
+// Return updated tool
         db.get('SELECT * FROM tools WHERE id = ?', [toolId], (getErr, updatedTool) => {
           if (getErr) {
-            return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanego narzędzia' });
+            return res.status(500).json({ message: 'Error fetching updated tool' });
           }
           res.status(200).json({ 
-            message: `Wysłano na serwis ${sendQuantity} szt.${service_order_number ? ` (zlecenie: ${service_order_number})` : ''}`, 
+            message: `Sent ${sendQuantity} item(s) to service${service_order_number ? ` (order: ${service_order_number})` : ''}`, 
             tool: updatedTool 
           });
         });
@@ -1807,18 +1797,18 @@ app.post('/api/tools/:id/service', authenticateToken, (req, res) => {
   });
 });
 
-// Endpoint odbioru narzędzia z serwisu (obsługa ilości)
+// Tool service receive endpoint (quantity handling)
 app.post('/api/tools/:id/service/receive', authenticateToken, (req, res) => {
   const toolId = req.params.id;
   const { quantity } = req.body || {};
 
-  // Pobierz aktualne dane narzędzia
+  // Fetch current tool data
   db.get('SELECT id, quantity, COALESCE(service_quantity, 0) as service_quantity, service_order_number FROM tools WHERE id = ?', [toolId], (err, tool) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (!tool) {
-      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Tool not found' });
     }
 
     const current = tool.service_quantity;
@@ -1839,25 +1829,25 @@ app.post('/api/tools/:id/service/receive', authenticateToken, (req, res) => {
 
     db.run(updateSql, params, function(updateErr) {
       if (updateErr) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
 
-      // Zapisz historię odbioru
+// Save receipt history
       db.run(
         'INSERT INTO tool_service_history (tool_id, action, quantity, order_number) VALUES (?, ?, ?, ?)',
         [toolId, 'received', receiveQuantity, tool.service_order_number || null],
         function(histErr) {
           if (histErr) {
-            return res.status(500).json({ message: 'Błąd serwera' });
+            return res.status(500).json({ message: 'Server error' });
           }
 
-          // Zwróć zaktualizowane narzędzie
+// Return updated tool
           db.get('SELECT * FROM tools WHERE id = ?', [toolId], (getErr, updatedTool) => {
             if (getErr) {
-              return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanego narzędzia' });
+              return res.status(500).json({ message: 'Error fetching updated tool' });
             }
             res.status(200).json({ 
-              message: `Odebrano z serwisu ${receiveQuantity} szt.`,
+              message: `Received ${receiveQuantity} item(s) from service`,
               tool: updatedTool,
               remaining
             });
@@ -1886,11 +1876,11 @@ app.get('/api/service-history/summary', authenticateToken, (req, res) => {
 
   db.all(inServiceQuery, [], (err, inService) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     db.all(recentEventsQuery, [], (err2, events) => {
       if (err2) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
       res.json({ in_service: inService, recent_events: events });
     });
@@ -1898,7 +1888,7 @@ app.get('/api/service-history/summary', authenticateToken, (req, res) => {
 });
 
 // ====== BHP Endpoints ======
-// Pobieranie sprzętu BHP
+// Fetch PPE equipment
 app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res) => {
   const query = `
     SELECT 
@@ -1932,18 +1922,18 @@ app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res)
   `;
   db.all(query, [], (err, items) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     res.status(200).json(items);
   });
 });
 
-// Dodawanie sprzętu BHP
+// Add BHP equipment
 app.post('/api/bhp', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
   const { inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status } = req.body;
 
   if (!inventory_number) {
-    return res.status(400).json({ message: 'Wymagany numer ewidencyjny' });
+    return res.status(400).json({ message: 'Inventory number is required' });
   }
 
   const query = `INSERT INTO bhp (inventory_number, manufacturer, model, serial_number, catalog_number, production_date, inspection_date, is_set, shock_absorber_serial, shock_absorber_name, shock_absorber_model, shock_absorber_catalog_number, harness_start_date, shock_absorber_start_date, shock_absorber_production_date, srd_manufacturer, srd_model, srd_serial_number, srd_catalog_number, srd_production_date, status)
@@ -1953,18 +1943,18 @@ app.post('/api/bhp', authenticateToken, requirePermission('MANAGE_BHP'), (req, r
   db.run(query, params, function(err) {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ message: 'Pozycja o tym numerze ewidencyjnym już istnieje' });
+        return res.status(400).json({ message: 'An item with this inventory number already exists' });
       }
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     db.get('SELECT * FROM bhp WHERE id = ?', [this.lastID], (err, item) => {
-      if (err) return res.status(500).json({ message: 'Błąd podczas pobierania nowej pozycji' });
+      if (err) return res.status(500).json({ message: 'Error fetching new item' });
       res.status(201).json(item);
     });
   });
 });
 
-// Aktualizacja sprzętu BHP
+// Update PPE equipment
 app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
   const id = req.params.id;
   const {
@@ -1995,8 +1985,8 @@ app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req
     return res.status(400).json({ message: 'Wymagany numer ewidencyjny' });
   }
 
-  // Nie nadpisuj istniejących wartości NULL-em/"" jeśli pole nie zostało podane.
-  // Dla pól tekstowych traktuj pusty string jak brak zmiany.
+// Do not overwrite existing values with NULL/"" if field not provided.
+// For text fields treat empty string as no change.
   const query = `
     UPDATE bhp SET
       inventory_number = COALESCE(NULLIF(?, ''), inventory_number),
@@ -2051,64 +2041,64 @@ app.put('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req
   db.run(query, params, function(err) {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ message: 'Pozycja o tym numerze ewidencyjnym już istnieje' });
+        return res.status(400).json({ message: 'An item with this inventory number already exists' });
       }
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+      return res.status(404).json({ message: 'BHP item not found' });
     }
-    // Zwróć zaktualizowany rekord, aby łatwiej zweryfikować zapis
+// Return updated record for easier verification
     db.get('SELECT * FROM bhp WHERE id = ?', [id], (getErr, row) => {
       if (getErr) {
-        return res.status(500).json({ message: 'Błąd podczas pobierania zaktualizowanej pozycji' });
+        return res.status(500).json({ message: 'Error fetching updated item' });
       }
-      res.status(200).json({ message: 'Pozycja BHP została zaktualizowana', item: row });
+      res.status(200).json({ message: 'BHP item updated', item: row });
     });
   });
 });
 
-// Usunięcie sprzętu BHP
+// Delete PPE equipment
 app.delete('/api/bhp/:id', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
   const id = req.params.id;
   db.run('DELETE FROM bhp WHERE id = ?', [id], function(err) {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+      return res.status(404).json({ message: 'BHP item not found' });
     }
-    res.status(200).json({ message: 'Pozycja BHP została usunięta' });
+    res.status(200).json({ message: 'BHP item deleted' });
   });
 });
 
-// Wydanie sprzętu BHP pracownikowi (pojedyncza sztuka)
+// Issue PPE item to employee (single piece)
 app.post('/api/bhp/:id/issue', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
   const bhpId = req.params.id;
   const { employee_id } = req.body;
   const userId = req.user.id;
 
   if (!employee_id) {
-    return res.status(400).json({ message: 'ID pracownika jest wymagane' });
+    return res.status(400).json({ message: 'Employee ID is required' });
   }
 
   db.get('SELECT * FROM bhp WHERE id = ?', [bhpId], (err, item) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
-    if (item.status === 'wydane') return res.status(400).json({ message: 'Pozycja BHP jest już wydana' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!item) return res.status(404).json({ message: 'BHP item not found' });
+    if (item.status === 'wydane') return res.status(400).json({ message: 'BHP item already issued' });
 
     db.get('SELECT * FROM employees WHERE id = ?', [employee_id], (err, employee) => {
-      if (err) return res.status(500).json({ message: 'Błąd serwera' });
-      if (!employee) return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+      if (err) return res.status(500).json({ message: 'Server error' });
+      if (!employee) return res.status(404).json({ message: 'Employee not found' });
 
       db.run(
         'INSERT INTO bhp_issues (bhp_id, employee_id, issued_by_user_id) VALUES (?, ?, ?)',
         [bhpId, employee_id, userId],
         function(err) {
-          if (err) return res.status(500).json({ message: 'Błąd serwera' });
+          if (err) return res.status(500).json({ message: 'Server error' });
           db.run('UPDATE bhp SET status = ? WHERE id = ?', ['wydane', bhpId], function(err) {
-            if (err) return res.status(500).json({ message: 'Błąd serwera' });
-            res.status(200).json({ message: 'Sprzęt BHP wydany', issue_id: this.lastID });
+            if (err) return res.status(500).json({ message: 'Server error' });
+            res.status(200).json({ message: 'BHP item issued', issue_id: this.lastID });
           });
         }
       );
@@ -2116,36 +2106,36 @@ app.post('/api/bhp/:id/issue', authenticateToken, requirePermission('MANAGE_BHP'
   });
 });
 
-// Zwrot sprzętu BHP
+// Return PPE equipment
 app.post('/api/bhp/:id/return', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
   const bhpId = req.params.id;
   const { issue_id } = req.body;
 
   if (!issue_id) {
-    return res.status(400).json({ message: 'ID wydania jest wymagane' });
+    return res.status(400).json({ message: 'Issue ID is required' });
   }
 
   db.get('SELECT * FROM bhp_issues WHERE id = ? AND bhp_id = ? AND status = "wydane"', [issue_id, bhpId], (err, issue) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!issue) return res.status(404).json({ message: 'Wydanie nie zostało znalezione lub już zwrócone' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!issue) return res.status(404).json({ message: 'Issue not found or already returned' });
 
     db.run('UPDATE bhp_issues SET status = "zwrócone", returned_at = datetime("now") WHERE id = ?', [issue_id], function(err) {
-      if (err) return res.status(500).json({ message: 'Błąd serwera' });
+      if (err) return res.status(500).json({ message: 'Server error' });
       db.run('UPDATE bhp SET status = ? WHERE id = ?', ['dostępne', bhpId], function(err) {
-        if (err) return res.status(500).json({ message: 'Błąd serwera' });
-        res.status(200).json({ message: 'Sprzęt BHP zwrócony' });
+        if (err) return res.status(500).json({ message: 'Server error' });
+        res.status(200).json({ message: 'BHP item returned' });
       });
     });
   });
 });
 
-// Szczegóły BHP + aktywne wydania i status przypomnienia przeglądu
+// PPE details + active issues and inspection reminder status
 app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
   const bhpId = req.params.id;
 
   db.get('SELECT * FROM bhp WHERE id = ?', [bhpId], (err, item) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!item) return res.status(404).json({ message: 'BHP item not found' });
 
     const issuesQuery = `
       SELECT 
@@ -2161,9 +2151,9 @@ app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
     `;
 
     db.all(issuesQuery, [bhpId], (err, issues) => {
-      if (err) return res.status(500).json({ message: 'Błąd serwera' });
+      if (err) return res.status(500).json({ message: 'Server error' });
 
-      // Obliczenie dni do przeglądu
+// Compute days to inspection
       let reviewReminder = null;
       if (item.inspection_date) {
         const now = new Date();
@@ -2180,7 +2170,7 @@ app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
   });
 });
 
-// Historia wydań/zwrotów BHP (wszystkie wpisy)
+// BHP issue/return history (all entries)
 app.get('/api/bhp/:id/history', authenticateToken, requirePermission('VIEW_BHP_HISTORY'), (req, res) => {
   const bhpId = req.params.id;
   const query = `
@@ -2196,7 +2186,7 @@ app.get('/api/bhp/:id/history', authenticateToken, requirePermission('VIEW_BHP_H
     ORDER BY bi.issued_at DESC
   `;
   db.all(query, [bhpId], (err, rows) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (err) return res.status(500).json({ message: 'Server error' });
     res.json(rows);
   });
 });
@@ -2216,28 +2206,28 @@ setTimeout(() => {
         }
       });
     }
-    console.log('Zarejestrowane trasy:', routes);
+    console.log('Registered routes:', routes);
   } catch (e) {
-    console.log('Błąd podczas wypisywania tras:', e.message);
+    console.log('Error while listing routes:', e.message);
   }
 }, 1000);
 
-// Endpoint pobierania pracowników
+// Employees fetch endpoint
 app.get('/api/employees', authenticateToken, (req, res) => {
   db.all('SELECT * FROM employees', [], (err, employees) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     res.status(200).json(employees);
   });
 });
 
-// Endpoint dodawania pracownika
+// Add employee endpoint
 app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const { first_name, last_name, phone, position, department, brand_number, email } = req.body;
 
   if (!first_name || !last_name || !position || !department) {
-    return res.status(400).json({ message: 'Wymagane są imię, nazwisko, stanowisko i dział' });
+    return res.status(400).json({ message: 'First name, last name, position, and department are required' });
   }
 
   db.run(
@@ -2245,15 +2235,15 @@ app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEE
     [first_name, last_name, phone, position, department, brand_number, email || null],
     function(err) {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
       const employeeId = this.lastID;
       const fullName = `${first_name} ${last_name}`;
       generateEmployeeLogin(first_name, last_name, (loginErr, username) => {
         if (loginErr || !username) {
-          console.error('Błąd generowania loginu:', loginErr?.message || 'unknown');
-          // Mimo błędu generowania loginu, zwróć pracownika
-          return res.status(201).json({ message: 'Pracownik został dodany', id: employeeId });
+          console.error('Error generating login:', loginErr?.message || 'unknown');
+          // Despite login generation error, return the employee
+          return res.status(201).json({ message: 'Employee added', id: employeeId });
         }
 
         const rawPassword = generateRandomPassword(10);
@@ -2265,27 +2255,27 @@ app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEE
           [username, hashedPassword, 'employee', fullName],
           function(userErr) {
             if (userErr) {
-              console.error('Błąd dodawania użytkownika dla pracownika:', userErr.message);
-              // Kontynuuj mimo błędu dodania użytkownika
+              console.error('Error adding user for employee:', userErr.message);
+              // Continue despite user creation error
             }
 
             // Update employee with login
             db.run('UPDATE employees SET login = ? WHERE id = ?', [username, employeeId], (updErr) => {
               if (updErr) {
-                console.error('Błąd aktualizacji loginu pracownika:', updErr.message);
+                console.error('Error updating employee login:', updErr.message);
               }
 
               // Attempt email sending
               sendCredentialsEmail(email, username, rawPassword, fullName, (mailErr) => {
                 if (mailErr) {
-                  console.warn('Nie udało się wysłać e-maila z danymi logowania');
+                  console.warn('Failed to send credentials email');
                 }
-                // Zwróć pełny rekord pracownika po aktualizacji loginu
+                // Return full employee record after login update
                 db.get('SELECT * FROM employees WHERE id = ?', [employeeId], (selErr, row) => {
                   if (selErr || !row) {
-                    // Awaryjnie zwróć podstawowe info
+                    // Fallback: return basic info
                     return res.status(201).json({ 
-                      message: 'Pracownik został dodany',
+                      message: 'Employee added',
                       id: employeeId,
                       login: username
                     });
@@ -2301,13 +2291,13 @@ app.post('/api/employees', authenticateToken, requirePermission('MANAGE_EMPLOYEE
   );
 });
 
-// Endpoint aktualizacji pracownika
+// Update employee endpoint
 app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const { first_name, last_name, phone, position, department, brand_number, email } = req.body;
   const id = req.params.id;
 
   if (!first_name || !last_name || !position || !department) {
-    return res.status(400).json({ message: 'Wymagane są imię, nazwisko, stanowisko i dział' });
+    return res.status(400).json({ message: 'First name, last name, position, and department are required' });
   }
 
   db.run(
@@ -2315,14 +2305,14 @@ app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLO
     [first_name, last_name, phone, position, department, brand_number, email || null, id],
     function(err) {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
       if (this.changes === 0) {
-        return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+        return res.status(404).json({ message: 'Employee not found' });
       }
       db.get('SELECT * FROM employees WHERE id = ?', [id], (selErr, row) => {
         if (selErr || !row) {
-          return res.status(200).json({ message: 'Pracownik został zaktualizowany' });
+          return res.status(200).json({ message: 'Employee updated' });
         }
         res.status(200).json(row);
       });
@@ -2330,26 +2320,26 @@ app.put('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLO
   );
 });
 
-// Endpoint usuwania pracownika
+// Delete employee endpoint
 app.delete('/api/employees/:id', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const id = req.params.id;
 
   db.run('DELETE FROM employees WHERE id = ?', [id], function(err) {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+      return res.status(404).json({ message: 'Employee not found' });
     }
-    res.status(200).json({ message: 'Pracownik został usunięty' });
+    res.status(200).json({ message: 'Employee deleted' });
   });
 });
 
-// Endpoint usuwania wszystkich pracowników
+// Endpoint: delete all employees
 app.delete('/employees/all', authenticateToken, (req, res) => {
-  // Sprawdź uprawnienia administratora
+// Check administrator permissions
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
 
   console.log('Rozpoczęcie usuwania wszystkich pracowników...');
@@ -2357,7 +2347,7 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
   db.run('DELETE FROM employees', function(err) {
     if (err) {
       console.error('Błąd podczas usuwania pracowników:', err);
-      return res.status(500).json({ message: 'Błąd serwera podczas usuwania pracowników' });
+      return res.status(500).json({ message: 'Server error while deleting employees' });
     }
     
     console.log(`Usunięto ${this.changes} pracowników`);
@@ -2380,20 +2370,20 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
     });
     
     res.status(200).json({ 
-      message: 'Wszyscy pracownicy zostali usunięci',
+      message: 'All employees have been deleted',
       deletedCount: this.changes
     });
   });
 });
 
-// Endpoint: wygeneruj loginy dla pracowników bez przypisanego loginu (administrator / MANAGE_EMPLOYEES)
+// Endpoint: generate logins for employees without a login (admin / MANAGE_EMPLOYEES)
 app.post('/api/employees/generate-logins', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   db.all('SELECT * FROM employees WHERE login IS NULL OR login = ""', [], (err, employees) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera podczas pobierania pracowników' });
+      return res.status(500).json({ message: 'Server error while fetching employees' });
     }
     if (!employees || employees.length === 0) {
-      return res.status(200).json({ message: 'Brak pracowników bez loginu', created: 0, results: [] });
+      return res.status(200).json({ message: 'No employees without a login', created: 0, results: [] });
     }
 
     const results = [];
@@ -2401,7 +2391,7 @@ app.post('/api/employees/generate-logins', authenticateToken, requirePermission(
 
     const processNext = () => {
       if (processed >= employees.length) {
-        return res.status(200).json({ message: 'Generowanie zakończone', created: results.filter(r => r.success).length, results });
+        return res.status(200).json({ message: 'Generation completed', created: results.filter(r => r.success).length, results });
       }
 
       const emp = employees[processed++];
@@ -2411,7 +2401,7 @@ app.post('/api/employees/generate-logins', authenticateToken, requirePermission(
 
       generateEmployeeLogin(first_name, last_name, (loginErr, username) => {
         if (loginErr || !username) {
-          results.push({ employee_id: emp.id, success: false, error: `Błąd generowania loginu: ${loginErr?.message || 'unknown'}` });
+          results.push({ employee_id: emp.id, success: false, error: `Login generation error: ${loginErr?.message || 'unknown'}` });
           return processNext();
         }
 
@@ -2423,17 +2413,17 @@ app.post('/api/employees/generate-logins', authenticateToken, requirePermission(
           [username, hashedPassword, 'employee', fullName],
           function(userErr) {
             if (userErr) {
-              results.push({ employee_id: emp.id, success: false, username, error: `Błąd dodawania użytkownika: ${userErr.message}` });
+              results.push({ employee_id: emp.id, success: false, username, error: `Error adding user: ${userErr.message}` });
               return processNext();
             }
 
             db.run('UPDATE employees SET login = ? WHERE id = ?', [username, emp.id], (updErr) => {
               if (updErr) {
-                results.push({ employee_id: emp.id, success: false, username, error: `Błąd aktualizacji pracownika: ${updErr.message}` });
+                results.push({ employee_id: emp.id, success: false, username, error: `Error updating employee: ${updErr.message}` });
                 return processNext();
               }
 
-              // Spróbuj wysłać e-mail z danymi logowania, jeśli jest podany adres e-mail
+              // Attempt to send login credentials email if an address is provided
               sendCredentialsEmail(emp.email, username, rawPassword, fullName, (mailErr) => {
                 results.push({ employee_id: emp.id, success: true, username, emailSent: !mailErr && !!emp.email });
                 return processNext();
@@ -2448,62 +2438,62 @@ app.post('/api/employees/generate-logins', authenticateToken, requirePermission(
   });
 });
 
-// Wysyłka danych logowania dla pojedynczego pracownika (tworzy login jeśli brak, resetuje hasło jeśli istnieje)
+// Send login credentials for a single employee (creates login if missing, resets password if existing)
 app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermission('MANAGE_EMPLOYEES'), (req, res) => {
   const employeeId = parseInt(req.params.id, 10);
   if (!employeeId) {
-    return res.status(400).json({ message: 'Nieprawidłowe ID pracownika' });
+    return res.status(400).json({ message: 'Invalid employee ID' });
   }
   db.get('SELECT id, first_name, last_name, email, login FROM employees WHERE id = ?', [employeeId], (err, emp) => {
     if (err) {
-      console.error('Błąd pobierania pracownika:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera' });
+      console.error('Error fetching employee:', err.message);
+      return res.status(500).json({ message: 'Server error' });
     }
     if (!emp) {
-      return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+      return res.status(404).json({ message: 'Employee not found' });
     }
     if (!emp.email) {
-      // Audyt próby wysyłki bez adresu e-mail
+// Audit attempt to send without email address
       const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))`;
       db.run(auditQuery, [
         req.user.id,
         req.user.username,
         'EMPLOYEE_SEND_CREDENTIALS',
-        `Próba wysyłki danych logowania dla pracownika ID=${employeeId} bez adresu e-mail`,
+        `Attempted to send credentials for employee ID=${employeeId} without an email address`,
         req.ip || 'localhost'
       ], (auditErr) => {
         if (auditErr) {
-          console.error('Błąd audytu (brak e-maila):', auditErr);
+          console.error('Audit error (no email):', auditErr);
         }
       });
-      return res.status(400).json({ message: 'Brak adresu e-mail dla pracownika' });
+      return res.status(400).json({ message: 'Employee has no email address' });
     }
     const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
 
     const proceed = (username, rawPassword, createdLogin) => {
       sendCredentialsEmail(emp.email, username, rawPassword, fullName, (mailErr) => {
         if (mailErr) {
-          console.error('Błąd wysyłki danych logowania:', mailErr.message || mailErr);
+          console.error('Error sending credentials:', mailErr.message || mailErr);
         }
         db.get('SELECT * FROM employees WHERE id = ?', [employeeId], (err2, updated) => {
           if (err2) {
-            console.error('Błąd pobierania zaktualizowanego pracownika:', err2.message);
-            // Audyt wysyłki danych logowania (nawet jeśli pobranie aktualizacji pracownika nie powiodło się)
+            console.error('Error fetching updated employee:', err2.message);
+// Audit sending login credentials (even if fetching employee update failed)
             const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
               VALUES (?, ?, ?, ?, ?, datetime('now'))`;
-            const details = `Wysłano dane logowania: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
+            const details = `Sent credentials: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
             db.run(auditQuery, [req.user.id, req.user.username, 'EMPLOYEE_SEND_CREDENTIALS', details, req.ip || 'localhost'], (auditErr) => {
-              if (auditErr) console.error('Błąd audytu (send-credentials):', auditErr);
+              if (auditErr) console.error('Audit error (send-credentials):', auditErr);
             });
             return res.json({ ok: true, emailSent: !mailErr, createdLogin, login: username });
           }
-          // Audyt wysyłki danych logowania
+// Audit login credentials sending
           const auditQuery = `INSERT INTO audit_logs (user_id, username, action, details, ip_address, created_at)
             VALUES (?, ?, ?, ?, ?, datetime('now'))`;
-          const details = `Wysłano dane logowania: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
+          const details = `Sent credentials: employeeId=${employeeId}, login=${username}, emailSent=${!mailErr}, createdLogin=${createdLogin}`;
           db.run(auditQuery, [req.user.id, req.user.username, 'EMPLOYEE_SEND_CREDENTIALS', details, req.ip || 'localhost'], (auditErr) => {
-            if (auditErr) console.error('Błąd audytu (send-credentials):', auditErr);
+            if (auditErr) console.error('Audit error (send-credentials):', auditErr);
           });
           return res.json({ ok: true, emailSent: !mailErr, createdLogin, login: username, employee: updated });
         });
@@ -2513,8 +2503,8 @@ app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermis
     if (!emp.login) {
       generateEmployeeLogin(emp.first_name || '', emp.last_name || '', (genErr, username) => {
         if (genErr || !username) {
-          console.error('Błąd generowania loginu:', genErr?.message || genErr);
-          return res.status(500).json({ message: 'Nie udało się wygenerować loginu' });
+          console.error('Login generation error:', genErr?.message || genErr);
+          return res.status(500).json({ message: 'Failed to generate login' });
         }
         const rawPassword = generateRandomPassword(10);
         const hashedPassword = bcrypt.hashSync(rawPassword, 10);
@@ -2523,13 +2513,13 @@ app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermis
           [username, hashedPassword, 'employee', fullName],
           function (insErr) {
             if (insErr) {
-              console.error('Błąd tworzenia użytkownika:', insErr.message);
-              return res.status(500).json({ message: 'Nie udało się utworzyć użytkownika' });
+              console.error('Error creating user:', insErr.message);
+              return res.status(500).json({ message: 'Failed to create user' });
             }
             db.run('UPDATE employees SET login = ? WHERE id = ?', [username, employeeId], function (updErr) {
               if (updErr) {
-                console.error('Błąd aktualizacji loginu pracownika:', updErr.message);
-                return res.status(500).json({ message: 'Nie udało się zaktualizować pracownika' });
+                console.error('Error updating employee login:', updErr.message);
+                return res.status(500).json({ message: 'Failed to update employee' });
               }
               proceed(username, rawPassword, true);
             });
@@ -2544,8 +2534,8 @@ app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermis
     const hashedPassword = bcrypt.hashSync(rawPassword, 10);
     db.get('SELECT id FROM users WHERE username = ?', [username], (uErr, userRow) => {
       if (uErr) {
-        console.error('Błąd wyszukiwania użytkownika:', uErr.message);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error finding user:', uErr.message);
+        return res.status(500).json({ message: 'Server error' });
       }
       const upsert = (cb) => {
         if (!userRow) {
@@ -2564,8 +2554,8 @@ app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermis
       };
       upsert((saveErr) => {
         if (saveErr) {
-          console.error('Błąd zapisu hasła:', saveErr.message);
-          return res.status(500).json({ message: 'Nie udało się zapisać hasła' });
+          console.error('Error saving password:', saveErr.message);
+          return res.status(500).json({ message: 'Failed to save password' });
         }
         proceed(username, rawPassword, false);
       });
@@ -2573,49 +2563,49 @@ app.post('/api/employees/:id/send-credentials', authenticateToken, requirePermis
   });
 });
 
-// Endpoint do usuwania historii wydań i zwrotów
+// Endpoint to delete issue and return history
 app.delete('/tools/history', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
-  console.log('Rozpoczęcie usuwania historii wydań i zwrotów...');
+  console.log('Starting deletion of issue and return history...');
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION', (err) => {
       if (err) {
-        console.error('Błąd rozpoczęcia transakcji:', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error starting transaction:', err);
+        return res.status(500).json({ message: 'Server error' });
       }
 
-      // Usuń wszystkie rekordy z tabeli tool_issues
+// Delete all records from tool_issues table
       db.run('DELETE FROM tool_issues', function(err) {
         if (err) {
-          console.error('Błąd usuwania z tabeli tool_issues:', err);
+          console.error('Error deleting from tool_issues table:', err);
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań' });
+          return res.status(500).json({ message: 'Error deleting issue history' });
         }
 
         const deletedIssues = this.changes;
-        console.log(`Usunięto ${deletedIssues} rekordów z tabeli tool_issues`);
+        console.log(`Deleted ${deletedIssues} records from tool_issues`);
 
-        // Zresetuj status wszystkich narzędzi na 'dostępne'
+// Reset all tools' status to 'available'
         db.run('UPDATE tools SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
           if (err) {
-            console.error('Błąd resetowania statusów narzędzi:', err);
+            console.error('Error resetting tool statuses:', err);
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd podczas resetowania statusów narzędzi' });
+            return res.status(500).json({ message: 'Error resetting tool statuses' });
           }
 
           const updatedTools = this.changes;
-          console.log(`Zaktualizowano status ${updatedTools} narzędzi na 'dostępne'`);
+          console.log(`Updated status of ${updatedTools} tools to 'available'`);
 
-          // Zatwierdź transakcję
+// Commit transaction
           db.run('COMMIT', (err) => {
             if (err) {
-              console.error('Błąd zatwierdzania transakcji:', err);
-              return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+              console.error('Error committing transaction:', err);
+              return res.status(500).json({ message: 'Error committing operation' });
             }
 
-            console.log('Historia wydań i zwrotów została pomyślnie usunięta');
+            console.log('Issue and return history successfully deleted');
             res.json({ 
-              message: 'Historia wydań i zwrotów została pomyślnie usunięta',
+              message: 'Issue and return history successfully deleted',
               deleted_issues: deletedIssues,
               updated_tools: updatedTools
             });
@@ -2626,33 +2616,33 @@ app.delete('/tools/history', authenticateToken, requirePermission('DELETE_ISSUE_
   });
 });
 
-// Endpoint do usuwania historii WYDAŃ narzędzi (tylko wpisy ze statusem "wydane")
+// Endpoint to delete tool ISSUE history (only entries with status "wydane")
 app.delete('/api/tools/history/issues', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
-  console.log('Usuwanie historii WYDAŃ narzędzi...');
+  console.log('Deleting tool ISSUE history...');
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION', (err) => {
       if (err) {
-        console.error('Błąd rozpoczęcia transakcji (issues tools):', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error starting transaction (issues tools):', err);
+        return res.status(500).json({ message: 'Server error' });
       }
 
       db.run('DELETE FROM tool_issues WHERE status = "wydane"', function(err) {
         if (err) {
-          console.error('Błąd usuwania wpisów WYDAŃ z tool_issues:', err);
+          console.error('Error deleting ISSUE entries from tool_issues:', err);
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań narzędzi' });
+          return res.status(500).json({ message: 'Error deleting tool issue history' });
         }
 
         const deletedCount = this.changes || 0;
-        console.log(`Usunięto ${deletedCount} rekordów WYDAŃ z tool_issues`);
+        console.log(`Deleted ${deletedCount} ISSUE records from tool_issues`);
 
-        // Po usunięciu wszystkich WYDAŃ status narzędzi powinien być dostępny
+        // After deleting all ISSUES, tool status should be available
         db.run('UPDATE tools SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
           if (err) {
-            console.error('Błąd resetowania statusów narzędzi po usunięciu wydań:', err);
+            console.error('Error resetting tool statuses after deleting issues:', err);
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd podczas resetowania statusów narzędzi' });
+            return res.status(500).json({ message: 'Error resetting tool statuses' });
           }
 
           const auditQuery = `
@@ -2665,19 +2655,19 @@ app.delete('/api/tools/history/issues', authenticateToken, requirePermission('DE
               req.user.id,
               req.user.username,
               'DELETE_ISSUE_HISTORY',
-              `Usunięto historię WYDAŃ narzędzi (${deletedCount} rekordów)`
+              `Deleted tool ISSUE history (${deletedCount} records)`
             ],
             (auditErr) => {
               if (auditErr) {
-                console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+                console.error('Error adding entry to audit log:', auditErr);
               }
               db.run('COMMIT', (commitErr) => {
                 if (commitErr) {
-                  console.error('Błąd zatwierdzania transakcji (issues tools):', commitErr);
-                  return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                  console.error('Error committing transaction (issues tools):', commitErr);
+                  return res.status(500).json({ message: 'Error committing operation' });
                 }
                 res.json({
-                  message: 'Usunięto historię WYDAŃ narzędzi',
+                  message: 'Deleted tool ISSUE history',
                   deleted_count: deletedCount
                 });
               });
@@ -2689,26 +2679,26 @@ app.delete('/api/tools/history/issues', authenticateToken, requirePermission('DE
   });
 });
 
-// Endpoint do usuwania historii ZWROTÓW narzędzi (tylko wpisy ze statusem "zwrócone")
+// Endpoint: delete tool RETURN history (only entries with status 'returned')
 app.delete('/api/tools/history/returns', authenticateToken, requirePermission('DELETE_RETURN_HISTORY'), (req, res) => {
-  console.log('Usuwanie historii ZWROTÓW narzędzi...');
+  console.log('Deleting tool RETURN history...');
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION', (err) => {
       if (err) {
-        console.error('Błąd rozpoczęcia transakcji (returns tools):', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error starting transaction (returns tools):', err);
+        return res.status(500).json({ message: 'Server error' });
       }
 
       db.run('DELETE FROM tool_issues WHERE status = "zwrócone"', function(err) {
         if (err) {
-          console.error('Błąd usuwania wpisów ZWROTÓW z tool_issues:', err);
+          console.error('Error deleting RETURN entries from tool_issues:', err);
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd podczas usuwania historii zwrotów narzędzi' });
+          return res.status(500).json({ message: 'Error deleting tool return history' });
         }
 
         const deletedCount = this.changes || 0;
-        console.log(`Usunięto ${deletedCount} rekordów ZWROTÓW z tool_issues`);
+        console.log(`Deleted ${deletedCount} RETURN records from tool_issues`);
 
         const auditQuery = `
           INSERT INTO audit_logs (user_id, username, action, details, timestamp)
@@ -2725,15 +2715,15 @@ app.delete('/api/tools/history/returns', authenticateToken, requirePermission('D
           ],
           (auditErr) => {
             if (auditErr) {
-              console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+              console.error('Error adding entry to audit log:', auditErr);
             }
             db.run('COMMIT', (commitErr) => {
               if (commitErr) {
-                console.error('Błąd zatwierdzania transakcji (returns tools):', commitErr);
-                return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                console.error('Error committing transaction (returns tools):', commitErr);
+                return res.status(500).json({ message: 'Error committing operation' });
               }
               res.json({
-                message: 'Usunięto historię ZWROTÓW narzędzi',
+                message: 'Deleted tool RETURN history',
                 deleted_count: deletedCount
               });
             });
@@ -2744,32 +2734,32 @@ app.delete('/api/tools/history/returns', authenticateToken, requirePermission('D
   });
 });
 
-// Endpoint do usuwania historii WYDAŃ sprzętu BHP
+// Endpoint to delete BHP ISSUE history
 app.delete('/api/bhp/history/issues', authenticateToken, requirePermission('DELETE_ISSUE_HISTORY'), (req, res) => {
-  console.log('Usuwanie historii WYDAŃ BHP...');
+  console.log('Deleting BHP ISSUE history...');
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION', (err) => {
       if (err) {
-        console.error('Błąd rozpoczęcia transakcji (issues bhp):', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error starting transaction (issues bhp):', err);
+        return res.status(500).json({ message: 'Server error' });
       }
 
       db.run('DELETE FROM bhp_issues WHERE status = "wydane"', function(err) {
         if (err) {
-          console.error('Błąd usuwania wpisów WYDAŃ z bhp_issues:', err);
+          console.error('Error deleting ISSUE entries from bhp_issues:', err);
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd podczas usuwania historii wydań BHP' });
+          return res.status(500).json({ message: 'Error deleting BHP issue history' });
         }
 
         const deletedCount = this.changes || 0;
-        console.log(`Usunięto ${deletedCount} rekordów WYDAŃ z bhp_issues`);
+        console.log(`Deleted ${deletedCount} ISSUE records from bhp_issues`);
 
         db.run('UPDATE bhp SET status = ? WHERE status != ?', ['dostępne', 'dostępne'], function(err) {
           if (err) {
-            console.error('Błąd resetowania statusów BHP po usunięciu wydań:', err);
+            console.error('Error resetting BHP statuses after deleting issues:', err);
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd podczas resetowania statusów BHP' });
+            return res.status(500).json({ message: 'Error resetting BHP statuses' });
           }
 
           const auditQuery = `
@@ -2782,19 +2772,19 @@ app.delete('/api/bhp/history/issues', authenticateToken, requirePermission('DELE
               req.user.id,
               req.user.username,
               'DELETE_ISSUE_HISTORY',
-              `Usunięto historię WYDAŃ BHP (${deletedCount} rekordów)`
+              `Deleted BHP ISSUE history (${deletedCount} records)`
             ],
             (auditErr) => {
               if (auditErr) {
-                console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+                console.error('Error adding entry to audit log:', auditErr);
               }
               db.run('COMMIT', (commitErr) => {
                 if (commitErr) {
-                  console.error('Błąd zatwierdzania transakcji (issues bhp):', commitErr);
-                  return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                  console.error('Error committing transaction (issues bhp):', commitErr);
+                  return res.status(500).json({ message: 'Error committing operation' });
                 }
                 res.json({
-                  message: 'Usunięto historię WYDAŃ BHP',
+                  message: 'Deleted BHP ISSUE history',
                   deleted_count: deletedCount
                 });
               });
@@ -2806,26 +2796,26 @@ app.delete('/api/bhp/history/issues', authenticateToken, requirePermission('DELE
   });
 });
 
-// Endpoint do usuwania historii ZWROTÓW sprzętu BHP
+// Endpoint to delete BHP RETURN history
 app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DELETE_RETURN_HISTORY'), (req, res) => {
-  console.log('Usuwanie historii ZWROTÓW BHP...');
+  console.log('Deleting BHP RETURN history...');
 
   db.serialize(() => {
     db.run('BEGIN TRANSACTION', (err) => {
       if (err) {
-        console.error('Błąd rozpoczęcia transakcji (returns bhp):', err);
-        return res.status(500).json({ message: 'Błąd serwera' });
+        console.error('Error starting transaction (returns bhp):', err);
+        return res.status(500).json({ message: 'Server error' });
       }
 
       db.run('DELETE FROM bhp_issues WHERE status = "zwrócone"', function(err) {
         if (err) {
-          console.error('Błąd usuwania wpisów ZWROTÓW z bhp_issues:', err);
+          console.error('Error deleting RETURN entries from bhp_issues:', err);
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd podczas usuwania historii zwrotów BHP' });
+          return res.status(500).json({ message: 'Error deleting BHP return history' });
         }
 
         const deletedCount = this.changes || 0;
-        console.log(`Usunięto ${deletedCount} rekordów ZWROTÓW z bhp_issues`);
+        console.log(`Deleted ${deletedCount} RETURN records from bhp_issues`);
 
         const auditQuery = `
           INSERT INTO audit_logs (user_id, username, action, details, timestamp)
@@ -2838,19 +2828,19 @@ app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DEL
             req.user.id,
             req.user.username,
             'DELETE_RETURN_HISTORY',
-            `Usunięto historię ZWROTÓW BHP (${deletedCount} rekordów)`
+            `Deleted BHP RETURN history (${deletedCount} records)`
           ],
           (auditErr) => {
             if (auditErr) {
-              console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+              console.error('Error adding entry to audit log:', auditErr);
             }
             db.run('COMMIT', (commitErr) => {
               if (commitErr) {
-                console.error('Błąd zatwierdzania transakcji (returns bhp):', commitErr);
-                return res.status(500).json({ message: 'Błąd podczas zatwierdzania operacji' });
+                console.error('Error committing transaction (returns bhp):', commitErr);
+                return res.status(500).json({ message: 'Error committing operation' });
               }
               res.json({
-                message: 'Usunięto historię ZWROTÓW BHP',
+                message: 'Deleted BHP RETURN history',
                 deleted_count: deletedCount
               });
             });
@@ -2863,16 +2853,16 @@ app.delete('/api/bhp/history/returns', authenticateToken, requirePermission('DEL
 
 // Endpoint do usuwania historii serwisowania
 app.delete('/api/service-history', authenticateToken, requirePermission('DELETE_SERVICE_HISTORY'), (req, res) => {
-  console.log('Rozpoczęcie usuwania historii serwisowania...');
+  console.log('Starting deletion of service history...');
 
   db.run('DELETE FROM tool_service_history', function(err) {
     if (err) {
-      console.error('Błąd podczas usuwania historii serwisowania:', err);
-      return res.status(500).json({ message: 'Błąd serwera podczas usuwania historii serwisowania' });
+      console.error('Error deleting service history:', err);
+      return res.status(500).json({ message: 'Server error while deleting service history' });
     }
 
     const deletedCount = this.changes || 0;
-    console.log(`Usunięto ${deletedCount} rekordów z tabeli tool_service_history`);
+    console.log(`Deleted ${deletedCount} records from table tool_service_history`);
 
     const auditQuery = `
       INSERT INTO audit_logs (user_id, username, action, details, timestamp)
@@ -2885,14 +2875,14 @@ app.delete('/api/service-history', authenticateToken, requirePermission('DELETE_
         req.user.id,
         req.user.username,
         'DELETE_SERVICE_HISTORY',
-        `Usunięto historię serwisowania (${deletedCount} rekordów)`
+        `Deleted service history (${deletedCount} records)`
       ],
       (auditErr) => {
         if (auditErr) {
-          console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+          console.error('Error adding audit log entry:', auditErr);
         }
         return res.status(200).json({
-          message: 'Historia serwisowania została usunięta',
+          message: 'Service history deleted',
           deleted_count: deletedCount
         });
       }
@@ -2901,55 +2891,55 @@ app.delete('/api/service-history', authenticateToken, requirePermission('DELETE_
 });
 
 // Uruchomienie serwera
-// Endpoints dla zarządzania użytkownikami
+// Endpoints for user management
 
-// Pobierz wszystkich użytkowników
+// Fetch all users
 app.get('/api/users', authenticateToken, (req, res) => {
   db.all('SELECT id, username, role, full_name, created_at, updated_at FROM users ORDER BY created_at DESC', (err, users) => {
     if (err) {
-      console.error('Błąd podczas pobierania użytkowników:', err.message);
-      res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error fetching users:', err.message);
+      res.status(500).json({ error: 'Server error' });
     } else {
       res.json(users);
     }
   });
 });
 
-// Dodaj nowego użytkownika
+// Add new user
 app.post('/api/users', authenticateToken, (req, res) => {
   const { username, password, role, full_name } = req.body;
 
   if (!username || !password || !role || !full_name) {
-    return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
-  // Sprawdź czy użytkownik już istnieje
+// Check if user already exists
   db.get('SELECT * FROM users WHERE username = ?', [username], (err, existingUser) => {
     if (err) {
-      console.error('Błąd podczas sprawdzania użytkownika:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error checking user:', err.message);
+      return res.status(500).json({ error: 'Server error' });
     }
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Użytkownik o tej nazwie już istnieje' });
+      return res.status(400).json({ error: 'A user with this username already exists' });
     }
 
-    // Hashuj hasło
+// Hash password
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    // Dodaj użytkownika
+// Insert user
     db.run('INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))', 
       [username, hashedPassword, role, full_name], 
       function(err) {
         if (err) {
-          console.error('Błąd podczas dodawania użytkownika:', err.message);
-          res.status(500).json({ error: 'Błąd podczas dodawania użytkownika' });
+          console.error('Error adding user:', err.message);
+          res.status(500).json({ error: 'Error adding user' });
         } else {
-          // Pobierz dodanego użytkownika
+// Fetch inserted user
           db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [this.lastID], (err, newUser) => {
             if (err) {
-              console.error('Błąd podczas pobierania nowego użytkownika:', err.message);
-              res.status(500).json({ error: 'Błąd serwera' });
+              console.error('Error fetching new user:', err.message);
+              res.status(500).json({ error: 'Server error' });
             } else {
               res.status(201).json(newUser);
             }
@@ -2959,31 +2949,31 @@ app.post('/api/users', authenticateToken, (req, res) => {
   });
 });
 
-// Aktualizuj użytkownika
+// Update user
 app.put('/api/users/:id', authenticateToken, (req, res) => {
   const userId = req.params.id;
   const { username, password, role, full_name } = req.body;
 
   if (!username || !role || !full_name) {
-    return res.status(400).json({ error: 'Nazwa użytkownika, rola i pełne imię są wymagane' });
+    return res.status(400).json({ error: 'Username, role, and full name are required' });
   }
 
-  // Sprawdź czy użytkownik istnieje
+// Check if user exists
   db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
     if (err) {
-      console.error('Błąd podczas sprawdzania użytkownika:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error checking user:', err.message);
+      return res.status(500).json({ error: 'Server error' });
     }
 
     if (!user) {
-      return res.status(404).json({ error: 'Użytkownik nie został znaleziony' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Przygotuj zapytanie aktualizacji
     let updateQuery = 'UPDATE users SET role = ?, full_name = ?, updated_at = datetime(\'now\')';
     let params = [role, full_name];
 
-    // Jeśli podano nowe hasło, dodaj je do aktualizacji
+// If new password provided, include it in update
     if (password && password.trim() !== '') {
       const hashedPassword = bcrypt.hashSync(password, 10);
       updateQuery += ', password = ?';
@@ -2993,17 +2983,17 @@ app.put('/api/users/:id', authenticateToken, (req, res) => {
     updateQuery += ' WHERE id = ?';
     params.push(userId);
 
-    // Wykonaj aktualizację
+// Perform update
     db.run(updateQuery, params, function(err) {
       if (err) {
-        console.error('Błąd podczas aktualizacji użytkownika:', err.message);
-        res.status(500).json({ error: 'Błąd podczas aktualizacji użytkownika' });
+        console.error('Error updating user:', err.message);
+        res.status(500).json({ error: 'Error updating user' });
       } else {
-        // Pobierz zaktualizowanego użytkownika
+// Fetch updated user
         db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [userId], (err, updatedUser) => {
           if (err) {
-            console.error('Błąd podczas pobierania zaktualizowanego użytkownika:', err.message);
-            res.status(500).json({ error: 'Błąd serwera' });
+            console.error('Error fetching updated user:', err.message);
+            res.status(500).json({ error: 'Server error' });
           } else {
             res.json(updatedUser);
           }
@@ -3013,39 +3003,39 @@ app.put('/api/users/:id', authenticateToken, (req, res) => {
   });
 });
 
-// Usuń użytkownika
+// Delete user
 app.delete('/api/users/:id', authenticateToken, (req, res) => {
   const userId = req.params.id;
 
-  // Sprawdź czy użytkownik istnieje
+// Check if user exists
   db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
     if (err) {
-      console.error('Błąd podczas sprawdzania użytkownika:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error checking user:', err.message);
+      return res.status(500).json({ error: 'Server error' });
     }
 
     if (!user) {
-      return res.status(404).json({ error: 'Użytkownik nie został znaleziony' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    // Usuń użytkownika
+// Delete user
     db.run('DELETE FROM users WHERE id = ?', [userId], function(err) {
       if (err) {
-        console.error('Błąd podczas usuwania użytkownika:', err.message);
-        res.status(500).json({ error: 'Błąd podczas usuwania użytkownika' });
+        console.error('Error deleting user:', err.message);
+        res.status(500).json({ error: 'Error deleting user' });
       } else {
-        res.json({ message: 'Użytkownik został usunięty', deletedId: userId });
+        res.json({ message: 'User deleted', deletedId: userId });
       }
     });
   });
 });
 
-// API endpoints dla działów
+// API endpoints for departments
 app.get('/api/departments', authenticateToken, (req, res) => {
   db.all('SELECT * FROM departments ORDER BY name', (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania działów:', err.message);
-      res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error fetching departments:', err.message);
+      res.status(500).json({ error: 'Server error' });
     } else {
       res.json(rows);
     }
@@ -3056,9 +3046,9 @@ app.post('/api/departments', authenticateToken, (req, res) => {
   const { name, description, manager_id, status } = req.body;
   
   if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
+    return res.status(400).json({ error: 'Department name is required' });
   }
-  // Walidacja: jeśli podano manager_id, sprawdź czy istnieje pracownik o tym ID
+// Validation: if manager_id provided, verify employee with that ID exists
   const insertDepartment = () => {
     db.run(
       'INSERT INTO departments (name, description, manager_id, status) VALUES (?, ?, ?, COALESCE(?, "active"))',
@@ -3066,15 +3056,15 @@ app.post('/api/departments', authenticateToken, (req, res) => {
       function(err) {
         if (err) {
           if (err.message.includes('UNIQUE constraint failed')) {
-            res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
+            res.status(400).json({ error: 'A department with this name already exists' });
           } else {
-            console.error('Błąd podczas dodawania działu:', err.message);
-            res.status(500).json({ error: 'Błąd serwera' });
+            console.error('Error adding department:', err.message);
+            res.status(500).json({ error: 'Server error' });
           }
         } else {
           db.get('SELECT * FROM departments WHERE id = ?', [this.lastID], (err, row) => {
             if (err) {
-              return res.status(500).json({ error: 'Błąd podczas pobierania danych działu' });
+              return res.status(500).json({ error: 'Error fetching department data' });
             }
             res.status(201).json(row);
           });
@@ -3086,11 +3076,11 @@ app.post('/api/departments', authenticateToken, (req, res) => {
     if (manager_id) {
       db.get('SELECT id FROM employees WHERE id = ?', [manager_id], (err, emp) => {
         if (err) {
-          console.error('Błąd podczas weryfikacji manager_id:', err.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
+          console.error('Error verifying manager_id:', err.message);
+          return res.status(500).json({ error: 'Server error' });
         }
         if (!emp) {
-          return res.status(400).json({ error: 'Nieprawidłowy manager_id: pracownik nie istnieje' });
+          return res.status(400).json({ error: 'Invalid manager_id: employee does not exist' });
         }
         insertDepartment();
       });
@@ -3105,7 +3095,7 @@ app.put('/api/departments/:id', authenticateToken, (req, res) => {
   const { name, description, manager_id, status } = req.body;
   
   if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
+    return res.status(400).json({ error: 'Department name is required' });
   }
   const updateDepartment = () => {
     db.run(
@@ -3114,17 +3104,17 @@ app.put('/api/departments/:id', authenticateToken, (req, res) => {
       function(err) {
         if (err) {
           if (err.message.includes('UNIQUE constraint failed')) {
-            res.status(400).json({ error: 'Dział o tej nazwie już istnieje' });
+            res.status(400).json({ error: 'A department with this name already exists' });
           } else {
-            console.error('Błąd podczas aktualizacji działu:', err.message);
-            res.status(500).json({ error: 'Błąd serwera' });
+            console.error('Error updating department:', err.message);
+            res.status(500).json({ error: 'Server error' });
           }
         } else if (this.changes === 0) {
-          res.status(404).json({ error: 'Dział nie został znaleziony' });
+          res.status(404).json({ error: 'Department not found' });
         } else {
           db.get('SELECT * FROM departments WHERE id = ?', [id], (err, row) => {
             if (err) {
-              return res.status(500).json({ error: 'Błąd podczas pobierania danych działu' });
+              return res.status(500).json({ error: 'Error fetching department data' });
             }
             res.json(row);
           });
@@ -3136,11 +3126,11 @@ app.put('/api/departments/:id', authenticateToken, (req, res) => {
     if (manager_id) {
       db.get('SELECT id FROM employees WHERE id = ?', [manager_id], (err, emp) => {
         if (err) {
-          console.error('Błąd podczas weryfikacji manager_id:', err.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
+          console.error('Error verifying manager_id:', err.message);
+          return res.status(500).json({ error: 'Server error' });
         }
         if (!emp) {
-          return res.status(400).json({ error: 'Nieprawidłowy manager_id: pracownik nie istnieje' });
+          return res.status(400).json({ error: 'Invalid manager_id: employee does not exist' });
         }
         updateDepartment();
       });
@@ -3152,80 +3142,80 @@ app.put('/api/departments/:id', authenticateToken, (req, res) => {
 
 app.delete('/api/departments/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  // Najpierw pobierz nazwę działu, aby odczepić pracowników
+// First fetch the department name to detach employees
   db.get('SELECT id, name FROM departments WHERE id = ?', [id], (err, dept) => {
     if (err) {
-      console.error('Błąd podczas wyszukiwania działu:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error finding department:', err.message);
+      return res.status(500).json({ error: 'Server error' });
     }
     if (!dept) {
-      return res.status(404).json({ error: 'Dział nie został znaleziony' });
+      return res.status(404).json({ error: 'Department not found' });
     }
 
-    // Ustaw dział pracowników na '-' dla przypisanych do usuwanego działu
+// Set employees' department to '-' for those assigned to the deleted department
     db.run('UPDATE employees SET department = ? WHERE department = ?', ['-', dept.name], function(updateErr) {
       if (updateErr) {
-        console.error('Błąd podczas odczepiania pracowników od działu:', updateErr.message);
-        return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+        console.error('Error detaching employees from department:', updateErr.message);
+        return res.status(500).json({ error: 'Server error while detaching employees' });
       }
 
       const detachedCount = this.changes || 0;
 
-      // Następnie usuń dział
+// Then delete the department
       db.run('DELETE FROM departments WHERE id = ?', [id], function(deleteErr) {
-        if (deleteErr) {
-          console.error('Błąd podczas usuwania działu:', deleteErr.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
-        }
-        res.json({ message: 'Dział został usunięty pomyślnie', detachedEmployees: detachedCount });
+      if (deleteErr) {
+        console.error('Error deleting department:', deleteErr.message);
+        return res.status(500).json({ error: 'Server error' });
+      }
+      res.json({ message: 'Department deleted successfully', detachedEmployees: detachedCount });
       });
     });
   });
 });
 
-// Usunięcie działu po nazwie (obsługa elementów "brak w bazie")
+// Delete department by name (handles items 'missing in DB')
 app.delete('/api/departments/by-name/:name', authenticateToken, (req, res) => {
   const { name } = req.params;
   const normalized = (name || '').trim();
   if (!normalized) {
-    return res.status(400).json({ error: 'Nazwa działu jest wymagana' });
+    return res.status(400).json({ error: 'Department name is required' });
   }
 
-  // Odczep pracowników przypisanych do tego działu (case-insensitive)
+// Detach employees assigned to this department (case-insensitive)
   db.run('UPDATE employees SET department = ? WHERE LOWER(department) = LOWER(?)', ['-', normalized], function(updateErr) {
     if (updateErr) {
-      console.error('Błąd podczas odczepiania pracowników od działu (by-name):', updateErr.message);
-      return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+      console.error('Error detaching employees from department (by-name):', updateErr.message);
+      return res.status(500).json({ error: 'Server error while detaching employees' });
     }
 
     const detachedCount = this.changes || 0;
 
-    // Jeśli istnieje rekord działu o tej nazwie, usuń go również
+// If a department record exists with this name, delete it as well
     db.get('SELECT id FROM departments WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, dept) => {
       if (findErr) {
-        console.error('Błąd podczas wyszukiwania działu po nazwie:', findErr.message);
-        return res.status(500).json({ error: 'Błąd serwera' });
+        console.error('Error finding department by name:', findErr.message);
+        return res.status(500).json({ error: 'Server error' });
       }
       if (!dept) {
         return res.json({ message: 'Odczepiono pracowników od działu (rekord nie istnieje)', detachedEmployees: detachedCount, deleted: false });
       }
       db.run('DELETE FROM departments WHERE id = ?', [dept.id], function(deleteErr) {
         if (deleteErr) {
-          console.error('Błąd podczas usuwania działu po nazwie:', deleteErr.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
+          console.error('Error deleting department by name:', deleteErr.message);
+          return res.status(500).json({ error: 'Server error' });
         }
-        res.json({ message: 'Dział został usunięty pomyślnie (by-name)', detachedEmployees: detachedCount, deleted: true });
+        res.json({ message: 'Department deleted successfully (by-name)', detachedEmployees: detachedCount, deleted: true });
       });
     });
   });
 });
 
-// API endpoints dla pozycji
+// API endpoints for positions
 app.get('/api/positions', authenticateToken, (req, res) => {
   db.all('SELECT * FROM positions ORDER BY name', (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania pozycji:', err.message);
-      res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error fetching positions:', err.message);
+      res.status(500).json({ error: 'Server error' });
     } else {
       res.json(rows);
     }
@@ -3236,7 +3226,7 @@ app.post('/api/positions', authenticateToken, (req, res) => {
   const { name, description, department_id, requirements, status } = req.body;
   
   if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'Nazwa pozycji jest wymagana' });
+    return res.status(400).json({ error: 'Position name is required' });
   }
   const insertPosition = () => {
     db.run(
@@ -3245,15 +3235,15 @@ app.post('/api/positions', authenticateToken, (req, res) => {
       function(err) {
         if (err) {
           if (err.message.includes('UNIQUE constraint failed')) {
-            res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
+            res.status(400).json({ error: 'A position with this name already exists' });
           } else {
-            console.error('Błąd podczas dodawania pozycji:', err.message);
-            res.status(500).json({ error: 'Błąd serwera' });
+            console.error('Error adding position:', err.message);
+            res.status(500).json({ error: 'Server error' });
           }
         } else {
           db.get('SELECT * FROM positions WHERE id = ?', [this.lastID], (err, row) => {
             if (err) {
-              return res.status(500).json({ error: 'Błąd podczas pobierania danych pozycji' });
+              return res.status(500).json({ error: 'Error fetching position data' });
             }
             res.status(201).json(row);
           });
@@ -3265,11 +3255,11 @@ app.post('/api/positions', authenticateToken, (req, res) => {
   if (department_id) {
     db.get('SELECT id FROM departments WHERE id = ?', [department_id], (err, dept) => {
       if (err) {
-        console.error('Błąd podczas weryfikacji department_id:', err.message);
-        return res.status(500).json({ error: 'Błąd serwera' });
+        console.error('Error verifying department_id:', err.message);
+        return res.status(500).json({ error: 'Server error' });
       }
       if (!dept) {
-        return res.status(400).json({ error: 'Nieprawidłowy department_id: dział nie istnieje' });
+        return res.status(400).json({ error: 'Invalid department_id: department does not exist' });
       }
       insertPosition();
     });
@@ -3283,7 +3273,7 @@ app.put('/api/positions/:id', authenticateToken, (req, res) => {
   const { name, description, department_id, requirements, status } = req.body;
   
   if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'Nazwa pozycji jest wymagana' });
+    return res.status(400).json({ error: 'Position name is required' });
   }
   const updatePosition = () => {
     db.run(
@@ -3292,17 +3282,17 @@ app.put('/api/positions/:id', authenticateToken, (req, res) => {
       function(err) {
         if (err) {
           if (err.message.includes('UNIQUE constraint failed')) {
-            res.status(400).json({ error: 'Pozycja o tej nazwie już istnieje' });
+            res.status(400).json({ error: 'A position with this name already exists' });
           } else {
-            console.error('Błąd podczas aktualizacji pozycji:', err.message);
-            res.status(500).json({ error: 'Błąd serwera' });
+            console.error('Error updating position:', err.message);
+            res.status(500).json({ error: 'Server error' });
           }
         } else if (this.changes === 0) {
-          res.status(404).json({ error: 'Pozycja nie została znaleziona' });
+          res.status(404).json({ error: 'Position not found' });
         } else {
           db.get('SELECT * FROM positions WHERE id = ?', [id], (err, row) => {
             if (err) {
-              return res.status(500).json({ error: 'Błąd podczas pobierania danych pozycji' });
+              return res.status(500).json({ error: 'Error fetching position data' });
             }
             res.json(row);
           });
@@ -3314,11 +3304,11 @@ app.put('/api/positions/:id', authenticateToken, (req, res) => {
   if (department_id) {
     db.get('SELECT id FROM departments WHERE id = ?', [department_id], (err, dept) => {
       if (err) {
-        console.error('Błąd podczas weryfikacji department_id:', err.message);
-        return res.status(500).json({ error: 'Błąd serwera' });
+        console.error('Error verifying department_id:', err.message);
+        return res.status(500).json({ error: 'Server error' });
       }
       if (!dept) {
-        return res.status(400).json({ error: 'Nieprawidłowy department_id: dział nie istnieje' });
+        return res.status(400).json({ error: 'Invalid department_id: department does not exist' });
       }
       updatePosition();
     });
@@ -3329,76 +3319,76 @@ app.put('/api/positions/:id', authenticateToken, (req, res) => {
 
 app.delete('/api/positions/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  // Najpierw pobierz nazwę stanowiska, aby odczepić pracowników
+  // First fetch position name to detach associated employees
   db.get('SELECT id, name FROM positions WHERE id = ?', [id], (err, pos) => {
     if (err) {
-      console.error('Błąd podczas wyszukiwania stanowiska:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      console.error('Error finding position:', err.message);
+      return res.status(500).json({ error: 'Server error' });
     }
     if (!pos) {
-      return res.status(404).json({ error: 'Pozycja nie została znaleziona' });
+      return res.status(404).json({ error: 'Position not found' });
     }
 
-    // Ustaw stanowisko pracowników na '-' dla przypisanych do usuwanego stanowiska
+    // Set employees' position to '-' for those assigned to the deleted position
     db.run('UPDATE employees SET position = ? WHERE position = ?', ['-', pos.name], function(updateErr) {
       if (updateErr) {
-        console.error('Błąd podczas odczepiania pracowników od stanowiska:', updateErr.message);
-        return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+        console.error('Error detaching employees from position:', updateErr.message);
+        return res.status(500).json({ error: 'Server error while detaching employees' });
       }
 
       const detachedCount = this.changes || 0;
 
-      // Następnie usuń stanowisko
+      // Then delete the position
       db.run('DELETE FROM positions WHERE id = ?', [id], function(deleteErr) {
         if (deleteErr) {
-          console.error('Błąd podczas usuwania pozycji:', deleteErr.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
+          console.error('Error deleting position:', deleteErr.message);
+          return res.status(500).json({ error: 'Server error' });
         }
-        res.json({ message: 'Pozycja została usunięta pomyślnie', detachedEmployees: detachedCount });
+        res.json({ message: 'Position deleted successfully', detachedEmployees: detachedCount });
       });
     });
   });
 });
 
-// Usunięcie stanowiska po nazwie (obsługa elementów "brak w bazie")
+// Delete position by name (handles items "missing in DB")
 app.delete('/api/positions/by-name/:name', authenticateToken, (req, res) => {
   const { name } = req.params;
   const normalized = (name || '').trim();
   if (!normalized) {
-    return res.status(400).json({ error: 'Nazwa stanowiska jest wymagana' });
+    return res.status(400).json({ error: 'Position name is required' });
   }
 
-  // Odczep pracowników przypisanych do tego stanowiska (case-insensitive)
+  // Detach employees assigned to this position (case-insensitive)
   db.run('UPDATE employees SET position = ? WHERE LOWER(position) = LOWER(?)', ['-', normalized], function(updateErr) {
     if (updateErr) {
-      console.error('Błąd podczas odczepiania pracowników od stanowiska (by-name):', updateErr.message);
-      return res.status(500).json({ error: 'Błąd serwera podczas odczepiania pracowników' });
+      console.error('Error detaching employees from position (by-name):', updateErr.message);
+      return res.status(500).json({ error: 'Server error while detaching employees' });
     }
 
     const detachedCount = this.changes || 0;
 
-    // Jeśli istnieje rekord pozycji o tej nazwie, usuń go również
+    // If a position record exists with this name, delete it too
     db.get('SELECT id FROM positions WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, pos) => {
       if (findErr) {
-        console.error('Błąd podczas wyszukiwania stanowiska po nazwie:', findErr.message);
-        return res.status(500).json({ error: 'Błąd serwera' });
+        console.error('Error finding position by name:', findErr.message);
+        return res.status(500).json({ error: 'Server error' });
       }
       if (!pos) {
-        return res.json({ message: 'Odczepiono pracowników od stanowiska (rekord nie istnieje)', detachedEmployees: detachedCount, deleted: false });
+        return res.json({ message: 'Detached employees from position (record does not exist)', detachedEmployees: detachedCount, deleted: false });
       }
       db.run('DELETE FROM positions WHERE id = ?', [pos.id], function(deleteErr) {
         if (deleteErr) {
-          console.error('Błąd podczas usuwania stanowiska po nazwie:', deleteErr.message);
-          return res.status(500).json({ error: 'Błąd serwera' });
+          console.error('Error deleting position by name:', deleteErr.message);
+          return res.status(500).json({ error: 'Server error' });
         }
-        res.json({ message: 'Stanowisko zostało usunięte pomyślnie (by-name)', detachedEmployees: detachedCount, deleted: true });
+        res.json({ message: 'Position deleted successfully (by-name)', detachedEmployees: detachedCount, deleted: true });
       });
     });
   });
 });
 
-// ===== ENDPOINT STATYSTYK DASHBOARDU =====
-// Endpoint pobierania statystyk dla dashboardu
+// ===== DASHBOARD STATISTICS ENDPOINT =====
+// Dashboard statistics download endpoint
 app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   const queries = {
     totalEmployees: 'SELECT COUNT(*) as count FROM employees',
@@ -3411,19 +3401,19 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   let completedQueries = 0;
   const totalQueries = Object.keys(queries).length;
 
-  // Wykonaj wszystkie zapytania równolegle
+// Run all queries in parallel
   Object.entries(queries).forEach(([key, query]) => {
     db.get(query, [], (err, result) => {
       if (err) {
         console.error(`Błąd podczas pobierania ${key}:`, err.message);
-        stats[key] = 0; // Fallback do 0 w przypadku błędu
+stats[key] = 0; // Fallback to 0 in case of error
       } else {
         stats[key] = result.count;
       }
       
       completedQueries++;
       
-      // Gdy wszystkie zapytania są zakończone, wyślij odpowiedź
+// When all queries complete, send the response
       if (completedQueries === totalQueries) {
         res.json(stats);
       }
@@ -3432,7 +3422,7 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
 });
 
 // ===== ENDPOINTY SYSTEMU AUDYTU =====
-// Endpoint pobierania logów audytu
+// Endpoint: fetch audit logs
 app.get('/api/audit', authenticateToken, (req, res) => {
   const { page = 1, limit = 50, action, username, startDate, endDate } = req.query;
   const offset = (page - 1) * limit;
@@ -3454,19 +3444,19 @@ app.get('/api/audit', authenticateToken, (req, res) => {
     params.push(action);
   }
 
-  // Filtrowanie po nazwie użytkownika
+// Filter by username
   if (username) {
     query += ` AND (al.username LIKE ? OR u.full_name LIKE ?)`;
     params.push(`%${username}%`, `%${username}%`);
   }
 
-  // Filtrowanie po dacie rozpoczęcia
+// Filter by start date
   if (startDate) {
     query += ` AND DATE(al.timestamp) >= DATE(?)`;
     params.push(startDate);
   }
 
-  // Filtrowanie po dacie zakończenia
+// Filter by end date
   if (endDate) {
     query += ` AND DATE(al.timestamp) <= DATE(?)`;
     params.push(endDate);
@@ -3478,10 +3468,10 @@ app.get('/api/audit', authenticateToken, (req, res) => {
   db.all(query, params, (err, logs) => {
     if (err) {
       console.error('Błąd podczas pobierania logów audytu:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
-    // Pobierz całkowitą liczbę rekordów dla paginacji
+// Get total record count for pagination
     let countQuery = `
       SELECT COUNT(*) as total
       FROM audit_logs al
@@ -3514,7 +3504,7 @@ app.get('/api/audit', authenticateToken, (req, res) => {
     db.get(countQuery, countParams, (err, countResult) => {
       if (err) {
         console.error('Błąd podczas liczenia logów audytu:', err.message);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
       res.json({
@@ -3539,7 +3529,7 @@ app.post('/api/audit', authenticateToken, (req, res) => {
   const user_agent = req.get('User-Agent');
 
   if (!action) {
-    return res.status(400).json({ message: 'Akcja jest wymagana' });
+    return res.status(400).json({ message: 'Action is required' });
   }
 
   const query = `
@@ -3550,11 +3540,11 @@ app.post('/api/audit', authenticateToken, (req, res) => {
   db.run(query, [user_id, username, action, details || null, ip_address, user_agent], function(err) {
     if (err) {
       console.error('Błąd podczas dodawania wpisu audytu:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
     res.status(201).json({ 
-      message: 'Wpis audytu został dodany',
+      message: 'Audit entry added',
       id: this.lastID 
     });
   });
@@ -3565,7 +3555,7 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
   const { days = 30 } = req.query;
 
   const queries = {
-    // Statystyki ogólne
+// Overall statistics
     totalLogs: `SELECT COUNT(*) as count FROM audit_logs WHERE DATE(timestamp) >= DATE('now', '-${days} days')`,
     
     // Statystyki po akcjach
@@ -3577,7 +3567,7 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
       ORDER BY count DESC
     `,
     
-    // Statystyki po użytkownikach
+// Statistics by users
     userStats: `
       SELECT 
         al.username,
@@ -3591,7 +3581,7 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
       LIMIT 10
     `,
     
-    // Aktywność dzienna
+// Daily activity
     dailyActivity: `
       SELECT 
         DATE(timestamp) as date,
@@ -3624,20 +3614,20 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
   });
 });
 
-// Endpoint usuwania wszystkich logów audytu (tylko administrator)
+// Endpoint: delete all audit logs (admin only)
 app.delete('/api/audit', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
 
   db.run('DELETE FROM audit_logs', function(err) {
     if (err) {
       console.error('Błąd podczas usuwania logów audytu:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
     const deletedCount = this.changes || 0;
-    return res.json({ message: 'Logi audytu zostały usunięte', deleted_count: deletedCount });
+    return res.json({ message: 'Audit logs deleted', deleted_count: deletedCount });
   });
 });
 
@@ -3647,10 +3637,10 @@ let multer;
 try {
   multer = require('multer');
 } catch (_) {
-  // multer jest opcjonalny w zależnościach backendu; w root jest dostępny
+// multer is optional in backend dependencies; available in project root
 }
 
-// Konfiguracja uploadu tylko jeśli multer jest dostępny
+// Configure upload only if multer is available
 const LOGO_DIR = path.join(__dirname, 'public', 'logos');
 const CURRENT_LOGO_PATH = path.join(__dirname, 'public', 'logo.png');
 const REPORT_ATTACHMENTS_DIR = path.join(__dirname, 'public', 'report_attachments');
@@ -3751,15 +3741,15 @@ if (multer) {
   });
 }
 
-// Pobieranie ustawień ogólnych (publiczne)
+// Fetch general settings (public)
 app.get('/api/config/general', (req, res) => {
   db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
       console.error('Błąd podczas pobierania ustawień ogólnych:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Ustawienia nie zostały znalezione' });
+      return res.status(404).json({ message: 'Settings not found' });
     }
     let toolCategoryPrefixes = {};
     try {
@@ -3782,15 +3772,15 @@ app.get('/api/config/general', (req, res) => {
   });
 });
 
-// Publiczne: pobranie tłumaczeń dla danego języka (nadpisania z bazy)
+// Public: fetch translations for the given language (DB overrides)
 app.get('/api/translations/:lang', (req, res) => {
   const lang = String(req.params.lang || '').trim();
   if (!['pl', 'en', 'de'].includes(lang)) {
-    return res.status(400).json({ message: 'Nieprawidłowy język' });
+    return res.status(400).json({ message: 'Invalid language' });
   }
   db.all('SELECT key, value FROM translate WHERE lang = ? ORDER BY key', [lang], (err, rows) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     const map = {};
     for (const r of rows) {
@@ -3800,12 +3790,12 @@ app.get('/api/translations/:lang', (req, res) => {
   });
 });
 
-// Admin: pobranie tłumaczeń z możliwością filtrowania
+// Admin: fetch translations with filtering options
 app.get('/api/translate', authenticateToken, requirePermission('SYSTEM_SETTINGS'), (req, res) => {
   const lang = String(req.query.lang || '').trim();
   const search = String(req.query.search || '').trim();
   if (!['pl', 'en', 'de'].includes(lang)) {
-    return res.status(400).json({ message: 'Nieprawidłowy język' });
+    return res.status(400).json({ message: 'Invalid language' });
   }
   let sql = 'SELECT key, value FROM translate WHERE lang = ?';
   const params = [lang];
@@ -3816,17 +3806,17 @@ app.get('/api/translate', authenticateToken, requirePermission('SYSTEM_SETTINGS'
   sql += ' ORDER BY key';
   db.all(sql, params, (err, rows) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     res.json(rows);
   });
 });
 
-// Admin: zbiorcza aktualizacja tłumaczeń
+// Admin: bulk update translations
 app.put('/api/translate/bulk', authenticateToken, requirePermission('SYSTEM_SETTINGS'), (req, res) => {
   const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
   if (updates.length === 0) {
-    return res.status(400).json({ message: 'Brak danych do aktualizacji' });
+    return res.status(400).json({ message: 'No updates provided' });
   }
   const validLang = (l) => ['pl', 'en', 'de'].includes(String(l || '').trim());
   const stmtSql = `INSERT INTO translate(lang, key, value, updated_at) VALUES (?, ?, ?, datetime('now'))
@@ -3844,7 +3834,7 @@ app.put('/api/translate/bulk', authenticateToken, requirePermission('SYSTEM_SETT
     }
     stmt.finalize((err) => {
       if (err) {
-        return res.status(500).json({ message: 'Błąd zapisu tłumaczeń', error: err.message });
+        return res.status(500).json({ message: 'Error saving translations', error: err.message });
       }
       res.json({ updated: count });
     });
@@ -3854,15 +3844,15 @@ app.put('/api/translate/bulk', authenticateToken, requirePermission('SYSTEM_SETT
 // Pobieranie konfiguracji SMTP (tylko administrator)
 app.get('/api/config/email', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
       console.error('Błąd pobierania konfiguracji SMTP:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Konfiguracja nie została znaleziona' });
+      return res.status(404).json({ message: 'Configuration not found' });
     }
     res.json({
       host: row.smtp_host || '',
@@ -3875,40 +3865,40 @@ app.get('/api/config/email', authenticateToken, (req, res) => {
   });
 });
 
-// Serwowanie załączników zgłoszeń
+// Serve report attachments
 app.use('/attachments', express.static(REPORT_ATTACHMENTS_DIR));
 
 // Upload logo aplikacji (tylko administrator)
 app.post('/api/config/logo', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji logo' });
+    return res.status(403).json({ message: 'Insufficient permissions to update logo' });
   }
 
   if (!upload) {
-    return res.status(500).json({ message: 'Upload nie jest dostępny (brak konfiguracji multer)' });
+    return res.status(500).json({ message: 'Upload not available (multer not configured)' });
   }
 
   upload.single('logo')(req, res, (err) => {
     if (err) {
       if (err.message === 'ONLY_PNG') {
-        return res.status(400).json({ message: 'Dozwolone są tylko pliki PNG' });
+        return res.status(400).json({ message: 'Only PNG files are allowed' });
       }
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'Plik jest za duży (maks. 2MB)' });
+        return res.status(400).json({ message: 'File is too large (max 2MB)' });
       }
-      return res.status(500).json({ message: 'Błąd uploadu', error: err.message });
+      return res.status(500).json({ message: 'Upload error', error: err.message });
     }
 
-    // Jeżeli nie ma pliku
+// If the file does not exist
     if (!req.file) {
-      return res.status(400).json({ message: 'Nie przesłano pliku logo' });
+      return res.status(400).json({ message: 'No logo file uploaded' });
     }
 
-    // Walidacja wymiarów PNG na backendzie
+// Validate PNG dimensions on the backend
     const size = getPngSize(req.file.path);
     if (!size) {
       try { fs.unlinkSync(req.file.path); } catch (_) {}
-      return res.status(400).json({ message: 'Nieprawidłowy plik PNG' });
+      return res.status(400).json({ message: 'Invalid PNG file' });
     }
     const { width, height } = size;
     if (
@@ -3917,7 +3907,7 @@ app.post('/api/config/logo', authenticateToken, (req, res) => {
     ) {
       try { fs.unlinkSync(req.file.path); } catch (_) {}
       return res.status(400).json({
-        message: `Wymiary logo poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${width}x${height}`
+        message: `Logo dimensions out of range: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Received ${width}x${height}`
       });
     }
 
@@ -3925,12 +3915,12 @@ app.post('/api/config/logo', authenticateToken, (req, res) => {
     try {
       fs.copyFileSync(req.file.path, CURRENT_LOGO_PATH);
     } catch (copyErr) {
-      return res.status(500).json({ message: 'Nie udało się zapisać aktualnego logo', error: copyErr.message });
+      return res.status(500).json({ message: 'Failed to save current logo', error: copyErr.message });
     }
 
     const timestamp = Date.now();
     return res.json({
-      message: 'Logo zostało zaktualizowane',
+      message: 'Logo updated',
       url: '/logo.png',
       timestamp,
       version: path.basename(req.file.path),
@@ -3942,7 +3932,7 @@ app.post('/api/config/logo', authenticateToken, (req, res) => {
 // Lista historii wersji logo (tylko administrator)
 app.get('/api/config/logo/history', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   try {
     ensureLogoDir();
@@ -3960,27 +3950,27 @@ app.get('/api/config/logo/history', authenticateToken, (req, res) => {
       .sort((a, b) => b.uploadedAt - a.uploadedAt);
     res.json({ currentUrl: '/logo.png', versions: files });
   } catch (err) {
-    res.status(500).json({ message: 'Błąd pobierania historii logo', error: err.message });
+    res.status(500).json({ message: 'Error fetching logo history', error: err.message });
   }
 });
 
-// Przywrócenie wybranej wersji logo (tylko administrator)
+// Restore selected logo version (admin only)
 app.post('/api/config/logo/rollback', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   const { filename } = req.body || {};
   if (!filename || typeof filename !== 'string') {
-    return res.status(400).json({ message: 'Brak poprawnej nazwy pliku wersji' });
+    return res.status(400).json({ message: 'Invalid version filename' });
   }
   const target = path.join(LOGO_DIR, filename);
   try {
     if (!fs.existsSync(target)) {
-      return res.status(404).json({ message: 'Wybrana wersja nie istnieje' });
+      return res.status(404).json({ message: 'Selected version does not exist' });
     }
     const size = getPngSize(target);
     if (!size) {
-      return res.status(400).json({ message: 'Wybrana wersja ma nieprawidłowy plik PNG' });
+      return res.status(400).json({ message: 'Selected version has an invalid PNG file' });
     }
     const { width, height } = size;
     if (
@@ -3988,52 +3978,52 @@ app.post('/api/config/logo/rollback', authenticateToken, (req, res) => {
       width > MAX_LOGO_WIDTH || height > MAX_LOGO_HEIGHT
     ) {
       return res.status(400).json({
-        message: `Wymiary wersji poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${width}x${height}`
+        message: `Version dimensions out of range: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Received ${width}x${height}`
       });
     }
     fs.copyFileSync(target, CURRENT_LOGO_PATH);
     const timestamp = Date.now();
-    res.json({ message: 'Przywrócono wybraną wersję logo', url: '/logo.png', timestamp, size });
+    res.json({ message: 'Selected logo version restored', url: '/logo.png', timestamp, size });
   } catch (err) {
-    res.status(500).json({ message: 'Błąd przywracania wersji', error: err.message });
+    res.status(500).json({ message: 'Error restoring version', error: err.message });
   }
 });
 
-// Usuń wybraną wersję logo (tylko administrator)
+// Delete selected logo version (admin only)
 app.delete('/api/config/logo/:filename', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   const { filename } = req.params || {};
   if (!filename || typeof filename !== 'string') {
-    return res.status(400).json({ message: 'Brak poprawnej nazwy pliku wersji' });
+    return res.status(400).json({ message: 'Invalid version filename' });
   }
   // Zabezpieczenie: dozwolone tylko pliki w formacie logo-*.png
   if (!/^logo-\d+\.png$/.test(filename)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa pliku' });
+    return res.status(400).json({ message: 'Invalid filename' });
   }
   const target = path.join(LOGO_DIR, filename);
   try {
     if (!fs.existsSync(target)) {
-      return res.status(404).json({ message: 'Wybrana wersja nie istnieje' });
+      return res.status(404).json({ message: 'Selected version does not exist' });
     }
     fs.unlinkSync(target);
-    return res.json({ message: 'Wersja logo została usunięta', deleted: filename });
+    return res.json({ message: 'Logo version deleted', deleted: filename });
   } catch (err) {
-    return res.status(500).json({ message: 'Błąd usuwania wersji logo', error: err.message });
+    return res.status(500).json({ message: 'Error deleting logo version', error: err.message });
   }
 });
 
-// Aktualizacja ustawień ogólnych (tylko administrator)
+// Update general settings (admin only)
 app.put('/api/config/general', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji ustawień' });
+    return res.status(403).json({ message: 'Insufficient permissions to update settings' });
   }
 
   const { appName, companyName, timezone, language, dateFormat, backupFrequency, toolsCodePrefix, bhpCodePrefix, toolCategoryPrefixes } = req.body || {};
 
   if (!appName || !timezone || !language || !dateFormat) {
-    return res.status(400).json({ message: 'Brak wymaganych pól: appName, timezone, language, dateFormat' });
+    return res.status(400).json({ message: 'Missing required fields: appName, timezone, language, dateFormat' });
   }
 
   const query = `
@@ -4054,13 +4044,13 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
   db.run(query, [appName, companyName || null, timezone, language, dateFormat, backupFrequency || null, toolsCodePrefix || null, bhpCodePrefix || null, tcpJson || null], function(err) {
     if (err) {
       console.error('Błąd podczas aktualizacji ustawień ogólnych:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
-    // Zwróć zaktualizowane ustawienia
+// Return updated settings
     db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes FROM app_config WHERE id = 1', [], (err, row) => {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       let toolCategoryPrefixes = {};
       try {
@@ -4087,7 +4077,7 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
 // Aktualizacja konfiguracji SMTP (tylko administrator)
 app.put('/api/config/email', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do aktualizacji ustawień SMTP' });
+    return res.status(403).json({ message: 'Insufficient permissions to update SMTP settings' });
   }
   const { host, port, secure, user, pass, from } = req.body || {};
   const query = `
@@ -4104,11 +4094,11 @@ app.put('/api/config/email', authenticateToken, (req, res) => {
   db.run(query, [host || null, port || null, (secure ? 1 : 0), user || null, pass || null, from || null], function(err) {
     if (err) {
       console.error('Błąd aktualizacji ustawień SMTP:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err2, row) => {
       if (err2) {
-        return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+        return res.status(500).json({ message: 'Server error', error: err2.message });
       }
       res.json({
         host: row.smtp_host || '',
@@ -4122,15 +4112,15 @@ app.put('/api/config/email', authenticateToken, (req, res) => {
   });
 });
 
-// Wysyłka testowej wiadomości e-mail (tylko administrator)
+// Send test email (admin only)
 app.post('/api/config/email/test', authenticateToken, async (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   const { to } = req.body || {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!to || typeof to !== 'string' || !emailRegex.test(to)) {
-    return res.status(400).json({ message: 'Podaj poprawny adres odbiorcy (to)' });
+    return res.status(400).json({ message: 'Provide a valid recipient address (to)' });
   }
 
   try {
@@ -4148,11 +4138,11 @@ app.post('/api/config/email/test', authenticateToken, async (req, res) => {
     const from = row?.smtp_from || process.env.SMTP_FROM || '';
 
     if (!host || !port || !from || !emailRegex.test(String(from))) {
-      return res.status(400).json({ message: 'Nieprawidłowa konfiguracja SMTP (host/port/from)' });
+      return res.status(400).json({ message: 'Invalid SMTP configuration (host/port/from)' });
     }
 
     const nodemailer = require('nodemailer');
-    // Wymuś secure=true dla portu 465 (implicit SSL), aby uniknąć typowych błędów konfiguracji
+// Force secure=true for port 465 (implicit SSL) to avoid common configuration errors
     const effectiveSecure = port === 465 ? true : secure;
     const transporterOptions = {
       host,
@@ -4173,43 +4163,43 @@ app.post('/api/config/email/test', authenticateToken, async (req, res) => {
       text: 'To jest testowa wiadomość. Konfiguracja SMTP działa poprawnie.',
     });
 
-    return res.json({ ok: true, message: 'Wiadomość testowa została wysłana' });
+    return res.json({ ok: true, message: 'Test message sent' });
   } catch (err) {
-    // Loguj więcej szczegółów, aby ułatwić diagnozę (kod błędu, odpowiedź serwera)
+// Log more details to aid diagnosis (error code, server response)
     const more = {
       code: err && err.code,
       command: err && err.command,
       response: err && err.response,
     };
     console.error('Błąd wysyłki testowej wiadomości:', err.message, more);
-    // Zwróć rozszerzone dane diagnostyczne do UI (bez wrażliwych danych)
+// Return extended diagnostic data to the UI (no sensitive data)
     return res.status(500).json({
-      message: 'Błąd wysyłki testowej wiadomości',
+      message: 'Error sending test message',
       error: err.message,
       code: more.code,
       command: more.command,
       response: more.response,
       hint:
-        'Upewnij się, że port/secure są zgodne (465→secure: true, 587→secure: false) oraz poprawne dane uwierzytelniające.'
+        'Ensure port/secure match (465→secure: true, 587→secure: false) and credentials are correct.'
     });
   }
 });
 
 // ===== Reports Endpoints =====
-// Utworzenie zgłoszenia (multipart, opcjonalne załączniki)
+// Create a report (multipart, optional attachments)
 app.post('/api/reports', authenticateToken, (req, res) => {
   if (!reportUpload) {
-    return res.status(500).json({ message: 'Upload nie jest dostępny (brak konfiguracji multer)' });
+    return res.status(500).json({ message: 'Upload not available (multer not configured)' });
   }
   reportUpload.array('attachments', 8)(req, res, (err) => {
     if (err) {
       if (err.message === 'ONLY_IMAGES') {
-        return res.status(400).json({ message: 'Dozwolone są tylko pliki obrazów' });
+        return res.status(400).json({ message: 'Only image files are allowed' });
       }
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'Plik jest za duży (maks. 10MB)' });
+        return res.status(400).json({ message: 'File is too large (max 10MB)' });
       }
-      return res.status(500).json({ message: 'Błąd uploadu', error: err.message });
+      return res.status(500).json({ message: 'Upload error', error: err.message });
     }
 
     const body = req.body || {};
@@ -4217,11 +4207,11 @@ app.post('/api/reports', authenticateToken, (req, res) => {
     const description = String(body.description || '').trim();
     const severity = String(body.severity || '').trim();
     if (!type || !description || !severity) {
-      return res.status(400).json({ message: 'Typ, opis i priorytet są wymagane' });
+      return res.status(400).json({ message: 'Type, description, and severity are required' });
     }
     const allowedTypes = ['employee', 'tool', 'bhpIssued', 'bhp', 'other'];
     if (!allowedTypes.includes(type)) {
-      return res.status(400).json({ message: 'Nieprawidłowy typ zgłoszenia' });
+      return res.status(400).json({ message: 'Invalid report type' });
     }
 
     const employeeId = type === 'employee' ? (parseInt(body.employeeId) || null) : null;
@@ -4234,7 +4224,7 @@ app.post('/api/reports', authenticateToken, (req, res) => {
 
     if (type === 'employee' && req.user.role === 'employee') {
       if (!employeeNameManual) {
-        return res.status(400).json({ message: 'Podaj imię i nazwisko pracownika dla zgłoszenia' });
+        return res.status(400).json({ message: 'Provide employee full name for the report' });
       }
     }
 
@@ -4265,17 +4255,17 @@ app.post('/api/reports', authenticateToken, (req, res) => {
     db.run(sql, params, function (insErr) {
       if (insErr) {
         console.error('Błąd dodawania zgłoszenia:', insErr.message);
-        return res.status(500).json({ message: 'Błąd dodawania zgłoszenia' });
+        return res.status(500).json({ message: 'Error creating report' });
       }
-      return res.json({ message: 'Zgłoszenie zostało utworzone', id: this.lastID });
+      return res.json({ message: 'Report created', id: this.lastID });
     });
   });
 });
 
-// Lista zgłoszeń (tylko administrator) z filtrami
+// List reports (admin only) with filters
 app.get('/api/reports', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może przeglądać zgłoszenia' });
+    return res.status(403).json({ message: 'Only administrator can view reports' });
   }
   const { type, severity, status } = req.query || {};
   const where = [];
@@ -4290,7 +4280,7 @@ app.get('/api/reports', authenticateToken, (req, res) => {
   db.all(sql, params, (err, rows) => {
     if (err) {
       console.error('Błąd pobierania zgłoszeń:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     const items = (rows || []).map(r => {
       let atts = [];
@@ -4301,46 +4291,46 @@ app.get('/api/reports', authenticateToken, (req, res) => {
   });
 });
 
-// Aktualizacja statusu zgłoszenia (admin)
+// Update report status (admin)
 app.put('/api/reports/:id/status', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   const id = parseInt(req.params.id);
   const status = String((req.body || {}).status || '').trim();
   const allowed = ['Przyjęto', 'Sprawdzanie', 'Rozwiązano'];
   if (!allowed.includes(status)) {
-    return res.status(400).json({ message: 'Nieprawidłowy status' });
+    return res.status(400).json({ message: 'Invalid status' });
   }
   db.run('UPDATE reports SET status = ?, updated_at = datetime(\'now\') WHERE id = ?', [status, id], function (updErr) {
     if (updErr) {
       console.error('Błąd aktualizacji statusu zgłoszenia:', updErr.message);
-      return res.status(500).json({ message: 'Błąd aktualizacji statusu' });
+      return res.status(500).json({ message: 'Error updating status' });
     }
     if ((this.changes || 0) === 0) {
-      return res.status(404).json({ message: 'Zgłoszenie nie znalezione' });
+      return res.status(404).json({ message: 'Report not found' });
     }
-    return res.json({ message: 'Status zgłoszenia zaktualizowany' });
+    return res.json({ message: 'Report status updated' });
   });
 });
 
-// Usunięcie zgłoszenia (admin) wraz z załącznikami
+// Delete report (admin) along with attachments
 app.delete('/api/reports/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień' });
+    return res.status(403).json({ message: 'Insufficient permissions' });
   }
   const id = parseInt(req.params.id);
   if (Number.isNaN(id) || id <= 0) {
-    return res.status(400).json({ message: 'Nieprawidłowe ID zgłoszenia' });
+    return res.status(400).json({ message: 'Invalid report ID' });
   }
 
   db.get('SELECT id, type, subject, severity, status, created_at, attachments FROM reports WHERE id = ?', [id], (findErr, row) => {
     if (findErr) {
       console.error('Błąd wyszukiwania zgłoszenia do usunięcia:', findErr.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
+      return res.status(500).json({ message: 'Server error', error: findErr.message });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Zgłoszenie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Report not found' });
     }
 
     let attachments = [];
@@ -4350,7 +4340,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
       attachments = [];
     }
 
-    // Usuń pliki załączników z dysku
+// Delete attachment files from disk
     if (Array.isArray(attachments) && attachments.length > 0) {
       attachments.forEach(att => {
         const filename = att && att.filename ? String(att.filename) : null;
@@ -4367,16 +4357,16 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
       });
     }
 
-    // Usuń rekord zgłoszenia
+// Delete report record
     db.run('DELETE FROM reports WHERE id = ?', [id], function(delErr) {
       if (delErr) {
         console.error('Błąd usuwania zgłoszenia:', delErr.message);
-        return res.status(500).json({ message: 'Błąd usuwania zgłoszenia', error: delErr.message });
+        return res.status(500).json({ message: 'Error deleting report', error: delErr.message });
       }
       if ((this.changes || 0) === 0) {
-        return res.status(404).json({ message: 'Zgłoszenie nie zostało znalezione' });
+        return res.status(404).json({ message: 'Report not found' });
       }
-      // Audit log: zapisujemy kto i co usunął
+// Audit log: record who deleted what
       const details = `report_id:${id}; type:${row.type}; severity:${row.severity}; status:${row.status}; subject:${row.subject || ''}; attachments_deleted:${Array.isArray(attachments) ? attachments.length : 0}`;
       db.run(
         "INSERT INTO audit_logs (user_id, username, action, target_type, target_id, details, timestamp) VALUES (?, ?, 'report_delete', 'report', ?, ?, datetime('now'))",
@@ -4385,7 +4375,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
           if (logErr) {
             console.error('Błąd zapisu do audit_logs (usunięcie zgłoszenia):', logErr.message);
           }
-          return res.json({ message: 'Zgłoszenie zostało usunięte', id });
+          return res.json({ message: 'Report deleted', id });
         }
       );
     });
@@ -4396,22 +4386,22 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
 // Utworzenie nowej sesji inwentaryzacji (admin)
 app.post('/api/inventory/sessions', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może tworzyć sesje inwentaryzacji' });
+    return res.status(403).json({ message: 'Only administrator can create inventory sessions' });
   }
   const { name, notes } = req.body || {};
   const normalized = String(name || '').trim();
   if (!normalized) {
-    return res.status(400).json({ message: 'Nazwa sesji jest wymagana' });
+    return res.status(400).json({ message: 'Session name is required' });
   }
   db.run(
     "INSERT INTO inventory_sessions (name, owner_user_id, status, started_at, notes) VALUES (?, ?, 'active', datetime('now'), ?)",
     [normalized, req.user.id, notes || null],
     function(err) {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
       db.get('SELECT * FROM inventory_sessions WHERE id = ?', [this.lastID], (getErr, row) => {
-        if (getErr) return res.status(500).json({ message: 'Błąd pobierania sesji' });
+        if (getErr) return res.status(500).json({ message: 'Error fetching session' });
         res.status(201).json(row);
       });
     }
@@ -4421,7 +4411,7 @@ app.post('/api/inventory/sessions', authenticateToken, (req, res) => {
 // Zmiana statusu sesji (pause/resume/end) - admin
 app.put('/api/inventory/sessions/:id/status', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może zmieniać status sesji' });
+    return res.status(403).json({ message: 'Only administrator can change session status' });
   }
   const { action } = req.body || {};
   const id = req.params.id;
@@ -4434,13 +4424,13 @@ app.put('/api/inventory/sessions/:id/status', authenticateToken, (req, res) => {
   } else if (action === 'end') {
     sql = "UPDATE inventory_sessions SET status = 'ended', finished_at = datetime('now') WHERE id = ? AND status != 'ended'";
   } else {
-    return res.status(400).json({ message: 'Nieprawidłowa akcja (dozwolone: pause, resume, end)' });
+    return res.status(400).json({ message: 'Invalid action (allowed: pause, resume, end)' });
   }
   db.run(sql, params, function(err) {
-    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
-    if (this.changes === 0) return res.status(404).json({ message: 'Sesja nie została znaleziona lub status bez zmian' });
+    if (err) return res.status(500).json({ message: 'Server error', error: err.message });
+    if (this.changes === 0) return res.status(404).json({ message: 'Session not found or status unchanged' });
     db.get('SELECT * FROM inventory_sessions WHERE id = ?', [id], (getErr, row) => {
-      if (getErr) return res.status(500).json({ message: 'Błąd pobierania sesji' });
+      if (getErr) return res.status(500).json({ message: 'Error fetching session' });
       res.json(row);
     });
   });
@@ -4456,21 +4446,21 @@ app.get('/api/inventory/sessions', authenticateToken, (req, res) => {
     ORDER BY s.started_at DESC
   `;
   db.all(sql, [], (err, rows) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    if (err) return res.status(500).json({ message: 'Server error', error: err.message });
     res.json(rows);
   });
 });
 
-// Usuwanie zakończonej sesji (admin)
+// Delete ended session (admin)
 app.delete('/api/inventory/sessions/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może usuwać sesje inwentaryzacji' });
+    return res.status(403).json({ message: 'Only administrator can delete inventory sessions' });
   }
   const id = req.params.id;
   db.get('SELECT * FROM inventory_sessions WHERE id = ?', [id], (findErr, session) => {
-    if (findErr) return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
-    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
-    if (session.status !== 'ended') return res.status(400).json({ message: "Sesja nie ma statusu 'ended'" });
+    if (findErr) return res.status(500).json({ message: 'Server error', error: findErr.message });
+    if (!session) return res.status(404).json({ message: 'Session does not exist' });
+    if (session.status !== 'ended') return res.status(400).json({ message: "Session status is not 'ended'" });
 
     let deletedCounts = 0;
     let deletedCorrections = 0;
@@ -4481,31 +4471,31 @@ app.delete('/api/inventory/sessions/:id', authenticateToken, (req, res) => {
       db.run('DELETE FROM inventory_counts WHERE session_id = ?', [id], function(countErr) {
         if (countErr) {
           db.run('ROLLBACK');
-          return res.status(500).json({ message: 'Błąd usuwania zliczeń', error: countErr.message });
+          return res.status(500).json({ message: 'Error deleting counts', error: countErr.message });
         }
         deletedCounts = this.changes || 0;
 
         db.run('DELETE FROM inventory_corrections WHERE session_id = ?', [id], function(corrErr) {
           if (corrErr) {
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd usuwania korekt', error: corrErr.message });
+            return res.status(500).json({ message: 'Error deleting corrections', error: corrErr.message });
           }
           deletedCorrections = this.changes || 0;
 
           db.run('DELETE FROM inventory_sessions WHERE id = ?', [id], function(sessErr) {
             if (sessErr) {
               db.run('ROLLBACK');
-              return res.status(500).json({ message: 'Błąd usuwania sesji', error: sessErr.message });
+              return res.status(500).json({ message: 'Error deleting session', error: sessErr.message });
             }
             if (this.changes === 0) {
               db.run('ROLLBACK');
-              return res.status(404).json({ message: 'Sesja nie została znaleziona' });
+              return res.status(404).json({ message: 'Session not found' });
             }
 
             db.run('COMMIT', (commitErr) => {
               if (commitErr) {
                 db.run('ROLLBACK');
-                return res.status(500).json({ message: 'Błąd zatwierdzania transakcji', error: commitErr.message });
+                return res.status(500).json({ message: 'Error committing transaction', error: commitErr.message });
               }
 
               const details = `session:${id} name:${session.name} counts:${deletedCounts} corrections:${deletedCorrections}`;
@@ -4517,7 +4507,7 @@ app.delete('/api/inventory/sessions/:id', authenticateToken, (req, res) => {
                     console.error('Błąd dodawania logu audytu:', auditErr.message);
                   }
                   return res.json({ 
-                    message: 'Sesja została trwale usunięta', 
+                    message: 'Session permanently deleted', 
                     deleted: true,
                     session_id: Number(id),
                     deleted_counts: deletedCounts,
@@ -4539,35 +4529,35 @@ app.post('/api/inventory/sessions/:id/scan', authenticateToken, (req, res) => {
   const { code, quantity } = req.body || {};
   const qty = Math.max(1, parseInt(quantity || 1, 10));
   if (!code || String(code).trim() === '') {
-    return res.status(400).json({ message: 'Kod jest wymagany' });
+    return res.status(400).json({ message: 'Code is required' });
   }
 
   db.get('SELECT * FROM inventory_sessions WHERE id = ?', [sessionId], (err, session) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
-    if (session.status !== 'active') return res.status(400).json({ message: 'Sesja nie jest aktywna' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!session) return res.status(404).json({ message: 'Session does not exist' });
+    if (session.status !== 'active') return res.status(400).json({ message: 'Session is not active' });
 
     const findToolSql = 'SELECT * FROM tools WHERE sku = ? OR barcode = ? OR qr_code = ? OR inventory_number = ? LIMIT 1';
     db.get(findToolSql, [code, code, code, code], (findErr, tool) => {
-      if (findErr) return res.status(500).json({ message: 'Błąd serwera' });
-      if (!tool) return res.status(404).json({ message: 'Nie znaleziono narzędzia dla podanego kodu' });
+      if (findErr) return res.status(500).json({ message: 'Server error' });
+      if (!tool) return res.status(404).json({ message: 'No tool found for the provided code' });
 
       db.get('SELECT id, counted_qty FROM inventory_counts WHERE session_id = ? AND tool_id = ?', [sessionId, tool.id], (getErr, countRow) => {
-        if (getErr) return res.status(500).json({ message: 'Błąd serwera' });
+        if (getErr) return res.status(500).json({ message: 'Server error' });
         if (!countRow) {
           db.run(
             'INSERT INTO inventory_counts (session_id, tool_id, code, counted_qty) VALUES (?, ?, ?, ?)',
             [sessionId, tool.id, code, qty],
             function(insErr) {
-              if (insErr) return res.status(500).json({ message: 'Błąd serwera', error: insErr.message });
+              if (insErr) return res.status(500).json({ message: 'Server error', error: insErr.message });
               db.get('SELECT * FROM inventory_counts WHERE id = ?', [this.lastID], (cErr, newRow) => {
-                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                if (cErr) return res.status(500).json({ message: 'Server error' });
                 // Zapis audytu
                 db.run(
                   "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_scan', ?, datetime('now'))",
                   [req.user.id, req.user.username, `session:${sessionId} tool:${tool.id} qty:${qty}`]
                 );
-                res.status(201).json({ message: 'Dodano zliczenie', count: newRow, tool });
+                res.status(201).json({ message: 'Count added', count: newRow, tool });
               });
             }
           );
@@ -4577,14 +4567,14 @@ app.post('/api/inventory/sessions/:id/scan', authenticateToken, (req, res) => {
             "UPDATE inventory_counts SET counted_qty = ?, updated_at = datetime('now') WHERE id = ?",
             [updatedQty, countRow.id],
             function(updErr) {
-              if (updErr) return res.status(500).json({ message: 'Błąd serwera', error: updErr.message });
+              if (updErr) return res.status(500).json({ message: 'Server error', error: updErr.message });
               db.get('SELECT * FROM inventory_counts WHERE id = ?', [countRow.id], (cErr, row) => {
-                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                if (cErr) return res.status(500).json({ message: 'Server error' });
                 db.run(
                   "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_scan', ?, datetime('now'))",
                   [req.user.id, req.user.username, `session:${sessionId} tool:${tool.id} qty:+${qty}`]
                 );
-                res.json({ message: 'Zaktualizowano zliczenie', count: row, tool });
+                res.json({ message: 'Count updated', count: row, tool });
               });
             }
           );
@@ -4594,39 +4584,39 @@ app.post('/api/inventory/sessions/:id/scan', authenticateToken, (req, res) => {
   });
 });
 
-// Ustawienie zliczonej ilości dla narzędzia w sesji (upsert)
+// Set counted quantity for a tool in the session (upsert)
 app.put('/api/inventory/sessions/:id/counts/:toolId', authenticateToken, (req, res) => {
   const sessionId = req.params.id;
   const toolId = req.params.toolId;
   const { counted_qty } = req.body || {};
   const qty = Math.max(0, parseInt(counted_qty, 10));
   if (Number.isNaN(qty)) {
-    return res.status(400).json({ message: 'Wymagane: counted_qty (number)' });
+    return res.status(400).json({ message: 'Required: counted_qty (number)' });
   }
 
   db.get('SELECT * FROM inventory_sessions WHERE id = ?', [sessionId], (err, session) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!session) return res.status(404).json({ message: 'Sesja nie istnieje' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!session) return res.status(404).json({ message: 'Session does not exist' });
 
     db.get('SELECT * FROM tools WHERE id = ?', [toolId], (toolErr, tool) => {
-      if (toolErr) return res.status(500).json({ message: 'Błąd serwera' });
-      if (!tool) return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      if (toolErr) return res.status(500).json({ message: 'Server error' });
+      if (!tool) return res.status(404).json({ message: 'Tool not found' });
 
       db.get('SELECT id FROM inventory_counts WHERE session_id = ? AND tool_id = ?', [sessionId, toolId], (getErr, countRow) => {
-        if (getErr) return res.status(500).json({ message: 'Błąd serwera' });
+        if (getErr) return res.status(500).json({ message: 'Server error' });
         if (!countRow) {
           db.run(
             'INSERT INTO inventory_counts (session_id, tool_id, code, counted_qty) VALUES (?, ?, ?, ?)',
             [sessionId, toolId, tool.sku || null, qty],
             function(insErr) {
-              if (insErr) return res.status(500).json({ message: 'Błąd serwera', error: insErr.message });
+              if (insErr) return res.status(500).json({ message: 'Server error', error: insErr.message });
               db.get('SELECT * FROM inventory_counts WHERE id = ?', [this.lastID], (cErr, newRow) => {
-                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                if (cErr) return res.status(500).json({ message: 'Server error' });
                 db.run(
                   "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_count_set', ?, datetime('now'))",
                   [req.user.id, req.user.username, `session:${sessionId} tool:${toolId} set:${qty}`]
                 );
-                res.status(201).json({ message: 'Ustawiono zliczoną ilość', count: newRow });
+                res.status(201).json({ message: 'Count quantity set', count: newRow });
               });
             }
           );
@@ -4635,14 +4625,14 @@ app.put('/api/inventory/sessions/:id/counts/:toolId', authenticateToken, (req, r
             "UPDATE inventory_counts SET counted_qty = ?, updated_at = datetime('now') WHERE id = ?",
             [qty, countRow.id],
             function(updErr) {
-              if (updErr) return res.status(500).json({ message: 'Błąd serwera', error: updErr.message });
+              if (updErr) return res.status(500).json({ message: 'Server error', error: updErr.message });
               db.get('SELECT * FROM inventory_counts WHERE id = ?', [countRow.id], (cErr, row) => {
-                if (cErr) return res.status(500).json({ message: 'Błąd serwera' });
+                if (cErr) return res.status(500).json({ message: 'Server error' });
                 db.run(
                   "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_count_set', ?, datetime('now'))",
                   [req.user.id, req.user.username, `session:${sessionId} tool:${toolId} set:${qty}`]
                 );
-                res.json({ message: 'Zaktualizowano zliczoną ilość', count: row });
+                res.json({ message: 'Count quantity updated', count: row });
               });
             }
           );
@@ -4652,7 +4642,7 @@ app.put('/api/inventory/sessions/:id/counts/:toolId', authenticateToken, (req, r
   });
 });
 
-// Różnice w sesji (zawiera także różnice 0)
+// Session differences (also includes zero differences)
 app.get('/api/inventory/sessions/:id/differences', authenticateToken, (req, res) => {
   const sessionId = req.params.id;
   const sql = `
@@ -4665,12 +4655,12 @@ app.get('/api/inventory/sessions/:id/differences', authenticateToken, (req, res)
     ORDER BY ABS(difference) DESC, t.name
   `;
   db.all(sql, [sessionId], (err, rows) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    if (err) return res.status(500).json({ message: 'Server error', error: err.message });
     res.json(rows);
   });
 });
 
-// Historia zliczeń i korekt
+// History of counts and corrections
 app.get('/api/inventory/sessions/:id/history', authenticateToken, (req, res) => {
   const sessionId = req.params.id;
   const countsQuery = `
@@ -4689,28 +4679,28 @@ app.get('/api/inventory/sessions/:id/history', authenticateToken, (req, res) => 
     ORDER BY c.created_at DESC
   `;
   db.all(countsQuery, [sessionId], (err, counts) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    if (err) return res.status(500).json({ message: 'Server error', error: err.message });
     db.all(correctionsQuery, [sessionId], (err2, corrections) => {
-      if (err2) return res.status(500).json({ message: 'Błąd serwera', error: err2.message });
+      if (err2) return res.status(500).json({ message: 'Server error', error: err2.message });
       res.json({ counts, corrections });
     });
   });
 });
 
-// Dodanie korekty różnicy
+// Add difference correction
 app.post('/api/inventory/sessions/:id/corrections', authenticateToken, (req, res) => {
   const sessionId = req.params.id;
   const { tool_id, difference_qty, reason } = req.body || {};
   if (!tool_id || typeof difference_qty !== 'number') {
-    return res.status(400).json({ message: 'Wymagane: tool_id i difference_qty (number)' });
+    return res.status(400).json({ message: 'Required: tool_id and difference_qty (number)' });
   }
   db.run(
     'INSERT INTO inventory_corrections (session_id, tool_id, difference_qty, reason) VALUES (?, ?, ?, ?)',
     [sessionId, tool_id, difference_qty, reason || null],
     function(err) {
-      if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      if (err) return res.status(500).json({ message: 'Server error', error: err.message });
       db.get('SELECT * FROM inventory_corrections WHERE id = ?', [this.lastID], (getErr, row) => {
-        if (getErr) return res.status(500).json({ message: 'Błąd pobierania korekty' });
+        if (getErr) return res.status(500).json({ message: 'Error fetching correction' });
         res.status(201).json(row);
       });
     }
@@ -4720,30 +4710,30 @@ app.post('/api/inventory/sessions/:id/corrections', authenticateToken, (req, res
 // Akceptacja korekty (admin)
 app.post('/api/inventory/corrections/:id/accept', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może akceptować korekty' });
+    return res.status(403).json({ message: 'Only administrator can accept corrections' });
   }
   const id = req.params.id;
   db.run(
     "UPDATE inventory_corrections SET accepted_by_user_id = ?, accepted_at = datetime('now') WHERE id = ?",
     [req.user.id, id],
     function(err) {
-      if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
-      if (this.changes === 0) return res.status(404).json({ message: 'Korekta nie została znaleziona' });
+      if (err) return res.status(500).json({ message: 'Server error', error: err.message });
+      if (this.changes === 0) return res.status(404).json({ message: 'Correction not found' });
 
-      // Po akceptacji zastosuj korektę do stanu systemowego narzędzia
+// After acceptance, apply the correction to the tool's system quantity
       db.get('SELECT * FROM inventory_corrections WHERE id = ?', [id], (getErr, corr) => {
-        if (getErr || !corr) return res.status(500).json({ message: 'Błąd pobierania korekty do zastosowania' });
+        if (getErr || !corr) return res.status(500).json({ message: 'Error fetching correction to apply' });
         db.run(
           'UPDATE tools SET quantity = COALESCE(quantity, 0) + ? WHERE id = ?',
           [corr.difference_qty, corr.tool_id],
           function(updErr) {
-            if (updErr) return res.status(500).json({ message: 'Błąd zastosowania korekty', error: updErr.message });
+            if (updErr) return res.status(500).json({ message: 'Error applying correction', error: updErr.message });
             // Zapisz zdarzenie w logach audytu
             db.run(
               "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_correction_accept', ?, datetime('now'))",
               [req.user.id, req.user.username, `correction:${id} tool:${corr.tool_id} diff:${corr.difference_qty}`]
             );
-            res.json({ message: 'Korekta zaakceptowana i zastosowana', id, tool_id: corr.tool_id, applied_difference: corr.difference_qty });
+            res.json({ message: 'Correction accepted and applied', id, tool_id: corr.tool_id, applied_difference: corr.difference_qty });
           }
         );
       });
@@ -4754,23 +4744,23 @@ app.post('/api/inventory/corrections/:id/accept', authenticateToken, (req, res) 
 // Usuwanie korekty (admin)
 app.delete('/api/inventory/corrections/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Tylko administrator może usuwać korekty' });
+    return res.status(403).json({ message: 'Only administrator can delete corrections' });
   }
   const id = req.params.id;
   db.get('SELECT * FROM inventory_corrections WHERE id = ?', [id], (findErr, corr) => {
-    if (findErr) return res.status(500).json({ message: 'Błąd serwera', error: findErr.message });
-    if (!corr) return res.status(404).json({ message: 'Korekta nie istnieje' });
-    if (corr.accepted_at) return res.status(400).json({ message: 'Nie można usunąć zatwierdzonej korekty' });
+    if (findErr) return res.status(500).json({ message: 'Server error', error: findErr.message });
+    if (!corr) return res.status(404).json({ message: 'Correction does not exist' });
+    if (corr.accepted_at) return res.status(400).json({ message: 'Cannot delete an approved correction' });
 
     db.run('DELETE FROM inventory_corrections WHERE id = ?', [id], function(delErr) {
-      if (delErr) return res.status(500).json({ message: 'Błąd usuwania korekty', error: delErr.message });
-      if (this.changes === 0) return res.status(404).json({ message: 'Korekta nie została znaleziona' });
+      if (delErr) return res.status(500).json({ message: 'Error deleting correction', error: delErr.message });
+      if (this.changes === 0) return res.status(404).json({ message: 'Correction not found' });
       db.run(
         "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_correction_delete', ?, datetime('now'))",
         [req.user.id, req.user.username, `correction:${id} session:${corr.session_id} tool:${corr.tool_id} diff:${corr.difference_qty}`],
         (auditErr) => {
           if (auditErr) console.error('Błąd dodawania logu audytu:', auditErr.message);
-          res.json({ message: 'Korekta została usunięta', id: Number(id), deleted: true });
+          res.json({ message: 'Correction deleted', id: Number(id), deleted: true });
         }
       );
     });
@@ -4778,10 +4768,10 @@ app.delete('/api/inventory/corrections/:id', authenticateToken, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Serwer działa na porcie ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
-// Obsługa zamknięcia aplikacji
+// Handle application shutdown
 
 // ===== BACKUPY BAZY DANYCH =====
 const BACKUP_DIR = path.join(__dirname, 'backups');
@@ -4837,7 +4827,7 @@ function shouldRunBackup(frequency, lastBackupAt) {
       break;
     case 'daily':
     default:
-      thresholdMs = 24 * 60 * 60 * 1000; // 1 dzień
+thresholdMs = 24 * 60 * 60 * 1000; // 1 day
   }
   if (!lastBackupAt) return true;
   const last = new Date(lastBackupAt);
@@ -4860,26 +4850,26 @@ function checkAndRunBackup() {
 
 function initBackupScheduler() {
   ensureBackupDir();
-  // Uruchom co godzinę sprawdzanie czy należy wykonać kopię
+// Run an hourly check to determine whether to perform a backup
   setInterval(checkAndRunBackup, 60 * 60 * 1000);
-  console.log('Uruchomiono harmonogram kopii zapasowych (sprawdzanie co godzinę).');
+  console.log('Backup scheduler started (checks hourly).');
 }
 
-// Ręczne wywołanie kopii (tylko administrator)
+// Manual backup trigger (admin only)
 app.post('/api/backup/run', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do uruchomienia kopii zapasowej' });
+    return res.status(403).json({ message: 'Insufficient permissions to run backup' });
   }
   performBackup((err, dest) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera', error: err.message });
-    return res.json({ message: 'Kopia zapasowa wykonana', file: path.basename(dest) });
+    if (err) return res.status(500).json({ message: 'Server error', error: err.message });
+    return res.json({ message: 'Backup completed', file: path.basename(dest) });
   });
 });
 
 // Lista kopii (tylko administrator)
 app.get('/api/backup/list', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do przeglądania kopii zapasowych' });
+    return res.status(403).json({ message: 'Insufficient permissions to view backups' });
   }
   ensureBackupDir();
   try {
@@ -4888,7 +4878,7 @@ app.get('/api/backup/list', authenticateToken, (req, res) => {
       .map(f => ({ file: f }));
     res.json({ backups: files });
   } catch (err) {
-    res.status(500).json({ message: 'Błąd serwera', error: err.message });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 process.on('SIGINT', () => {
@@ -4902,62 +4892,62 @@ process.on('SIGINT', () => {
   });
 });
 
-// Endpoint wydawania narzędzia pracownikowi (z obsługą ilości)
+// Endpoint: issue a tool to an employee (with quantity support)
 app.post('/api/tools/:id/issue', authenticateToken, (req, res) => {
   const toolId = req.params.id;
   const { employee_id, quantity = 1 } = req.body;
   const userId = req.user.id;
 
   if (!employee_id) {
-    return res.status(400).json({ message: 'ID pracownika jest wymagane' });
+    return res.status(400).json({ message: 'Employee ID is required' });
   }
 
   if (quantity < 1) {
-    return res.status(400).json({ message: 'Ilość musi być większa od 0' });
+    return res.status(400).json({ message: 'Quantity must be greater than 0' });
   }
 
-  // Sprawdź czy narzędzie istnieje i ma wystarczającą ilość dostępną
+// Verify the tool exists and has sufficient available quantity
   db.get('SELECT * FROM tools WHERE id = ?', [toolId], (err, tool) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (!tool) {
-      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Tool not found' });
     }
 
-    // Sprawdź aktualnie wydaną ilość
+// Check currently issued quantity
     db.get('SELECT COALESCE(SUM(quantity), 0) as issued_quantity FROM tool_issues WHERE tool_id = ? AND status = "wydane"', [toolId], (err, result) => {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
 
       const availableQuantity = tool.quantity - result.issued_quantity;
       
       if (availableQuantity < quantity) {
         return res.status(400).json({ 
-          message: `Niewystarczająca ilość dostępna. Dostępne: ${availableQuantity}, żądane: ${quantity}` 
+          message: `Insufficient quantity available. Available: ${availableQuantity}, requested: ${quantity}` 
         });
       }
 
-      // Sprawdź czy pracownik istnieje
+// Check if employee exists
       db.get('SELECT * FROM employees WHERE id = ?', [employee_id], (err, employee) => {
         if (err) {
-          return res.status(500).json({ message: 'Błąd serwera' });
+          return res.status(500).json({ message: 'Server error' });
         }
         if (!employee) {
-          return res.status(404).json({ message: 'Pracownik nie został znaleziony' });
+          return res.status(404).json({ message: 'Employee not found' });
         }
 
-        // Dodaj wpis do tabeli wydań
+// Add a record to the issues table
         db.run(
           'INSERT INTO tool_issues (tool_id, employee_id, issued_by_user_id, quantity) VALUES (?, ?, ?, ?)',
           [toolId, employee_id, userId, quantity],
           function(err) {
             if (err) {
-              return res.status(500).json({ message: 'Błąd serwera' });
+              return res.status(500).json({ message: 'Server error' });
             }
 
-            // Zaktualizuj status narzędzia jeśli wszystkie sztuki zostały wydane
+// Update tool status if all items have been issued
             const newIssuedQuantity = result.issued_quantity + quantity;
             const newStatus = newIssuedQuantity >= tool.quantity ? 'wydane' : 'częściowo wydane';
             
@@ -4965,12 +4955,12 @@ app.post('/api/tools/:id/issue', authenticateToken, (req, res) => {
               'UPDATE tools SET status = ? WHERE id = ?',
               [newStatus, toolId],
               function(err) {
-                if (err) {
-                  return res.status(500).json({ message: 'Błąd serwera' });
-                }
+              if (err) {
+                return res.status(500).json({ message: 'Server error' });
+              }
                 
                 res.status(200).json({ 
-                  message: `Wydano ${quantity} sztuk narzędzia`,
+                  message: `Issued ${quantity} items of the tool`,
                   issue_id: this.lastID,
                   available_quantity: availableQuantity - quantity
                 });
@@ -4983,46 +4973,46 @@ app.post('/api/tools/:id/issue', authenticateToken, (req, res) => {
   });
 });
 
-// Endpoint zwracania narzędzia (z obsługą ilości)
+// Endpoint: return a tool (with quantity support)
 app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
   const toolId = req.params.id;
   const { issue_id, quantity } = req.body;
 
   if (!issue_id) {
-    return res.status(400).json({ message: 'ID wydania jest wymagane' });
+    return res.status(400).json({ message: 'Issue ID is required' });
   }
 
-  // Sprawdź czy wydanie istnieje i jest aktywne
+// Check whether the issue exists and is active
   db.get('SELECT * FROM tool_issues WHERE id = ? AND tool_id = ? AND status = "wydane"', [issue_id, toolId], (err, issue) => {
     if (err) {
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (!issue) {
-      return res.status(404).json({ message: 'Wydanie nie zostało znalezione lub już zostało zwrócone' });
+      return res.status(404).json({ message: 'Issue not found or already returned' });
     }
 
     const returnQuantity = quantity || issue.quantity;
 
     if (returnQuantity > issue.quantity) {
-      return res.status(400).json({ message: 'Nie można zwrócić więcej niż zostało wydane' });
+      return res.status(400).json({ message: 'Cannot return more than was issued' });
     }
 
     if (returnQuantity === issue.quantity) {
-      // Zwróć całe wydanie
+// Return the entire issue
       db.run(
         'UPDATE tool_issues SET status = "zwrócone", returned_at = datetime("now") WHERE id = ?',
         [issue_id],
         function(err) {
           if (err) {
-            return res.status(500).json({ message: 'Błąd serwera' });
+            return res.status(500).json({ message: 'Server error' });
           }
           
-          // Sprawdź czy wszystkie wydania zostały zwrócone i zaktualizuj status narzędzia
+// Check whether all issues have been returned and update the tool status
           updateToolStatus(toolId, res, returnQuantity);
         }
       );
     } else {
-      // Częściowy zwrot - zmniejsz ilość w wydaniu i utwórz nowy wpis zwrotu
+// Partial return — decrease quantity in the issue and create a new return entry
       db.run(
         'UPDATE tool_issues SET quantity = ? WHERE id = ?',
         [issue.quantity - returnQuantity, issue_id],
@@ -5031,7 +5021,7 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
             return res.status(500).json({ message: 'Błąd serwera' });
           }
 
-          // Utwórz wpis zwrotu
+// Create a return entry
           db.run(
             'INSERT INTO tool_issues (tool_id, employee_id, issued_by_user_id, quantity, status, returned_at) VALUES (?, ?, ?, ?, "zwrócone", datetime("now"))',
             [toolId, issue.employee_id, issue.issued_by_user_id, returnQuantity],
@@ -5049,7 +5039,7 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
   });
 
   function updateToolStatus(toolId, res, returnedQuantity) {
-    // Sprawdź aktualny status wydań dla narzędzia
+// Check the current issue status for the tool
     db.get('SELECT COALESCE(SUM(quantity), 0) as issued_quantity FROM tool_issues WHERE tool_id = ? AND status = "wydane"', [toolId], (err, result) => {
       if (err) {
         return res.status(500).json({ message: 'Błąd serwera' });
@@ -5074,11 +5064,11 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
           [newStatus, toolId],
           function(err) {
             if (err) {
-              return res.status(500).json({ message: 'Błąd serwera' });
+              return res.status(500).json({ message: 'Server error' });
             }
-            
+              
             res.status(200).json({ 
-              message: `Zwrócono ${returnedQuantity} sztuk narzędzia`,
+              message: `Returned ${returnedQuantity} items of the tool`,
               new_status: newStatus,
               available_quantity: tool.quantity - result.issued_quantity
             });
@@ -5089,7 +5079,7 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
   }
 });
 
-// Endpoint pobierania szczegółów narzędzia z informacjami o wydaniach
+// Endpoint: fetch tool details including issue information
 app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
   const toolId = req.params.id;
 
@@ -5108,14 +5098,14 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
   db.get(query, [toolId], (err, tool) => {
     if (err) {
       console.error(`Błąd bazy danych przy pobieraniu narzędzia ID ${toolId}:`, err);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!tool) {
       console.log(`Narzędzie o ID ${toolId} nie zostało znalezione`);
-      return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Tool not found' });
     }
 
-    // Pobierz szczegóły wydań
+// Fetch issue details
     const issuesQuery = `
       SELECT 
         ti.*,
@@ -5132,7 +5122,7 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
     db.all(issuesQuery, [toolId], (err, issues) => {
       if (err) {
         console.error(`Błąd przy pobieraniu wydań narzędzia ID ${toolId}:`, err);
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+        return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
       const result = {
@@ -5147,13 +5137,13 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
   });
 });
 
-// Endpointy do zarządzania uprawnieniami ról
+// Endpoints for managing role permissions
 
-// Pobieranie uprawnień dla wszystkich ról
+// Fetch permissions for all roles
 app.get('/api/role-permissions', authenticateToken, (req, res) => {
-  // Sprawdź czy użytkownik ma uprawnienia administratora
+// Check whether the user has administrator permissions
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage roles' });
   }
 
   const query = `
@@ -5165,10 +5155,10 @@ app.get('/api/role-permissions', authenticateToken, (req, res) => {
   db.all(query, [], (err, rows) => {
     if (err) {
       console.error('Błąd podczas pobierania uprawnień ról:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+      return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
-    // Grupuj uprawnienia według ról
+// Group permissions by role
     const rolePermissions = {};
     rows.forEach(row => {
       if (!rolePermissions[row.role]) {
@@ -5181,31 +5171,31 @@ app.get('/api/role-permissions', authenticateToken, (req, res) => {
   });
 });
 
-// Aktualizacja uprawnień dla konkretnej roli
+// Update permissions for a specific role
 app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
-  // Sprawdź czy użytkownik ma uprawnienia administratora
+// Check whether the user has administrator permissions
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage roles' });
   }
 
   const role = req.params.role;
   const { permissions } = req.body;
 
   if (!permissions || !Array.isArray(permissions)) {
-    return res.status(400).json({ message: 'Nieprawidłowe dane - wymagana jest tablica uprawnień' });
+    return res.status(400).json({ message: 'Invalid data — permissions array required' });
   }
 
-  // Rozpocznij transakcję
+// Begin transaction
   db.serialize(() => {
     db.run('BEGIN TRANSACTION');
 
-    // Usuń wszystkie istniejące uprawnienia dla tej roli
+// Remove all existing permissions for this role
     db.run('DELETE FROM role_permissions WHERE role = ?', [role], (err) => {
-      if (err) {
-        console.error(`Błąd podczas usuwania uprawnień dla roli ${role}:`, err.message);
-        db.run('ROLLBACK');
-        return res.status(500).json({ message: 'Błąd serwera', error: err.message });
-      }
+        if (err) {
+          console.error(`Błąd podczas usuwania uprawnień dla roli ${role}:`, err.message);
+          db.run('ROLLBACK');
+          return res.status(500).json({ message: 'Server error', error: err.message });
+        }
 
       // Dodaj nowe uprawnienia
       const stmt = db.prepare('INSERT INTO role_permissions (role, permission) VALUES (?, ?)');
@@ -5217,7 +5207,7 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
             console.error(`Błąd podczas dodawania uprawnienia ${permission} dla roli ${role}:`, err.message);
             errorOccurred = true;
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+            return res.status(500).json({ message: 'Server error', error: err.message });
           }
         });
       });
@@ -5227,13 +5217,13 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
           if (!errorOccurred) {
             console.error('Błąd podczas finalizacji statement:', err.message);
             db.run('ROLLBACK');
-            return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+            return res.status(500).json({ message: 'Server error', error: err.message });
           }
         } else {
           db.run('COMMIT', (err) => {
             if (err) {
               console.error('Błąd podczas zatwierdzania transakcji:', err.message);
-              return res.status(500).json({ message: 'Błąd serwera', error: err.message });
+              return res.status(500).json({ message: 'Server error', error: err.message });
             }
 
             // Dodaj wpis do audit log
@@ -5261,7 +5251,7 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
 
             console.log(`Uprawnienia dla roli ${role} zostały zaktualizowane`);
             res.json({ 
-              message: 'Uprawnienia zostały zaktualizowane pomyślnie',
+              message: 'Role permissions updated successfully',
               role: role,
               permissions: permissions
             });
@@ -5272,9 +5262,9 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
   });
 });
 
-// Pobieranie dostępnych uprawnień
+// Fetch available permissions
 app.get('/api/permissions', authenticateToken, (req, res) => {
-  // Sprawdź czy użytkownik ma uprawnienia administratora
+// Check whether the user has administrator permissions
   if (req.user.role !== 'administrator') {
     return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
   }
@@ -5321,14 +5311,14 @@ app.get('/api/db/tables', authenticateToken, requirePermission('VIEW_DATABASE'),
   db.all(sql, [], (err, rows) => {
     if (err) {
       console.error('Błąd podczas pobierania listy tabel:', err.message);
-      return res.status(500).json({ message: 'Błąd podczas pobierania listy tabel' });
+      return res.status(500).json({ message: 'Error fetching table list' });
     }
     const tables = rows.map(r => r.name);
     res.json(tables);
   });
 });
 
-// Admin/permission-only: Podgląd zawartości wybranej tabeli z paginacją
+// Admin/permission-only: Preview selected table contents with pagination
 app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABASE'), (req, res) => {
   const tableName = String(req.params.name || '').trim();
   const limit = Math.max(1, Math.min(500, parseInt(req.query.limit, 10) || 50));
@@ -5339,17 +5329,17 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
       console.error('Błąd walidacji nazwy tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+      return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
-      return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+      return res.status(400).json({ message: 'Invalid table name' });
     }
 
     // Pobierz schemat (kolumny)
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
         console.error('Błąd pobierania schematu tabeli:', errCols.message);
-        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+        return res.status(500).json({ message: 'Error fetching table schema' });
       }
 
       const columnNames = (cols || []).map(c => c.name);
@@ -5360,7 +5350,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
       db.all(dataSql, [limit, offset], (errData, rows) => {
         if (errData) {
           console.error('Błąd pobierania danych tabeli:', errData.message);
-          return res.status(500).json({ message: 'Błąd pobierania danych tabeli' });
+          return res.status(500).json({ message: 'Error fetching table data' });
         }
 
         // Policz całkowitą liczbę rekordów
@@ -5368,7 +5358,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
         db.get(countSql, [], (errCount, countRow) => {
           if (errCount) {
             console.error('Błąd liczenia rekordów tabeli:', errCount.message);
-            return res.status(500).json({ message: 'Błąd liczenia rekordów tabeli' });
+            return res.status(500).json({ message: 'Error counting table records' });
           }
 
           const columnTypes = {};
@@ -5394,36 +5384,36 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
 app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
   // Tylko administrator może usuwać tabele
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do operacji na bazie' });
+    return res.status(403).json({ message: 'Insufficient permissions for database operations' });
   }
 
   const tableName = String(req.params.name || '').trim();
 
   // Prosta walidacja nazwy tabeli
   if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    return res.status(400).json({ message: 'Invalid table name' });
   }
 
   // Zabezpieczenie przed usunięciem krytycznych tabel
   const protectedTables = ['users', 'role_permissions', 'app_config'];
   if (protectedTables.includes(tableName)) {
-    return res.status(400).json({ message: 'Tabela jest chroniona i nie może zostać usunięta' });
+    return res.status(400).json({ message: 'Table is protected and cannot be deleted' });
   }
 
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
       console.error('Błąd walidacji nazwy tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+      return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Tabela nie istnieje' });
+      return res.status(404).json({ message: 'Table does not exist' });
     }
 
     db.run(`DROP TABLE IF EXISTS ${tableName}`, (dropErr) => {
       if (dropErr) {
         console.error('Błąd usuwania tabeli:', dropErr.message);
-        return res.status(500).json({ message: 'Błąd usuwania tabeli' });
+        return res.status(500).json({ message: 'Error deleting table' });
       }
 
       // Opcjonalnie: zapis do audit_logs
@@ -5441,7 +5431,7 @@ app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_D
           if (logErr) {
             console.error('Błąd podczas zapisywania do audit log:', logErr.message);
           }
-          return res.json({ message: `Tabela ${tableName} została usunięta` });
+          return res.json({ message: `Table ${tableName} deleted` });
         }
       );
     });
@@ -5456,16 +5446,16 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
   const updates = req.body?.updates || {};
 
   if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    return res.status(400).json({ message: 'Invalid table name' });
   }
   if (!pkName) {
-    return res.status(400).json({ message: 'Brak nazwy klucza głównego' });
+    return res.status(400).json({ message: 'Missing primary key name' });
   }
   if (pkValue === undefined) {
-    return res.status(400).json({ message: 'Brak wartości klucza głównego' });
+    return res.status(400).json({ message: 'Missing primary key value' });
   }
   if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
-    return res.status(400).json({ message: 'Brak danych do aktualizacji' });
+    return res.status(400).json({ message: 'No update data provided' });
   }
 
   // Walidacja tabeli
@@ -5473,17 +5463,17 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
       console.error('Błąd walidacji nazwy tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+      return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Tabela nie istnieje' });
+      return res.status(404).json({ message: 'Table does not exist' });
     }
 
     // Pobierz schemat, zweryfikuj kolumny i klucz główny
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
         console.error('Błąd pobierania schematu tabeli:', errCols.message);
-        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+        return res.status(500).json({ message: 'Error fetching table schema' });
       }
       const columnNames = (cols || []).map(c => c.name);
       const pkColumns = (cols || []).filter(c => c.pk).map(c => c.name);
@@ -5494,27 +5484,27 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
         notNullMap[c.name] = !!c.notnull;
       });
       if (!pkColumns.includes(pkName)) {
-        return res.status(400).json({ message: 'Nieprawidłowy klucz główny dla tej tabeli' });
+        return res.status(400).json({ message: 'Invalid primary key for this table' });
       }
 
       // Walidacja typów dla aktualizowanych pól
       for (const [col, val] of Object.entries(updates)) {
         if (!columnNames.includes(col)) {
-          return res.status(400).json({ message: `Nieznana kolumna: ${col}` });
+          return res.status(400).json({ message: `Unknown column: ${col}` });
         }
         if (col === pkName) continue;
         const t = typesMap[col] || '';
         if (notNullMap[col] && (val === null || typeof val === 'undefined')) {
-          return res.status(400).json({ message: `Kolumna ${col} jest wymagana (NOT NULL)` });
+          return res.status(400).json({ message: `Column ${col} is required (NOT NULL)` });
         }
         if (val !== null && typeof val !== 'undefined') {
           if (t.includes('INT')) {
             if (isNaN(parseInt(val, 10))) {
-              return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby całkowitej` });
+              return res.status(400).json({ message: `Column ${col} expects an integer` });
             }
           } else if (t.includes('REAL') || t.includes('DOUBLE') || t.includes('FLOAT')) {
             if (isNaN(parseFloat(val))) {
-              return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby zmiennoprzecinkowej` });
+              return res.status(400).json({ message: `Column ${col} expects a floating-point number` });
             }
           }
         }
@@ -5530,7 +5520,7 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
         }
       });
       if (setClauses.length === 0) {
-        return res.status(400).json({ message: 'Brak poprawnych kolumn do aktualizacji' });
+        return res.status(400).json({ message: 'No valid columns to update' });
       }
       const sql = `UPDATE ${tableName} SET ${setClauses.join(', ')} WHERE ${pkName} = ?`;
       values.push(pkValue);
@@ -5538,12 +5528,12 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
       db.run(sql, values, function(updateErr) {
         if (updateErr) {
           console.error('Błąd aktualizacji wiersza:', updateErr.message);
-          return res.status(500).json({ message: 'Błąd aktualizacji wiersza' });
+          return res.status(500).json({ message: 'Error updating row' });
         }
         if (this.changes === 0) {
-          return res.status(404).json({ message: 'Wiersz nie został znaleziony' });
+          return res.status(404).json({ message: 'Row not found' });
         }
-        return res.json({ message: 'Wiersz został zaktualizowany', updated: this.changes });
+        return res.json({ message: 'Row updated', updated: this.changes });
       });
     });
   });
@@ -5589,12 +5579,12 @@ app.delete('/api/db/table/:name/row', authenticateToken, requirePermission('MANA
       db.run(sql, [pkValue], function(delErr) {
         if (delErr) {
           console.error('Błąd usuwania wiersza:', delErr.message);
-          return res.status(500).json({ message: 'Błąd usuwania wiersza' });
+          return res.status(500).json({ message: 'Error deleting row' });
         }
         if (this.changes === 0) {
-          return res.status(404).json({ message: 'Wiersz nie został znaleziony' });
+          return res.status(404).json({ message: 'Row not found' });
         }
-        return res.json({ message: 'Wiersz został usunięty', deleted: this.changes });
+        return res.json({ message: 'Row deleted', deleted: this.changes });
       });
     });
   });
@@ -5606,26 +5596,26 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
   const values = req.body?.values || {};
 
   if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    return res.status(400).json({ message: 'Invalid table name' });
   }
   if (!values || typeof values !== 'object' || Object.keys(values).length === 0) {
-    return res.status(400).json({ message: 'Brak danych wiersza do dodania' });
+    return res.status(400).json({ message: 'No row data to insert' });
   }
 
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
       console.error('Błąd walidacji nazwy tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+      return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Tabela nie istnieje' });
+      return res.status(404).json({ message: 'Table does not exist' });
     }
 
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
         console.error('Błąd pobierania schematu tabeli:', errCols.message);
-        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+        return res.status(500).json({ message: 'Error fetching table schema' });
       }
       const availableColumns = (cols || []).map(c => c.name);
       const notNullCols = (cols || []).filter(c => c.notnull).map(c => c.name);
@@ -5635,16 +5625,16 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
       // Walidacja kolumn i prostych typów
       for (const [col, val] of Object.entries(values)) {
         if (!availableColumns.includes(col)) {
-          return res.status(400).json({ message: `Nieznana kolumna: ${col}` });
+          return res.status(400).json({ message: `Unknown column: ${col}` });
         }
         const t = typesMap[col] || '';
         if (t.includes('INT')) {
           if (val !== null && val !== undefined && isNaN(parseInt(val, 10))) {
-            return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby całkowitej` });
+            return res.status(400).json({ message: `Column ${col} expects an integer` });
           }
         } else if (t.includes('REAL') || t.includes('DOUBLE') || t.includes('FLOAT')) {
           if (val !== null && val !== undefined && isNaN(parseFloat(val))) {
-            return res.status(400).json({ message: `Kolumna ${col} oczekuje liczby zmiennoprzecinkowej` });
+            return res.status(400).json({ message: `Column ${col} expects a floating-point number` });
           }
         }
       }
@@ -5652,13 +5642,13 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
       // Sprawdź NOT NULL
       for (const col of notNullCols) {
         if (!(col in values)) {
-          return res.status(400).json({ message: `Kolumna ${col} jest wymagana (NOT NULL)` });
+          return res.status(400).json({ message: `Column ${col} is required (NOT NULL)` });
         }
       }
 
       const insertCols = Object.keys(values).filter(c => availableColumns.includes(c));
       if (insertCols.length === 0) {
-        return res.status(400).json({ message: 'Brak poprawnych kolumn do wstawienia' });
+        return res.status(400).json({ message: 'No valid columns to insert' });
       }
       const placeholders = insertCols.map(() => '?').join(', ');
       const sql = `INSERT INTO ${tableName} (${insertCols.join(', ')}) VALUES (${placeholders})`;
@@ -5667,9 +5657,9 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
       db.run(sql, params, function(insErr) {
         if (insErr) {
           console.error('Błąd dodawania wiersza:', insErr.message);
-          return res.status(500).json({ message: 'Błąd dodawania wiersza' });
+          return res.status(500).json({ message: 'Error adding row' });
         }
-        return res.json({ message: 'Wiersz został dodany', id: this.lastID });
+        return res.json({ message: 'Row added', id: this.lastID });
       });
     });
   });
@@ -5679,7 +5669,7 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
 app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'), (req, res) => {
   // Tylko administrator może tworzyć tabele
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do operacji na bazie' });
+    return res.status(403).json({ message: 'Insufficient permissions for database operations' });
   }
 
   const name = String(req.body?.name || '').trim();
@@ -5687,15 +5677,15 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
   const primaryKey = String(req.body?.primaryKey || '').trim();
 
   if (!/^[A-Za-z0-9_]+$/.test(name)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    return res.status(400).json({ message: 'Invalid table name' });
   }
   if (columns.length === 0) {
-    return res.status(400).json({ message: 'Brak definicji kolumn' });
+    return res.status(400).json({ message: 'No column definitions' });
   }
 
   const protectedTables = ['users', 'role_permissions', 'app_config'];
   if (protectedTables.includes(name)) {
-    return res.status(400).json({ message: 'Tabela jest chroniona i nie może zostać utworzona' });
+    return res.status(400).json({ message: 'Table is protected and cannot be created' });
   }
 
   // Walidacja kolumn
@@ -5706,15 +5696,15 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
     const colType = String(col?.type || 'TEXT').trim().toUpperCase();
     const notNull = !!col?.notNull;
     if (!/^[A-Za-z0-9_]+$/.test(colName)) {
-      return res.status(400).json({ message: `Nieprawidłowa nazwa kolumny: ${colName}` });
+      return res.status(400).json({ message: `Invalid column name: ${colName}` });
     }
     if (colNamesSet.has(colName)) {
-      return res.status(400).json({ message: `Duplikat kolumny: ${colName}` });
+      return res.status(400).json({ message: `Duplicate column: ${colName}` });
     }
     colNamesSet.add(colName);
     const allowed = ['TEXT', 'INTEGER', 'REAL', 'BLOB'];
     if (!allowed.includes(colType)) {
-      return res.status(400).json({ message: `Nieobsługiwany typ kolumny: ${colType}` });
+      return res.status(400).json({ message: `Unsupported column type: ${colType}` });
     }
     colDefs.push(`${colName} ${colType}${notNull ? ' NOT NULL' : ''}`);
   }
@@ -5723,7 +5713,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
   let pkClause = '';
   if (primaryKey) {
     if (!colNamesSet.has(primaryKey)) {
-      return res.status(400).json({ message: 'Primary key musi wskazywać istniejącą kolumnę' });
+      return res.status(400).json({ message: 'Primary key must reference an existing column' });
     }
     pkClause = `, PRIMARY KEY (${primaryKey})`;
   }
@@ -5732,7 +5722,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
   db.run(sql, [], (err) => {
     if (err) {
       console.error('Błąd tworzenia tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd tworzenia tabeli' });
+      return res.status(500).json({ message: 'Error creating table' });
     }
 
     // Zapis do audit_logs
@@ -5750,7 +5740,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
         if (logErr) {
           console.error('Błąd podczas zapisywania do audit log:', logErr.message);
         }
-        return res.json({ message: `Tabela ${name} została utworzona` });
+        return res.json({ message: `Table ${name} created` });
       }
     );
   });
@@ -5760,7 +5750,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
 function requirePermission(permission) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Nieautoryzowany' });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
     if (req.user.role === 'administrator') {
       return next();
@@ -5770,12 +5760,12 @@ function requirePermission(permission) {
       (err, row) => {
         if (err) {
           console.error('Błąd podczas sprawdzania uprawnień:', err.message);
-          return res.status(500).json({ message: 'Błąd serwera' });
+          return res.status(500).json({ message: 'Server error' });
         }
         if (row && row.ok) {
           return next();
         }
-        return res.status(403).json({ message: 'Brak uprawnień' });
+        return res.status(403).json({ message: 'Insufficient permissions' });
       }
     );
   };
@@ -5787,7 +5777,7 @@ app.get('/api/categories', authenticateToken, (req, res) => {
   db.all('SELECT id, name FROM tool_categories ORDER BY name', (err, rows) => {
     if (err) {
       console.error('Błąd podczas pobierania kategorii:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     res.json(rows);
   });
@@ -5808,7 +5798,7 @@ app.get('/api/categories/stats', authenticateToken, (req, res) => {
   db.all(sql, [], (err, rows) => {
     if (err) {
       console.error('Błąd podczas pobierania statystyk kategorii:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     res.json(rows);
   });
@@ -5817,24 +5807,24 @@ app.get('/api/categories/stats', authenticateToken, (req, res) => {
 // Dodaj kategorię (administrator)
 app.post('/api/categories', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage categories' });
   }
   const { name } = req.body || {};
   if (!name || String(name).trim() === '') {
-    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+    return res.status(400).json({ error: 'Category name is required' });
   }
   const normalized = String(name).trim();
   db.run('INSERT INTO tool_categories (name) VALUES (?)', [normalized], function(err) {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ error: 'Kategoria o tej nazwie już istnieje' });
+        return res.status(400).json({ error: 'A category with this name already exists' });
       }
       console.error('Błąd podczas dodawania kategorii:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     db.get('SELECT id, name FROM tool_categories WHERE id = ?', [this.lastID], (getErr, row) => {
       if (getErr) {
-        return res.status(500).json({ error: 'Błąd podczas pobierania kategorii' });
+        return res.status(500).json({ error: 'Error fetching category' });
       }
       res.status(201).json(row);
     });
@@ -5844,28 +5834,28 @@ app.post('/api/categories', authenticateToken, (req, res) => {
 // Aktualizuj kategorię (administrator)
 app.put('/api/categories/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage categories' });
   }
   const { id } = req.params;
   const { name } = req.body || {};
   if (!name || String(name).trim() === '') {
-    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+    return res.status(400).json({ error: 'Category name is required' });
   }
   const normalized = String(name).trim();
   db.run('UPDATE tool_categories SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [normalized, id], function(err) {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ error: 'Kategoria o tej nazwie już istnieje' });
+        return res.status(400).json({ error: 'A category with this name already exists' });
       }
       console.error('Błąd podczas aktualizacji kategorii:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+      return res.status(404).json({ error: 'Category not found' });
     }
     db.get('SELECT id, name FROM tool_categories WHERE id = ?', [id], (getErr, row) => {
       if (getErr) {
-        return res.status(500).json({ error: 'Błąd podczas pobierania kategorii' });
+        return res.status(500).json({ error: 'Error fetching category' });
       }
       res.json(row);
     });
@@ -5875,45 +5865,45 @@ app.put('/api/categories/:id', authenticateToken, (req, res) => {
 // Usuń kategorię (administrator)
 app.delete('/api/categories/:id', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage categories' });
   }
   const { id } = req.params;
   db.run('DELETE FROM tool_categories WHERE id = ?', [id], function(err) {
     if (err) {
       console.error('Błąd podczas usuwania kategorii:', err.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+      return res.status(404).json({ error: 'Category not found' });
     }
-    res.json({ message: 'Kategoria została usunięta' });
+    res.json({ message: 'Category deleted' });
   });
 });
 
 // Usuń kategorię po nazwie (administrator)
 app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania kategoriami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage categories' });
   }
   const { name } = req.params;
   const normalized = String(name || '').trim();
   if (!normalized) {
-    return res.status(400).json({ error: 'Nazwa kategorii jest wymagana' });
+    return res.status(400).json({ error: 'Category name is required' });
   }
   db.get('SELECT id FROM tool_categories WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, cat) => {
     if (findErr) {
       console.error('Błąd wyszukiwania kategorii po nazwie:', findErr.message);
-      return res.status(500).json({ error: 'Błąd serwera' });
+      return res.status(500).json({ error: 'Server error' });
     }
     if (!cat) {
-      return res.json({ message: 'Rekord kategorii nie istnieje', deleted: false });
+      return res.json({ message: 'Category record does not exist', deleted: false });
     }
     db.run('DELETE FROM tool_categories WHERE id = ?', [cat.id], function(deleteErr) {
       if (deleteErr) {
         console.error('Błąd usuwania kategorii po nazwie:', deleteErr.message);
-        return res.status(500).json({ error: 'Błąd serwera' });
+        return res.status(500).json({ error: 'Server error' });
       }
-      res.json({ message: 'Kategoria została usunięta (by-name)', deleted: true });
+      res.json({ message: 'Category deleted (by-name)', deleted: true });
     });
   });
 });
@@ -5923,11 +5913,11 @@ app.post('/api/print', authenticateToken, async (req, res) => {
   try {
     const { protocol = 'ipp', printerUrl, contentType = 'image/png', dataBase64, zpl, copies = 1, jobName = 'SZN Label' } = req.body || {};
     if (!printerUrl) {
-      return res.status(400).json({ message: 'Brak pola printerUrl' });
+      return res.status(400).json({ message: 'Missing field printerUrl' });
     }
     if (protocol === 'ipp') {
       if (!ipp) {
-        return res.status(500).json({ message: 'Moduł ipp nie jest zainstalowany. Uruchom npm install ipp.' });
+        return res.status(500).json({ message: 'IPP module is not installed. Run npm install ipp.' });
       }
       try {
         const printer = ipp.Printer(printerUrl);
@@ -5944,12 +5934,12 @@ app.post('/api/print', authenticateToken, async (req, res) => {
         };
         printer.execute('Print-Job', msg, (err, ret) => {
           if (err) {
-            return res.status(500).json({ message: err.message || 'Błąd IPP' });
+            return res.status(500).json({ message: err.message || 'IPP error' });
           }
           return res.json({ status: 'ok', jobId: ret && ret['job-id'] });
         });
       } catch (e) {
-        return res.status(500).json({ message: e.message || 'Wyjątek IPP' });
+        return res.status(500).json({ message: e.message || 'IPP exception' });
       }
     } else if (protocol === 'zebra_raw') {
       try {
@@ -5962,7 +5952,7 @@ app.post('/api/print', authenticateToken, async (req, res) => {
         client.on('error', (err) => {
           if (!responded) {
             responded = true;
-            res.status(500).json({ message: err.message || 'Błąd połączenia RAW' });
+            res.status(500).json({ message: err.message || 'RAW connection error' });
           }
         });
         client.connect(port, host, () => {
@@ -5976,14 +5966,14 @@ app.post('/api/print', authenticateToken, async (req, res) => {
           }
         });
       } catch (e) {
-        return res.status(500).json({ message: e.message || 'Wyjątek RAW Zebra' });
+        return res.status(500).json({ message: e.message || 'Zebra RAW exception' });
       }
     } else {
-      return res.status(400).json({ message: `Nieobsługiwany protokół: ${protocol}` });
+      return res.status(400).json({ message: `Unsupported protocol: ${protocol}` });
     }
   } catch (error) {
     console.error('Print API error:', error);
-    return res.status(500).json({ message: 'Nieoczekiwany błąd Print API' });
+    return res.status(500).json({ message: 'Unexpected Print API error' });
   }
 });
 function sanitizeNamePart(str, take = 3) {
@@ -6034,20 +6024,20 @@ function sendCredentialsEmail(email, username, password, fullName, callback) {
     }
     const host = (row && row.smtp_host) || process.env.SMTP_HOST;
     const port = parseInt((row && row.smtp_port) || process.env.SMTP_PORT || '587', 10);
-    // Wymuś secure=true dla portu 465 (implicit SSL), aby uniknąć typowych błędów konfiguracji
+    // Force secure=true for port 465 (implicit SSL) to avoid common misconfigurations
     const configuredSecure = !!((row && row.smtp_secure) || ((process.env.SMTP_SECURE || 'false').toLowerCase() === 'true'));
     const secure = port === 465 ? true : configuredSecure;
     const user = (row && row.smtp_user) || process.env.SMTP_USER;
     const pass = (row && row.smtp_pass) || process.env.SMTP_PASS;
-    const from = (row && row.smtp_from) || process.env.SMTP_FROM || 'narzędziownia';
+    const from = (row && row.smtp_from) || process.env.SMTP_FROM || 'toolroom';
     if (!host || !user || !pass) {
       console.warn('Email not sent: SMTP configuration missing.');
       return callback && callback(null);
     }
     const transporter = nodemailerOptional.createTransport({ host, port, secure, auth: { user, pass } });
 
-    // Przygotuj szablon HTML z logotypem i stopką
-    const legalNotice = 'Treść niniejszej wiadomości jest poufna i objęta zakazem jej ujawniania. Jeśli odbiorca tej wiadomości nie jest jej zamierzonym adresatem, pracownikiem lub pośrednikiem upoważnionym do jej przekazania adresatowi, informujemy że wszelkie rozpowszechnianie, powielanie lub jakiekolwiek inne wykorzystywanie niniejszej wiadomości jest zabronione. Jeżeli zatem wiadomość ta została otrzymana omyłkowo, prosimy o bezzwłoczne zawiadomienie nadawcy w trybie odpowiedzi na niniejszą wiadomość oraz o usunięcie wszystkich jej kopii.';
+    // Prepare HTML template with logo and footer
+    const legalNotice = 'The content of this message is confidential and must not be disclosed. If you are not the intended recipient, an employee, or an intermediary authorized to forward it to the recipient, please note that any dissemination, reproduction, or other use of this message is prohibited. If you received this message by mistake, please immediately notify the sender by replying to this message and delete all its copies.';
     const logoPath = path.join(__dirname, 'public', 'logo.png');
     const hasLogo = fs.existsSync(logoPath);
     const html = `
@@ -6055,22 +6045,22 @@ function sendCredentialsEmail(email, username, password, fullName, callback) {
         <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #eee;border-radius:8px;overflow:hidden;">
           <div style="padding:20px 24px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px;">
             ${hasLogo ? '<img src="cid:app_logo" alt="Logo" style="height:40px;">' : ''}
-            <div style="font-size:18px;font-weight:600;">Dane do logowania</div>
+            <div style="font-size:18px;font-weight:600;">Login Credentials</div>
           </div>
           <div style="padding:24px;">
-            <p style="margin:0 0 12px;">Witaj <strong>${escapeHtml(fullName)}</strong>,</p>
-            <p style="margin:0 0 16px;">Twoje konto zostało utworzone. Poniżej znajdują się dane do logowania:</p>
+            <p style="margin:0 0 12px;">Hello <strong>${escapeHtml(fullName)}</strong>,</p>
+            <p style="margin:0 0 16px;">Your account has been created. Below are your login details:</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px;">
               <div style="flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:6px;padding:12px;">
-                <div style="font-size:12px;color:#6b7280;">Login</div>
+                <div style="font-size:12px;color:#6b7280;">Username</div>
                 <div style="font-size:16px;font-weight:600;color:#111;">${escapeHtml(username)}</div>
               </div>
               <div style="flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:6px;padding:12px;">
-                <div style="font-size:12px;color:#6b7280;">Hasło</div>
+                <div style="font-size:12px;color:#6b7280;">Password</div>
                 <div style="font-size:16px;font-weight:600;color:#111;">${escapeHtml(password)}</div>
               </div>
             </div>
-            <p style="margin:0 0 12px;color:#374151;">Ze względów bezpieczeństwa zalecamy zmianę hasła po pierwszym logowaniu.</p>
+            <p style="margin:0 0 12px;color:#374151;">For security, please change the password after your first login.</p>
           </div>
           <div style="padding:16px 24px;border-top:1px solid #eee;">
             <small style="display:block;font-size:12px;color:#6b7280;font-style:italic;line-height:1.5;">${escapeHtml(legalNotice)}</small>

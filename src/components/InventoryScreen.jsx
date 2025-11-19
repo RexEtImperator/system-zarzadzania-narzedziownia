@@ -534,7 +534,7 @@ function InventoryScreen({ tools = [], user }) {
 
   const acceptCorrection = async (corr) => {
     if (!isAdmin) {
-      toast.error('Tylko administrator może zatwierdzać korekty');
+      toast.error(t('inventory.toast.onlyAdminApprove'));
       return;
     }
     try {
@@ -554,15 +554,15 @@ function InventoryScreen({ tools = [], user }) {
         { toolId: corr.tool_id ?? null, sku: corr.tool_sku ?? null, at: Date.now() },
         ...prev
       ].filter(rc => Date.now() - rc.at < 60000));
-      toast.success('Korekta została zatwierdzona i zastosowana.');
+      toast.success(t('inventory.toast.approveSuccess'));
     } catch (err) {
-      toast.error(err?.message || 'Nie udało się zatwierdzić korekty');
+      toast.error(err?.message || t('inventory.toast.approveFailed'));
     }
   };
 
   const openDeleteModal = (corr) => {
     if (!isAdmin) {
-      toast.error('Tylko administrator może usuwać korekty');
+      toast.error(t('inventory.toast.onlyAdminDelete'));
       return;
     }
     setDeleteTarget(corr);
@@ -571,7 +571,7 @@ function InventoryScreen({ tools = [], user }) {
 
   const deleteCorrection = async (corr) => {
     if (!isAdmin) {
-      toast.error('Tylko administrator może usuwać korekty');
+      toast.error(t('inventory.toast.onlyAdminDelete'));
       return;
     }
     try {
@@ -586,9 +586,9 @@ function InventoryScreen({ tools = [], user }) {
         const corrList = Array.isArray(data?.corrections) ? data.corrections : Array.isArray(data) ? data : [];
         setCorrections(corrList);
       } catch (_) {}
-      toast.success('Korekta została usunięta.');
+      toast.success(t('inventory.toast.deleteSuccess'));
     } catch (err) {
-      toast.error(err?.message || 'Nie udało się usunąć korekty');
+      toast.error(err?.message || t('inventory.toast.deleteFailed'));
       throw err;
     }
   };
@@ -1057,21 +1057,21 @@ function InventoryScreen({ tools = [], user }) {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-            {filtered.map((t) => {
-              const min = typeof t.min_stock === 'number' ? t.min_stock : null;
-              const max = typeof t.max_stock === 'number' ? t.max_stock : null;
-              const qty = t.quantity || 0;
+            {filtered.map((tool) => {
+              const min = typeof tool.min_stock === 'number' ? tool.min_stock : null;
+              const max = typeof tool.max_stock === 'number' ? tool.max_stock : null;
+              const qty = tool.quantity || 0;
               const belowMin = min !== null && min >= 0 ? qty < min : false;
               return (
-                <tr key={t.id} className={belowMin ? 'bg-red-50/60 dark:bg-red-900/20' : ''}>
+                <tr key={tool.id} className={belowMin ? 'bg-red-50/60 dark:bg-red-900/20' : ''}>
                   <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
-                    {t.name}
+                    {tool.name}
                     <div className="mt-1 text-xs text-slate-500 sm:hidden">
-                      <div>{t('inventory.stock.headers.sku')}: {t.sku || '-'}</div>
+                      <div>{t('inventory.stock.headers.sku')}: {tool.sku || '-'}</div>
                       <div>{t('inventory.stock.headers.min')}: {min ?? '-'} | {t('inventory.stock.headers.max')}: {max ?? '-'}</div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{t.sku}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{tool.sku}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{qty}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{min ?? '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hidden sm:table-cell">{max ?? '-'}</td>

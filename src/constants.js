@@ -132,27 +132,27 @@ export const API_ENDPOINTS = {
 
 // Error messages
 export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'Błąd połączenia z serwerem',
-  UNAUTHORIZED: 'Brak uprawnień do wykonania tej operacji',
-  FORBIDDEN: 'Dostęp zabroniony',
-  NOT_FOUND: 'Nie znaleziono zasobu',
-  VALIDATION_ERROR: 'Błąd walidacji danych',
-  SERVER_ERROR: 'Błąd serwera',
-  UNKNOWN_ERROR: 'Wystąpił nieznany błąd'
+  NETWORK_ERROR: 'Network connection error',
+  UNAUTHORIZED: 'You do not have permission to perform this operation',
+  FORBIDDEN: 'Access forbidden',
+  NOT_FOUND: 'Resource not found',
+  VALIDATION_ERROR: 'Data validation error',
+  SERVER_ERROR: 'Server error',
+  UNKNOWN_ERROR: 'An unknown error occurred'
 };
 
 // Success messages
 export const SUCCESS_MESSAGES = {
-  USER_CREATED: 'Użytkownik został utworzony pomyślnie',
-  USER_UPDATED: 'Dane użytkownika zostały zaktualizowane',
-  USER_DELETED: 'Użytkownik został usunięty',
-  DEPARTMENT_CREATED: 'Departament został utworzony pomyślnie',
-  DEPARTMENT_UPDATED: 'Departament został zaktualizowany',
-  DEPARTMENT_DELETED: 'Departament został usunięty',
-  POSITION_CREATED: 'Stanowisko zostało utworzone pomyślnie',
-  POSITION_UPDATED: 'Stanowisko zostało zaktualizowane',
-  POSITION_DELETED: 'Stanowisko zostało usunięte',
-  SETTINGS_SAVED: 'Ustawienia zostały zapisane'
+  USER_CREATED: 'User created successfully',
+  USER_UPDATED: 'User updated successfully',
+  USER_DELETED: 'User deleted successfully',
+  DEPARTMENT_CREATED: 'Department created successfully',
+  DEPARTMENT_UPDATED: 'Department updated successfully',
+  DEPARTMENT_DELETED: 'Department deleted successfully',
+  POSITION_CREATED: 'Position created successfully',
+  POSITION_UPDATED: 'Position updated successfully',
+  POSITION_DELETED: 'Position deleted successfully',
+  SETTINGS_SAVED: 'Settings saved'
 };
 
 // Theme colors

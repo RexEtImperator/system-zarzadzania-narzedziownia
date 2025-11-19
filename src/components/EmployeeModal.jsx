@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext.jsx';
 
 const EmployeeModal = ({ 
   isOpen, 
@@ -8,6 +9,7 @@ const EmployeeModal = ({
   departments = [], 
   positions = [] 
 }) => {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -67,19 +69,19 @@ const EmployeeModal = ({
     const newErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Imię jest wymagane';
+      newErrors.firstName = t('employees.modal.errors.firstNameRequired');
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Nazwisko jest wymagane';
+      newErrors.lastName = t('employees.modal.errors.lastNameRequired');
     }
 
     if (!formData.departmentId) {
-      newErrors.departmentId = 'Departament jest wymagany';
+      newErrors.departmentId = t('employees.modal.errors.departmentRequired');
     }
 
     if (!formData.positionId) {
-      newErrors.positionId = 'Stanowisko jest wymagane';
+      newErrors.positionId = t('employees.modal.errors.positionRequired');
     }
 
     setErrors(newErrors);
@@ -99,7 +101,7 @@ const EmployeeModal = ({
       onClose();
     } catch (error) {
       console.error('Błąd podczas zapisywania pracownika:', error);
-      setErrors({ submit: 'Wystąpił błąd podczas zapisywania' });
+      setErrors({ submit: t('employees.modal.errors.submitFailed') });
     } finally {
       setIsLoading(false);
     }
@@ -120,13 +122,13 @@ const EmployeeModal = ({
               <div className="sm:flex sm:items-start">
                 <div className="w-full">
                   <h3 className="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100 mb-4">
-                    {employee ? 'Edytuj pracownika' : 'Dodaj nowego pracownika'}
+                    {employee ? t('employees.modal.title.edit') : t('employees.modal.title.add')}
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Imię *
+                        {t('employees.modal.labels.firstName')}
                       </label>
                       <input
                         type="text"
@@ -134,7 +136,7 @@ const EmployeeModal = ({
                         id="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        placeholder="np. Jan"
+                        placeholder={t('employees.modal.placeholders.firstName')}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
                           errors.firstName ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
@@ -146,7 +148,7 @@ const EmployeeModal = ({
 
                     <div>
                       <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Nazwisko *
+                        {t('employees.modal.labels.lastName')}
                       </label>
                       <input
                         type="text"
@@ -154,7 +156,7 @@ const EmployeeModal = ({
                         id="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        placeholder="np. Kowalski"
+                        placeholder={t('employees.modal.placeholders.lastName')}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 ${
                           errors.lastName ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
@@ -166,7 +168,7 @@ const EmployeeModal = ({
 
                     <div>
                       <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Telefon
+                        {t('employees.modal.labels.phone')}
                       </label>
                       <input
                         type="tel"
@@ -174,14 +176,14 @@ const EmployeeModal = ({
                         id="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="np. 500 600 700"
+                        placeholder={t('employees.modal.placeholders.phone')}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>
 
                   <div>
                       <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        E-mail
+                        {t('employees.modal.labels.email')}
                       </label>
                       <input
                         type="email"
@@ -189,14 +191,14 @@ const EmployeeModal = ({
                         id="email"
                         value={formData.email}
                         onChange={handleChange}
-                        placeholder="np. jan.kowalski@example.com"
+                        placeholder={t('employees.modal.placeholders.email')}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>
 
                     <div>
                       <label htmlFor="brandNumber" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Numer służbowy
+                        {t('employees.modal.labels.brandNumber')}
                       </label>
                       <input
                         type="text"
@@ -204,14 +206,14 @@ const EmployeeModal = ({
                         id="brandNumber"
                         value={formData.brandNumber}
                         onChange={handleChange}
-                        placeholder="np. ID-1234"
+                        placeholder={t('employees.modal.placeholders.brandNumber')}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       />
                     </div>
 
                     <div>
                       <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Dział *
+                        {t('employees.modal.labels.department')}
                       </label>
                       <select
                         name="departmentId"
@@ -222,7 +224,7 @@ const EmployeeModal = ({
                           errors.departmentId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       >
-                        <option value="">Wybierz dział</option>
+                        <option value="">{t('employees.modal.select.department')}</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
@@ -236,7 +238,7 @@ const EmployeeModal = ({
 
                     <div>
                       <label htmlFor="positionId" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Stanowisko *
+                        {t('employees.modal.labels.position')}
                       </label>
                       <select
                         name="positionId"
@@ -247,7 +249,7 @@ const EmployeeModal = ({
                           errors.positionId ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       >
-                        <option value="">Wybierz stanowisko</option>
+                        <option value="">{t('employees.modal.select.position')}</option>
                         {positions.map(pos => (
                           <option key={pos.id} value={pos.id}>
                             {pos.name}
@@ -261,7 +263,7 @@ const EmployeeModal = ({
 
                     <div>
                       <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                        Status
+                        {t('employees.modal.labels.status')}
                       </label>
                       <select
                         name="status"
@@ -270,9 +272,9 @@ const EmployeeModal = ({
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 text-gray-900 bg-white dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
                       >
-                        <option value="active">Aktywny</option>
-                        <option value="inactive">Nieaktywny</option>
-                        <option value="suspended">Zawieszony</option>
+                        <option value="active">{t('employees.status.active')}</option>
+                        <option value="inactive">{t('employees.status.inactive')}</option>
+                        <option value="suspended">{t('employees.status.suspended')}</option>
                       </select>
                     </div>
                   </div>
@@ -292,14 +294,14 @@ const EmployeeModal = ({
                 disabled={isLoading}
                 className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Zapisywanie...' : 'Zapisz'}
+                {isLoading ? t('employees.modal.buttons.saving') : t('employees.modal.buttons.save')}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
               >
-                Anuluj
+                {t('employees.modal.buttons.cancel')}
               </button>
             </div>
           </form>

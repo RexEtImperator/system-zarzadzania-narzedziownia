@@ -80,7 +80,7 @@ export function LanguageProvider({ children }) {
     };
   }, []);
 
-  // Pobierz nadpisania tłumaczeń z backendu dla bieżącego języka
+  // Get translation overrides from backend for current language
   useEffect(() => {
     let ignore = false;
     const loadOverrides = async () => {
@@ -107,9 +107,12 @@ export function LanguageProvider({ children }) {
   const t = useMemo(() => {
     const dict = dictionaries[language] || dictionaries.pl;
     return (key, params) => {
-      const raw = Object.prototype.hasOwnProperty.call(overrides, key)
-        ? overrides[key]
-        : resolveKey(dict, key);
+      // Only use database overrides if they have a non-empty value
+      const hasOverride = Object.prototype.hasOwnProperty.call(overrides, key);
+      const candidate = hasOverride ? overrides[key] : undefined;
+      const candidateStr = (typeof candidate === 'string') ? candidate.trim() : undefined;
+      const useOverride = candidateStr && candidateStr.length > 0 && candidateStr !== key;
+      const raw = useOverride ? candidateStr : resolveKey(dict, key);
       return interpolate(raw, params);
     };
   }, [language, overrides]);

@@ -20,7 +20,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
       timezone: 'Europe/Warsaw',
       language: 'pl',
       dateFormat: 'DD/MM/YYYY',
-      // Prefiksy dla kodów
       toolsCodePrefix: '',
       bhpCodePrefix: '',
       toolCategoryPrefixes: {}
@@ -56,7 +55,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       enableDataExport: true
     }
   });
-  // Walidacja SMTP + test wysyłki
+
   const [emailErrors, setEmailErrors] = useState({ host: '', port: '', from: '' });
   const [testEmail, setTestEmail] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
@@ -73,18 +72,17 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [backups, setBackups] = useState([]);
   const [lastBackupFile, setLastBackupFile] = useState(null);
   const [lastBackupAt, setLastBackupAt] = useState(null);
-  // Kategorie narzędzi (konfiguracja)
+
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [catNewName, setCatNewName] = useState('');
   const [catEditingId, setCatEditingId] = useState(null);
   const [catEditingName, setCatEditingName] = useState('');
-  // Modal potwierdzenia usuwania logo
+
   const [showLogoDeleteModal, setShowLogoDeleteModal] = useState(false);
   const [logoDeleteFilename, setLogoDeleteFilename] = useState(null);
   const [logoDeleteLoading, setLogoDeleteLoading] = useState(false);
 
-  // Ujednolicone helpery toastr dla tej sekcji konfiguracji
   const notifySuccess = (message) => toast.success(message, { autoClose: 2500, hideProgressBar: true });
   const notifyError = (message) => toast.error(message, { autoClose: 2500, hideProgressBar: true });
 
@@ -97,7 +95,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const loadConfig = async () => {
     try {
       setLoading(true);
-      // Pobierz ustawienia ogólne z API
+
       const general = await apiClient.get('/api/config/general');
       setConfig(prev => ({
         ...prev,
@@ -118,7 +116,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       }));
       setLastBackupAt(general.lastBackupAt || null);
     } catch (error) {
-      console.error('Błąd podczas ładowania konfiguracji:', error);
+      console.error('Failed to load configuration:', error);
     } finally {
       setLoading(false);
     }
@@ -129,7 +127,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       const data = await apiClient.get('/api/config/logo/history');
       setLogoHistory(Array.isArray(data?.versions) ? data.versions : []);
     } catch (err) {
-      console.warn('Nie udało się pobrać historii logo:', err?.message || err);
+      console.warn('Failed to load logo history:', err?.message || err);
     }
   };
 
@@ -144,7 +142,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
         language: config.general.language,
         dateFormat: config.general.dateFormat,
         backupFrequency: config.notifications.backupFrequency,
-        // Prefiksy
         toolsCodePrefix: config.general.toolsCodePrefix,
         bhpCodePrefix: config.general.bhpCodePrefix,
         toolCategoryPrefixes: config.general.toolCategoryPrefixes
@@ -153,7 +150,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       const validCfg = validateEmailConfig(config.email);
       setEmailErrors(validCfg.errors);
       if (!validCfg.isValid) {
-        notifyError('Popraw konfigurację SMTP (host/port/from)');
+        notifyError(t('appConfig.email.fixConfig'));
       } else {
         try {
           await apiClient.put('/api/config/email', {
@@ -165,11 +162,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
             from: config.email.from
           });
         } catch (e) {
-          console.warn('Nie udało się zapisać konfiguracji SMTP:', e?.message || e);
+          console.warn('Failed to save SMTP configuration:', e?.message || e);
         }
       }
       
-      // Zaktualizuj język lokalnie dla natychmiastowego efektu UI
+      // Update language locally for immediate UI effect
       try {
         localStorage.setItem('language', config.general.language);
         window.dispatchEvent(new CustomEvent('language:changed', { detail: { language: config.general.language } }));
@@ -178,12 +175,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
       }
 
       // Toastr
-      notifySuccess('Konfiguracja została zapisana pomyślnie!');
+      notifySuccess(t('appConfig.save.success'));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (error) {
-      console.error('Błąd podczas zapisywania konfiguracji:', error);
-      notifyError('Nie udało się zapisać konfiguracji');
+      console.error('Error saving configuration:', error);
+      notifyError(t('appConfig.save.error'));
     } finally {
       setLoading(false);
     }
@@ -204,16 +201,16 @@ const AppConfigScreen = ({ apiClient, user }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     // host
     if (!emailCfg.host || String(emailCfg.host).trim().length === 0) {
-      errors.host = 'Pole host jest wymagane';
+      errors.host = t('appConfig.email.validation.hostRequired');
     }
     // port
     const portNum = parseInt(emailCfg.port, 10);
     if (!portNum || portNum <= 0 || portNum > 65535) {
-      errors.port = 'Podaj poprawny port (1-65535)';
+      errors.port = t('appConfig.email.validation.portInvalid');
     }
     // from
     if (!emailCfg.from || !emailRegex.test(String(emailCfg.from))) {
-      errors.from = 'Podaj poprawny adres e-mail w polu FROM';
+      errors.from = t('appConfig.email.validation.fromInvalid');
     }
     const isValid = !errors.host && !errors.port && !errors.from;
     return { isValid, errors };
@@ -227,17 +224,17 @@ const AppConfigScreen = ({ apiClient, user }) => {
   };
 
   const tabs = [
-    { id: 'general', name: 'Ogólne', icon: '⚙️' },
-    { id: 'security', name: 'Bezpieczeństwo', icon: '🔒' },
-    { id: 'email', name: 'Poczta email', icon: '✉️' },
-    { id: 'users', name: 'Użytkownicy', icon: '👥' },
-    { id: 'features', name: 'Funkcje', icon: '🎛️' },
-    { id: 'departments', name: 'Działy', icon: '🏢' },
-    { id: 'positions', name: 'Stanowiska', icon: '👔' },
-    { id: 'categories', name: 'Kategorie', icon: '🏷️' },
-    { id: 'codes', name: 'Kody qr/kreskowe', icon: '🔖' },
-    { id: 'translations', name: 'Tłumaczenie', icon: '🈶' },
-    { id: 'backup', name: 'Backup', icon: '💾' }
+    { id: 'general', name: t('appConfig.tabs.general'), icon: '⚙️' },
+    { id: 'security', name: t('appConfig.tabs.security'), icon: '🔒' },
+    { id: 'email', name: t('appConfig.tabs.email'), icon: '✉️' },
+    { id: 'users', name: t('appConfig.tabs.users'), icon: '👥' },
+    { id: 'features', name: t('appConfig.tabs.features'), icon: '🎛️' },
+    { id: 'departments', name: t('appConfig.tabs.departments'), icon: '🏢' },
+    { id: 'positions', name: t('appConfig.tabs.positions'), icon: '👔' },
+    { id: 'categories', name: t('appConfig.tabs.categories'), icon: '🏷️' },
+    { id: 'codes', name: t('appConfig.tabs.codes'), icon: '🔖' },
+    { id: 'translations', name: t('appConfig.tabs.translations'), icon: '🈶' },
+    { id: 'backup', name: t('appConfig.tabs.backup'), icon: '💾' }
   ];
 
   const handleLogoChange = (e) => {
@@ -248,11 +245,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
       return;
     }
     if (file.type !== 'image/png') {
-      notifyError('Dozwolone są tylko pliki PNG');
+      notifyError(t('appConfig.logo.onlyPng'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      notifyError('Plik jest za duży (maks. 2MB)');
+      notifyError(t('appConfig.logo.fileTooLarge'));
       return;
     }
     const previewUrl = URL.createObjectURL(file);
@@ -265,7 +262,15 @@ const AppConfigScreen = ({ apiClient, user }) => {
         w < MIN_LOGO_WIDTH || h < MIN_LOGO_HEIGHT ||
         w > MAX_LOGO_WIDTH || h > MAX_LOGO_HEIGHT
       ) {
-        notifyError(`Wymiary logo poza zakresem: min ${MIN_LOGO_WIDTH}x${MIN_LOGO_HEIGHT}, max ${MAX_LOGO_WIDTH}x${MAX_LOGO_HEIGHT}. Otrzymano ${w}x${h}`);
+        notifyError(
+          t('appConfig.logo.dimensionsOutOfRange')
+            .replace('{minW}', MIN_LOGO_WIDTH)
+            .replace('{minH}', MIN_LOGO_HEIGHT)
+            .replace('{maxW}', MAX_LOGO_WIDTH)
+            .replace('{maxH}', MAX_LOGO_HEIGHT)
+            .replace('{w}', w)
+            .replace('{h}', h)
+        );
         URL.revokeObjectURL(previewUrl);
         return;
       }
@@ -273,7 +278,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       setLogoPreview(previewUrl);
     };
     img.onerror = () => {
-      notifyError('Nieprawidłowy plik obrazu');
+      notifyError(t('appConfig.logo.invalidImageFile'));
       URL.revokeObjectURL(previewUrl);
     };
     img.src = previewUrl;
@@ -281,7 +286,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
   const handleLogoUpload = async () => {
     if (!logoFile) {
-      notifyError('Wybierz plik logo (PNG)');
+      notifyError(t('appConfig.logo.selectPng'));
       return;
     }
     try {
@@ -289,14 +294,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
       const formData = new FormData();
       formData.append('logo', logoFile);
       const resp = await apiClient.postForm('/api/config/logo', formData);
-      notifySuccess('Logo zostało zaktualizowane');
+      notifySuccess(t('appConfig.logo.updated'));
       setLogoTs((resp && resp.timestamp) || Date.now());
       setLogoFile(null);
       setLogoPreview(null);
-      // Odśwież historię po udanym uploadzie
+      // Refresh history after successful upload
       loadLogoHistory();
     } catch (error) {
-      let msg = 'Błąd uploadu logo';
+      let msg = t('appConfig.logo.uploadError');
       if (error && typeof error.message === 'string') {
         try {
           const parsed = JSON.parse(error.message);
@@ -316,10 +321,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setLoading(true);
       await apiClient.post('/api/config/logo/rollback', { filename });
-      notifySuccess('Przywrócono wybraną wersję logo');
+      notifySuccess(t('appConfig.logo.rollbackSuccess'));
       setLogoTs(Date.now());
     } catch (error) {
-      let msg = 'Błąd przywracania wersji';
+      let msg = t('appConfig.logo.rollbackError');
       if (error && typeof error.message === 'string') {
         try { const parsed = JSON.parse(error.message); msg = parsed.error || parsed.message || msg; } catch (_) { msg = error.message || msg; }
       }
@@ -334,10 +339,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setLogoDeleteLoading(true);
       await apiClient.delete(`/api/config/logo/${encodeURIComponent(filename)}`);
-      notifySuccess('Wersja logo została usunięta');
+      notifySuccess(t('appConfig.logo.deleteSuccess'));
       await loadLogoHistory();
     } catch (error) {
-      let msg = 'Błąd usuwania wersji logo';
+      let msg = t('appConfig.logo.deleteError');
       if (error && typeof error.message === 'string') {
         try { const parsed = JSON.parse(error.message); msg = parsed.error || parsed.message || msg; } catch (_) { msg = error.message || msg; }
       }
@@ -352,11 +357,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderGeneralTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Ustawienia ogólne</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.general.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nazwa aplikacji
+              {t('appConfig.general.appName')}
             </label>
             <input
               type="text"
@@ -368,7 +373,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nazwa firmy
+              {t('appConfig.general.companyName')}
             </label>
             <input
               type="text"
@@ -380,38 +385,38 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Strefa czasowa
+              {t('appConfig.general.timezone')}
             </label>
             <select
               value={config.general.timezone}
               onChange={(e) => updateConfig('general', 'timezone', e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="Europe/Warsaw">Europa/Warszawa</option>
-              <option value="Europe/London">Europa/Londyn</option>
-              <option value="America/New_York">Ameryka/Nowy Jork</option>
-              <option value="Asia/Tokyo">Azja/Tokio</option>
+              <option value="Europe/Warsaw">{t('appConfig.general.timezones.warsaw')}</option>
+              <option value="Europe/London">{t('appConfig.general.timezones.london')}</option>
+              <option value="America/New_York">{t('appConfig.general.timezones.newYork')}</option>
+              <option value="Asia/Tokyo">{t('appConfig.general.timezones.tokyo')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Język
+              {t('appConfig.general.language')}
             </label>
             <select
               value={config.general.language}
               onChange={(e) => updateConfig('general', 'language', e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="pl">Polski</option>
-              <option value="en">English</option>
-              <option value="de">Deutsch</option>
+              <option value="pl">{t('appConfig.general.language_pl')}</option>
+              <option value="en">{t('appConfig.general.language_en')}</option>
+              <option value="de">{t('appConfig.general.language_de')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Format daty
+              {t('appConfig.general.dateFormat')}
             </label>
             <select
               value={config.general.dateFormat}
@@ -426,20 +431,20 @@ const AppConfigScreen = ({ apiClient, user }) => {
         </div>
         {/* Logo aplikacji */}
         <div className="mt-6">
-          <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">Logo aplikacji</h4>
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.logo.title')}</h4>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 items-start">
             <div>
               <div className="border rounded-lg bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 p-4 flex items-center justify-center">
                 <img
                   src={(logoPreview || `/logo.png?ts=${logoTs}`)}
-                  alt="Aktualne logo"
+                  alt={t('appConfig.logo.currentAlt')}
                   className="h-24 object-contain"
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Dozwolone wymiary: min {MIN_LOGO_WIDTH}x{MIN_LOGO_HEIGHT}, max {MAX_LOGO_WIDTH}x{MAX_LOGO_HEIGHT}. Aby zobaczyć nowe logo w całej aplikacji, odśwież stronę.</p>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.logo.dimensionsHint').replace('{minW}', MIN_LOGO_WIDTH).replace('{minH}', MIN_LOGO_HEIGHT).replace('{maxW}', MAX_LOGO_WIDTH).replace('{maxH}', MAX_LOGO_HEIGHT)}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prześlij plik PNG (max 2MB)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.logo.uploadLabel')}</label>
               <input
                 type="file"
                 accept="image/png"
@@ -453,7 +458,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                   disabled={loading || !logoFile}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Zapisz nowe logo
+                  {t('appConfig.logo.saveNew')}
                 </button>
                 {logoFile && (
                   <button
@@ -461,7 +466,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                     onClick={() => { setLogoFile(null); setLogoPreview(null); }}
                     className="inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 border-slate-300 dark:border-slate-600"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -469,9 +474,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           </div>
           {/* Historia wersji logo */}
           <div className="mt-6">
-            <h5 className="text-sm font-medium text-gray-900 dark:text-gray-200 mb-2">Historia logo</h5>
+            <h5 className="text-sm font-medium text-gray-900 dark:text-gray-200 mb-2">{t('appConfig.logo.historyTitle')}</h5>
             {logoHistory.length === 0 ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400">Brak zapisanych wersji logo.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('appConfig.logo.historyEmpty')}</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {logoHistory.map(v => (
@@ -484,14 +489,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
                         onClick={() => handleLogoRollback(v.filename)}
                         className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-600 text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-500"
                       >
-                        Zastosuj
+                        {t('appConfig.logo.apply')}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setLogoDeleteFilename(v.filename); setShowLogoDeleteModal(true); }}
                         className="ml-2 text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50"
                       >
-                        Usuń
+                        {t('common.remove')}
                       </button>
                     </div>
                   </div>
@@ -507,11 +512,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderSecurityTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Ustawienia bezpieczeństwa</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.security.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Timeout sesji (minuty)
+              {t('appConfig.security.sessionTimeout')}
             </label>
             <input
               type="number"
@@ -523,7 +528,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Minimalna długość hasła
+              {t('appConfig.security.passwordMinLength')}
             </label>
             <input
               type="number"
@@ -535,7 +540,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Maksymalna liczba prób logowania
+              {t('appConfig.security.maxLoginAttempts')}
             </label>
             <input
               type="number"
@@ -547,7 +552,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Czas blokady (minuty)
+              {t('appConfig.security.lockoutDuration')}
             </label>
             <input
               type="number"
@@ -568,7 +573,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
             <label htmlFor="requireSpecialChars" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-              Wymagaj znaków specjalnych w haśle
+              {t('appConfig.security.requireSpecialChars')}
             </label>
           </div>
 
@@ -581,7 +586,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
             <label htmlFor="requireNumbers" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-              Wymagaj cyfr w haśle
+              {t('appConfig.security.requireNumbers')}
             </label>
           </div>
         </div>
@@ -611,10 +616,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderEmailTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Konfiguracja SMTP</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.email.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_HOST</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.host')}</label>
             <input
               type="text"
               value={config.email.host}
@@ -624,7 +629,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
             {emailErrors.host && (<p className="mt-1 text-xs text-red-600">{emailErrors.host}</p>)}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_PORT</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.port')}</label>
             <input
               type="number"
               value={config.email.port}
@@ -634,18 +639,18 @@ const AppConfigScreen = ({ apiClient, user }) => {
             {emailErrors.port && (<p className="mt-1 text-xs text-red-600">{emailErrors.port}</p>)}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_SECURE (Tak lub NIE)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.secure')}</label>
             <select
-              value={config.email.secure ? 'TAK' : 'NIE'}
-              onChange={(e) => onEmailFieldChange('secure', e.target.value === 'TAK')}
+              value={config.email.secure ? 'YES' : 'NO'}
+              onChange={(e) => onEmailFieldChange('secure', e.target.value === 'YES')}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="TAK">TAK</option>
-              <option value="NIE">NIE</option>
+              <option value="YES">{t('appConfig.email.yes')}</option>
+              <option value="NO">{t('appConfig.email.no')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_USER</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.user')}</label>
             <input
               type="text"
               value={config.email.user}
@@ -654,7 +659,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_PASS</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.pass')}</label>
             <input
               type="password"
               value={config.email.pass}
@@ -663,7 +668,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">SMTP_FROM</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.from')}</label>
             <input
               type="text"
               value={config.email.from}
@@ -673,19 +678,19 @@ const AppConfigScreen = ({ apiClient, user }) => {
             {emailErrors.from && (<p className="mt-1 text-xs text-red-600">{emailErrors.from}</p>)}
           </div>
         </div>
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Ustawienia używane do wysyłki e-maili (np. danych logowania).</p>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.email.description')}</p>
       </div>
       <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">Test wysyłki e-mail</h4>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Wyślij testową wiadomość, aby zweryfikować konfigurację SMTP. Wymagane uprawnienia administratora.</p>
+        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">{t('appConfig.email.test.title')}</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('appConfig.email.test.description')}</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-end">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Adres odbiorcy (TO)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.test.recipient')}</label>
             <input
               type="email"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="np. test@twojadomena.pl"
+              placeholder={t('appConfig.email.test.recipientPlaceholder')}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             />
           </div>
@@ -698,23 +703,23 @@ const AppConfigScreen = ({ apiClient, user }) => {
                 setEmailErrors(validCfg.errors);
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!validCfg.isValid) {
-                  setTestResult('Najpierw popraw konfigurację SMTP (host/port/from).');
-                  notifyError('Najpierw popraw konfigurację SMTP (host/port/from)');
+                  setTestResult(t('appConfig.email.test.fixConfig'));
+                  notifyError(t('appConfig.email.test.fixConfig'));
                   return;
                 }
                 if (!testEmail || !emailRegex.test(testEmail)) {
-                  setTestResult('Podaj poprawny adres odbiorcy testowej wiadomości.');
-                  notifyError('Podaj poprawny adres odbiorcy testowej wiadomości.');
+                  setTestResult(t('appConfig.email.test.invalidRecipient'));
+                  notifyError(t('appConfig.email.test.invalidRecipient'));
                   return;
                 }
                 try {
                   setIsSendingTest(true);
                   await apiClient.post('/api/config/email/test', { to: testEmail });
-                  setTestResult('Wiadomość testowa została wysłana pomyślnie.');
-                  notifySuccess('Wiadomość testowa została wysłana pomyślnie.');
+                  setTestResult(t('appConfig.email.test.success'));
+                  notifySuccess(t('appConfig.email.test.success'));
                 } catch (err) {
-                  setTestResult(`Błąd wysyłki testowej: ${err?.message || err}`);
-                  notifyError(`Błąd wysyłki testowej: ${err?.message || err}`);
+                  setTestResult(`${t('appConfig.email.test.error')}: ${err?.message || err}`);
+                  notifyError(`${t('appConfig.email.test.error')}: ${err?.message || err}`);
                 } finally {
                   setIsSendingTest(false);
                 }
@@ -722,7 +727,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               disabled={isSendingTest}
               className={`inline-flex items-center px-4 py-2 rounded-md text-white ${isSendingTest ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
-              {isSendingTest ? 'Wysyłanie…' : 'Wyślij mail testowy'}
+              {isSendingTest ? t('appConfig.email.test.sending') : t('appConfig.email.test.send')}
             </button>
             {testResult && (<p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{testResult}</p>)}
           </div>
@@ -734,7 +739,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderNotificationsTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Ustawienia powiadomień</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.notifications.title')}</h3>
         
         <div className="space-y-4">
           <div className="flex items-center">
@@ -746,7 +751,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
             <label htmlFor="emailNotifications" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-              Powiadomienia email
+              {t('appConfig.notifications.email')}
             </label>
           </div>
 
@@ -759,7 +764,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
             <label htmlFor="smsNotifications" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-              Powiadomienia SMS
+              {t('appConfig.notifications.sms')}
             </label>
           </div>
 
@@ -772,7 +777,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
             <label htmlFor="pushNotifications" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-              Powiadomienia push
+              {t('appConfig.notifications.push')}
             </label>
           </div>
         </div>
@@ -783,15 +788,15 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderFeaturesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Funkcje systemu</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.features.title')}</h3>
         
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableAuditLog" className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                Dziennik audytu
+                {t('appConfig.features.auditLog')}
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Rejestrowanie wszystkich działań użytkowników</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.features.auditLogDesc')}</p>
             </div>
             <input
               id="enableAuditLog"
@@ -805,9 +810,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableReports" className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                Raporty
+                {t('appConfig.features.reports')}
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Generowanie raportów i analiz</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.features.reportsDesc')}</p>
             </div>
             <input
               id="enableReports"
@@ -821,9 +826,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableMobileApp" className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                Aplikacja mobilna
+                {t('appConfig.features.mobileApp')}
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Dostęp przez urządzenia mobilne</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.features.mobileAppDesc')}</p>
             </div>
             <input
               id="enableMobileApp"
@@ -837,9 +842,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableApiAccess" className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                Dostęp API
+                {t('appConfig.features.apiAccess')}
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Zewnętrzny dostęp przez API</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.features.apiAccessDesc')}</p>
             </div>
             <input
               id="enableApiAccess"
@@ -853,9 +858,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableDataExport" className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                Eksport danych
+                {t('appConfig.features.dataExport')}
               </label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Możliwość eksportu danych do plików</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.features.dataExportDesc')}</p>
             </div>
             <input
               id="enableDataExport"
@@ -870,12 +875,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
           {config.features.enableDataExport && (
             <div className="mt-6">
-              <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">Inne ustawienia</h4>
+              <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.features.otherSettings')}</h4>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Przechowywanie logów audytu (dni)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.features.auditRetention')}</label>
                   <input
                     type="number"
                     value={config.notifications.auditLogRetention}
@@ -885,17 +888,15 @@ const AppConfigScreen = ({ apiClient, user }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Częstotliwość kopii zapasowych
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.features.backupFrequency')}</label>
                   <select
                     value={config.notifications.backupFrequency}
                     onChange={(e) => updateConfig('notifications', 'backupFrequency', e.target.value)}
                     className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                   >
-                    <option value="daily">Codziennie</option>
-                    <option value="weekly">Tygodniowo</option>
-                    <option value="monthly">Miesięcznie</option>
+                    <option value="daily">{t('appConfig.features.frequency.daily')}</option>
+                    <option value="weekly">{t('appConfig.features.frequency.weekly')}</option>
+                    <option value="monthly">{t('appConfig.features.frequency.monthly')}</option>
                   </select>
                 </div>
               </div>
@@ -909,27 +910,23 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderCodesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Konfiguracja kodów qr/kreskowych</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.codes.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Prefiks kodów dla Narzędzi
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.codes.toolsPrefix')}</label>
             <input
               type="text"
-              placeholder="np. TOOL-"
+              placeholder={t('appConfig.codes.toolsPrefixPlaceholder')}
               value={config.general.toolsCodePrefix}
               onChange={(e) => updateConfig('general', 'toolsCodePrefix', e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Prefiks kodów dla BHP
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.codes.bhpPrefix')}</label>
             <input
               type="text"
-              placeholder="np. BHP-"
+              placeholder={t('appConfig.codes.bhpPrefixPlaceholder')}
               value={config.general.bhpCodePrefix}
               onChange={(e) => updateConfig('general', 'bhpCodePrefix', e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
@@ -938,8 +935,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
         </div>
       </div>
       <div className="pt-2">
-        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Prefiksy per kategoria narzędzia</h4>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Możesz zdefiniować różne prefiksy dla konkretnych kategorii.</p>
+        <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">{t('appConfig.codes.categoryPrefixesTitle')}</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t('appConfig.codes.categoryPrefixesDesc')}</p>
         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
           {categoriesLoading ? (
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('loading.categories')}</div>
@@ -952,7 +949,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{cat.name}</label>
                   <input
                     type="text"
-                    placeholder="np. OSSR-"
+                    placeholder={t('appConfig.codes.categoryPrefixPlaceholder')}
                     value={(config.general.toolCategoryPrefixes?.[cat.name]) || ''}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -969,12 +966,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
                     }}
                     className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{cat.tool_count ? `${cat.tool_count} narzędzi` : '—'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{cat.tool_count ? `${cat.tool_count} ${t('appConfig.codes.toolsCountSuffix')}` : '—'}</p>
                 </div>
               ))}
             </div>
           )}
-          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">Prefiks per kategoria ma pierwszeństwo nad prefiksem ogólnym dla narzędzi.</div>
+          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.codes.categoryPrefixNote')}</div>
         </div>
       </div>
     </div>
@@ -1050,10 +1047,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
         return;
       }
       await apiClient.put('/api/translate/bulk', { updates });
-      notifySuccess('Tłumaczenia zapisane');
+      notifySuccess(t('appConfig.translations.saved'));
       setChangedPairs(new Set());
     } catch (_) {
-      notifyError('Nie udało się zapisać tłumaczeń');
+      notifyError(t('appConfig.translations.saveError'));
     }
   };
 
@@ -1063,7 +1060,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Tłumaczenia i18n</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('appConfig.translations.title')}</h3>
             <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-md p-1">
               {['pl','en','de'].map((lng) => (
                 <button
@@ -1082,11 +1079,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
               type="button"
               onClick={() => { setShowAddModal(true); setNewKey(''); setNewPL(''); setNewEN(''); setNewDE(''); }}
               className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800">
-              Dodaj tłumaczenie
+              {t('appConfig.translations.addTranslation')}
             </button>
             <input
               type="text"
-              placeholder="Szukaj klucza…"
+              placeholder={t('appConfig.translations.searchPlaceholder')}
               value={translationsSearch}
               onChange={(e) => setTranslationsSearch(e.target.value)}
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
@@ -1097,22 +1094,22 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-60"
               disabled={translationsLoading}
             >
-              Zapisz zmiany
+              {t('common.saveChanges')}
             </button>
           </div>
         </div>
 
         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
           {translationsLoading ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie tłumaczeń…</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.translations.loading')}</div>
           ) : keys.length === 0 ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Brak kluczy do wyświetlenia</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('appConfig.translations.empty')}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                 <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Klucz</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{t('appConfig.translations.key')}</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{selectedLang.toUpperCase()}</th>
                   </tr>
                 </thead>
@@ -1141,12 +1138,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
             <div className="absolute inset-0 bg-black/40" onClick={() => !adding && setShowAddModal(false)} />
             <div className="relative z-10 w-full max-w-2xl rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dodaj tłumaczenie</h4>
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('appConfig.translations.addTranslation')}</h4>
                 <button type="button" onClick={() => !adding && setShowAddModal(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">✖</button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Klucz</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('appConfig.translations.key')}</label>
                   {(() => {
                     const trimmedKey = newKey.trim();
                     const keyExists = !!trimmedKey && Object.prototype.hasOwnProperty.call(translations, trimmedKey);
@@ -1159,10 +1156,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
                           value={newKey}
                           onChange={(e) => setNewKey(e.target.value)}
                           className={base + border}
-                          placeholder="np. inventory.correctionDelete.title"
+                          placeholder={t('appConfig.translations.keyPlaceholder')}
                         />
                         {keyExists && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">Taki klucz już istnieje. Edytuj go na liście zamiast dodawać.</p>
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{t('appConfig.translations.keyExists')}</p>
                         )}
                       </>
                     );
@@ -1184,7 +1181,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                 </div>
               </div>
               <div className="mt-6 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">Anuluj</button>
+                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">{t('common.cancel')}</button>
                 <button
                   type="button"
                   disabled={!newKey.trim() || adding || Object.prototype.hasOwnProperty.call(translations, newKey.trim())}
@@ -1201,16 +1198,16 @@ const AppConfigScreen = ({ apiClient, user }) => {
                       setShowAddModal(false);
                       setNewKey(''); setNewPL(''); setNewEN(''); setNewDE('');
                       await loadTranslations();
-                      notifySuccess('Tłumaczenie dodane');
+                      notifySuccess(t('appConfig.translations.added'));
                     } catch (e) {
-                      notifyError('Nie udało się dodać tłumaczenia');
+                      notifyError(t('appConfig.translations.addError'));
                     } finally {
                       setAdding(false);
                     }
                   }}
                   className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:opacity-60"
                 >
-                  Dodaj
+                  {t('common.saveChanges')}
                 </button>
               </div>
             </div>
@@ -1272,14 +1269,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderBackupTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Kopie zapasowe bazy danych</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.backup.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-            <div className="text-sm text-gray-700 dark:text-gray-300">Ostatnia kopia (z konfiguracji)</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">{t('appConfig.backup.lastFromConfig')}</div>
             <div className="mt-1 text-base font-medium text-gray-900 dark:text-white">{formatDateTime(lastBackupAt)}</div>
           </div>
           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-            <div className="text-sm text-gray-700 dark:text-gray-300">Ostatni plik w folderze backups</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">{t('appConfig.backup.lastFile')}</div>
             <div className="mt-1 text-base font-medium text-gray-900 dark:text-white">{lastBackupFile || '-'}</div>
           </div>
         </div>
@@ -1292,16 +1289,16 @@ const AppConfigScreen = ({ apiClient, user }) => {
             {backupLoading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Trwa wykonywanie kopii...
+                {t('appConfig.backup.running')}
               </>
             ) : (
               <>
                 <ArchiveBoxIcon className="w-4 h-4 mr-2" aria-hidden="true" />
-                Wykonaj kopię zapasową
+                {t('appConfig.backup.run')}
               </>
             )}
           </button>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Wymagane uprawnienia administratora</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{t('appConfig.backup.adminRequired')}</span>
         </div>
       </div>
     </div>
@@ -1396,16 +1393,16 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderCategoriesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Kategorie narzędzi</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.categories.title')}</h3>
         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
           <div className="flex items-end gap-2 mb-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nowa kategoria</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.categories.newCategory')}</label>
               <input
                 type="text"
                 value={catNewName}
                 onChange={(e) => setCatNewName(e.target.value)}
-                placeholder="np. Ręczne"
+                placeholder={t('appConfig.categories.newCategoryPlaceholder')}
                 className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
               />
             </div>
@@ -1414,7 +1411,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
               onClick={addCategory}
               className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800"
             >
-              Dodaj
+              {t('appConfig.categories.add')}
             </button>
           </div>
 
@@ -1445,12 +1442,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
                           type="button"
                           onClick={saveEditCategory}
                           className="px-3 py-1 rounded bg-green-600 dark:bg-green-700 text-white"
-                        >Zapisz</button>
+                        >{t('common.saveChanges')}</button>
                         <button
                           type="button"
                           onClick={cancelEditCategory}
                           className="px-3 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
-                        >Anuluj</button>
+                        >{t('common.cancel')}</button>
                       </>
                     ) : (
                       <>
@@ -1458,12 +1455,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
                           type="button"
                           onClick={() => startEditCategory(cat)}
                           className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
-                        >Edytuj</button>
+                        >{t('appConfig.categories.edit')}</button>
                         <button
                           type="button"
                           onClick={() => deleteCategory(cat)}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
-                        >Usuń</button>
+                        >{t('common.remove')}</button>
                       </>
                     )}
                   </div>
@@ -1513,10 +1510,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Konfiguracja aplikacji</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
-            Zarządzaj ustawieniami i konfiguracją systemu
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('appConfig.header.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">{t('appConfig.header.subtitle')}</p>
         </div>
         <button
           onClick={handleSave}
@@ -1526,12 +1521,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
           {loading ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Zapisywanie...
+              {t('common.saving')}
             </>
           ) : (
             <>
               <CheckIcon className="w-4 h-4 mr-2" aria-hidden="true" />
-              Zapisz zmiany
+              {t('common.saveChanges')}
             </>
           )}
         </button>
@@ -1585,9 +1580,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
         isOpen={showLogoDeleteModal}
         onClose={() => { if (!logoDeleteLoading) { setShowLogoDeleteModal(false); setLogoDeleteFilename(null); } }}
         onConfirm={() => logoDeleteFilename && handleLogoDelete(logoDeleteFilename)}
-        title="Usuń wersję logo"
-        message={logoDeleteFilename ? `Czy na pewno chcesz usunąć wersję: ${logoDeleteFilename}?` : 'Czy na pewno chcesz usunąć tę wersję logo?'}
-        confirmText="Usuń"
+        title={t('appConfig.logo.deleteTitle')}
+        message={logoDeleteFilename ? `${t('appConfig.logo.deleteMessagePrefix')} ${logoDeleteFilename}?` : t('appConfig.logo.deleteMessage')}
+        confirmText={t('common.remove')}
         cancelText={t('common.cancel')}
         type="danger"
         loading={logoDeleteLoading}

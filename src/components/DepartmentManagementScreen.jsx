@@ -175,10 +175,10 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         }
         setDepartments(prev => prev.filter(dept => (dept.name || '').trim() !== name));
       }
-      toast.success('Dział został usunięty');
+      toast.success(t('departments.toast.deleted'));
     } catch (error) {
       console.error('Błąd podczas usuwania działu:', error);
-      toast.error('Nie udało się usunąć działu');
+      toast.error(t('departments.toast.deleteError'));
     } finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);
@@ -254,7 +254,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
           return [...prev, { ...newDepartment, isMissing: false }];
         });
       }
-      toast.success('Dział zapisany pomyślnie');
+      toast.success(t('departments.toast.saved'));
       // Odśwież listę z API, aby UI na pewno pokazywał najnowsze dane
       try {
         await fetchDepartments();
@@ -264,7 +264,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       setShowModal(false);
     } catch (error) {
       console.error('Błąd podczas zapisywania departamentu:', error);
-      const apiMsg = (error && error.message) ? error.message : (error?.response?.data?.error || 'Nie udało się zapisać departamentu');
+      const apiMsg = (error && error.message) ? error.message : (error?.response?.data?.error || t('departments.toast.saveError'));
       setErrors(prev => ({ ...prev, submit: apiMsg }));
       toast.error(apiMsg);
     }
@@ -272,8 +272,8 @@ const DepartmentManagementScreen = ({ apiClient }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { label: 'Aktywny', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-      inactive: { label: 'Nieaktywny', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' }
+      active: { label: t('departments.status.active'), className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+      inactive: { label: t('departments.status.inactive'), className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' }
     };
     
     const config = statusConfig[status] || statusConfig.active;
@@ -399,7 +399,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                   <div className="space-y-5">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Nazwa *
+                        {t('departments.modal.labels.name')}
                       </label>
                       <input
                         type="text"
@@ -407,19 +407,19 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="np. Sprzedaż"
+                        placeholder={t('departments.modal.placeholders.name')}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 ${
                           errors.name ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-slate-600'
                         }`}
                       />
                       {errors.name && (
-                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{t('departments.modal.errors.nameRequired')}</p>
                       )}
                     </div>
 
                     <div>
                       <label htmlFor="description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Opis
+                        {t('departments.modal.labels.description')}
                       </label>
                       <textarea
                         name="description"
@@ -427,14 +427,14 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         rows={3}
                         value={formData.description ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Krótki opis działu"
+                        placeholder={t('departments.modal.placeholders.description')}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       />
                     </div>
 
                     <div>
                       <label htmlFor="managerId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Kierownik działu
+                        {t('departments.modal.labels.manager')}
                       </label>
                       <select
                         name="managerId"

@@ -131,7 +131,9 @@
       "error": "Senden fehlgeschlagen",
       "fetchError": "Laden der Meldungen fehlgeschlagen",
       "statusUpdated": "Meldungsstatus aktualisiert",
-      "statusError": "Aktualisierung des Status fehlgeschlagen"
+      "statusError": "Aktualisierung des Status fehlgeschlagen",
+      "deleted": "Meldung wurde gelöscht",
+      "deleteError": "Löschen der Meldung fehlgeschlagen"
     }
   },
   "inventory": {
@@ -371,9 +373,245 @@
     "updateError": "Fehler beim Aktualisieren des Mitarbeiters",
     "deletedSuccess": "Mitarbeiter gelöscht",
     "deleteError": "Fehler beim Löschen des Mitarbeiters",
-    "confirmDelete": "Möchten Sie Mitarbeiter wirklich löschen"
-  }
-  ,
+    "confirmDelete": "Möchten Sie Mitarbeiter wirklich löschen",
+    "modal": {
+      "title": { "add": "Neuen Mitarbeiter hinzufügen", "edit": "Mitarbeiter bearbeiten" },
+      "labels": {
+        "firstName": "Vorname *",
+        "lastName": "Nachname *",
+        "phone": "Telefon",
+        "email": "E-Mail",
+        "brandNumber": "Dienstausweisnummer",
+        "department": "Abteilung *",
+        "position": "Position *",
+        "status": "Status"
+      },
+      "placeholders": {
+        "firstName": "z. B. Max",
+        "lastName": "z. B. Mustermann",
+        "phone": "z. B. 500 600 700",
+        "email": "z. B. max.mustermann@example.com",
+        "brandNumber": "z. B. ID-1234"
+      },
+      "select": { "department": "Abteilung wählen", "position": "Position wählen" },
+      "buttons": { "save": "Speichern", "saving": "Speichern...", "cancel": "Abbrechen" },
+      "errors": {
+        "firstNameRequired": "Vorname ist erforderlich",
+        "lastNameRequired": "Nachname ist erforderlich",
+        "departmentRequired": "Abteilung ist erforderlich",
+        "positionRequired": "Position ist erforderlich",
+        "submitFailed": "Beim Speichern ist ein Fehler aufgetreten"
+      }
+    },
+    "status": { "active": "Aktiv", "inactive": "Inaktiv", "suspended": "Suspendiert" }
+  },
+  "departments": {
+    "modal": {
+      "title": { "add": "Abteilung hinzufügen", "edit": "Abteilung bearbeiten" },
+      "labels": {
+        "name": "Name *",
+        "description": "Beschreibung",
+        "manager": "Abteilungsleiter"
+      },
+      "placeholders": {
+        "name": "z. B. Vertrieb",
+        "description": "Kurze Abteilungsbeschreibung"
+      },
+      "buttons": { "save": "Speichern", "cancel": "Abbrechen" },
+      "errors": { "nameRequired": "Name ist erforderlich", "submit": "Beim Speichern ist ein Fehler aufgetreten" }
+    }
+  },
+  "positions": {
+    "list": {
+      "statusMissing": "Fehlt in der Datenbank",
+      "departmentPrefix": "Abteilung: "
+    },
+    "delete": {
+      "title": "Position löschen",
+      "message": "Sind Sie sicher, dass Sie die Position löschen möchten",
+      "confirmText": "Löschen"
+    },
+    "modal": {
+      "title": { "add": "Position hinzufügen", "edit": "Position bearbeiten" },
+      "labels": { "department": "Abteilung", "description": "Beschreibung" },
+      "select": { "department": "Abteilung wählen" },
+      "placeholders": { "description": "Kurze Positionsbeschreibung" },
+      "buttons": { "save": "Speichern", "cancel": "Abbrechen" },
+      "errors": { "departmentRequired": "Abteilung ist erforderlich" }
+    }
+  },
+  "auth": { "invalid": "Ungültiges Authentifizierungsereignis: {reason}" },
+  "appConfig": {
+    "header": {
+      "title": "Anwendungskonfiguration",
+      "subtitle": "Systemeinstellungen und Übersetzungen verwalten"
+    },
+    "tabs": {
+      "general": "Allgemein",
+      "security": "Sicherheit",
+      "email": "E-Mail",
+      "users": "Benutzer",
+      "features": "Funktionen",
+      "departments": "Abteilungen",
+      "positions": "Positionen",
+      "categories": "Kategorien",
+      "codes": "Codes (QR/Bar)",
+      "translations": "Übersetzungen",
+      "backup": "Backups"
+    },
+    "save": {
+      "success": "Konfiguration gespeichert",
+      "error": "Konfiguration konnte nicht gespeichert werden"
+    },
+    "general": {
+      "title": "Allgemeine Einstellungen",
+      "appName": "Anwendungsname",
+      "companyName": "Firmenname",
+      "timezone": "Zeitzone",
+      "timezones": {
+        "warsaw": "Warschau",
+        "london": "London",
+        "newYork": "New York",
+        "tokyo": "Tokio"
+      },
+      "language": "Sprache der Oberfläche",
+      "language_pl": "Polnisch",
+      "language_en": "Englisch",
+      "language_de": "Deutsch",
+      "dateFormat": "Datumsformat"
+    },
+    "logo": {
+      "title": "Anwendungslogo",
+      "currentAlt": "Aktuelles Logo",
+      "dimensionsHint": "Zulässige Größe: {minW}x{minH}–{maxW}x{maxH}px",
+      "uploadLabel": "Logo hochladen (PNG)",
+      "saveNew": "Neues Logo speichern",
+      "historyTitle": "Logo-Verlauf",
+      "historyEmpty": "Kein Logo-Verlauf",
+      "apply": "Anwenden",
+      "onlyPng": "Nur PNG-Dateien sind erlaubt",
+      "fileTooLarge": "Datei ist zu groß",
+      "dimensionsOutOfRange": "Bildabmessungen außerhalb des Bereichs",
+      "invalidImageFile": "Ungültige Bilddatei",
+      "selectPng": "PNG-Datei auswählen",
+      "updated": "Logo aktualisiert",
+      "uploadError": "Fehler beim Hochladen des Logos",
+      "rollbackSuccess": "Vorheriges Logo wiederhergestellt",
+      "rollbackError": "Fehler beim Wiederherstellen des vorherigen Logos",
+      "deleteSuccess": "Logo gelöscht",
+      "deleteError": "Löschen des Logos fehlgeschlagen",
+      "deleteTitle": "Logo löschen",
+      "deleteMessagePrefix": "Datei löschen",
+      "deleteMessage": "Logo löschen?"
+    },
+    "security": {
+      "title": "Sicherheit",
+      "sessionTimeout": "Sitzungszeitlimit (Minuten)",
+      "passwordMinLength": "Mindestlänge des Passworts",
+      "maxLoginAttempts": "Max. Anmeldeversuche",
+      "lockoutDuration": "Sperrdauer (Minuten)",
+      "requireSpecialChars": "Sonderzeichen erforderlich",
+      "requireNumbers": "Ziffern erforderlich"
+    },
+    "email": {
+      "title": "E-Mail",
+      "host": "SMTP-Host",
+      "port": "Port",
+      "secure": "Verschlüsselung",
+      "yes": "JA",
+      "no": "NEIN",
+      "user": "Benutzer",
+      "pass": "Passwort",
+      "from": "Absenderadresse",
+      "description": "Einstellungen für den E-Mail-Versand",
+      "fixConfig": "E-Mail-Konfiguration vervollständigen",
+      "test": {
+        "title": "Sende-Test",
+        "description": "Testnachricht an eine gewählte Adresse senden",
+        "recipient": "Empfängeradresse",
+        "recipientPlaceholder": "z. B. max.mustermann@example.com",
+        "fixConfig": "E-Mail-Konfiguration vervollständigen",
+        "invalidRecipient": "Ungültige Empfängeradresse",
+        "success": "Testnachricht gesendet",
+        "error": "Sende-Fehler",
+        "sending": "Sende…",
+        "send": "Test senden"
+      },
+      "validation": {
+        "hostRequired": "SMTP-Host angeben",
+        "portInvalid": "Ungültiger Port",
+        "fromInvalid": "Ungültige Absenderadresse"
+      }
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "email": "E-Mail",
+      "sms": "SMS",
+      "push": "Push"
+    },
+    "features": {
+      "title": "Funktionen",
+      "auditLog": "Audit-Log",
+      "auditLogDesc": "Wichtige Benutzeraktionen protokollieren",
+      "reports": "Berichte",
+      "reportsDesc": "Berichte und Zusammenfassungen erstellen",
+      "mobileApp": "Mobile App",
+      "mobileAppDesc": "App im Außendienst verwenden",
+      "apiAccess": "API-Zugriff",
+      "apiAccessDesc": "Mit externen Tools integrieren",
+      "dataExport": "Datenexport",
+      "dataExportDesc": "Daten in Dateien exportieren",
+      "otherSettings": "Weitere Einstellungen",
+      "auditRetention": "Aufbewahrung des Audit-Logs (Tage)",
+      "backupFrequency": "Backup-Häufigkeit",
+      "frequency": {
+        "daily": "täglich",
+        "weekly": "wöchentlich",
+        "monthly": "monatlich"
+      }
+    },
+    "codes": {
+      "title": "Code-Präfixe",
+      "toolsPrefix": "Werkzeug-Codepräfix",
+      "toolsPrefixPlaceholder": "z. B. WZ",
+      "bhpPrefix": "BHP-Codepräfix",
+      "bhpPrefixPlaceholder": "z. B. BHP",
+      "categoryPrefixesTitle": "Präfixe für Werkzeugkategorien",
+      "categoryPrefixesDesc": "Präfixe für einzelne Kategorien definieren",
+      "categoryPrefixPlaceholder": "z. B. HM",
+      "toolsCountSuffix": "Werkzeuge",
+      "categoryPrefixNote": "Die Änderung des Präfixes ändert bestehende Nummern nicht"
+    },
+    "translations": {
+      "title": "Übersetzungen",
+      "addTranslation": "Übersetzung hinzufügen",
+      "searchPlaceholder": "Nach Schlüssel suchen",
+      "loading": "Übersetzungen werden geladen…",
+      "empty": "Keine Übersetzungen",
+      "key": "Schlüssel",
+      "keyPlaceholder": "z. B. appConfig.header.title",
+      "keyExists": "Ein solcher Schlüssel existiert bereits",
+      "saved": "Übersetzungen gespeichert",
+      "saveError": "Speichern der Übersetzungen fehlgeschlagen",
+      "added": "Übersetzung hinzugefügt",
+      "addError": "Hinzufügen der Übersetzung fehlgeschlagen"
+    },
+    "backup": {
+      "title": "Backup",
+      "lastFromConfig": "Letztes aus Konfiguration",
+      "lastFile": "Letzte Datei",
+      "running": "Backup wird erstellt…",
+      "run": "Backup erstellen",
+      "adminRequired": "Administratorberechtigungen erforderlich"
+    },
+    "categories": {
+      "title": "Werkzeugkategorien",
+      "newCategory": "Neue Kategorie",
+      "newCategoryPlaceholder": "z. B. Hämmer",
+      "add": "Hinzufügen",
+      "edit": "Bearbeiten"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Willkommen, {name}! Hier ist die Systemübersicht.",
@@ -400,8 +638,11 @@
         "errorItem": "Ausgabefehler: {name}",
         "errors": {
           "toolNotFound": "Kein Werkzeug für den angegebenen Code gefunden",
+          "toolNotFoundWithCode": "Kein Werkzeug mit Code gefunden: {code}",
           "toolNotAvailable": "Werkzeug ist für die Ausgabe nicht verfügbar",
           "toolNotAvailableSimple": "Werkzeug ist nicht verfügbar",
+          "toolUnavailableDetails": "Nicht verfügbar: {name} (SKU: {sku})",
+          "addByCode": "Fehler beim Hinzufügen nach Code",
           "noEmployeeSelected": "Wählen Sie einen Mitarbeiter für die Ausgabe"
         }
       },
@@ -481,6 +722,9 @@
       "updateRoleError": "Fehler beim Aktualisieren der Benutzerrolle"
     },
     "labels": {
+      "VIEW_USERS": "Benutzer - anzeigen",
+      "CREATE_USERS": "Benutzer - erstellen",
+      "MANAGE_USERS": "Benutzer - verwalten",
       "EDIT_USERS": "Benutzer - bearbeiten",
       "DELETE_USERS": "Benutzer - löschen",
       "VIEW_EMPLOYEES": "Mitarbeiter - anzeigen",
@@ -496,6 +740,7 @@
       "VIEW_BHP": "BHP - anzeigen",
       "VIEW_BHP_HISTORY": "BHP Ausgabe/Rückgabe-Verlauf - anzeigen",
       "MANAGE_BHP": "BHP - verwalten",
+      "VIEW_QUICK_ACTIONS": "Aktionen - anzeigen",
       "DELETE_ISSUE_HISTORY": "Ausgabeverlauf löschen",
       "DELETE_RETURN_HISTORY": "Rückgabeverlauf löschen",
       "DELETE_SERVICE_HISTORY": "Serviceverlauf löschen",
@@ -515,13 +760,7 @@
       "title": "Einstellungen",
       "subtitle": "System und Konfiguration verwalten"
     },
-    "appConfig": {
-      "card": {
-        "title": "Anwendungseinstellungen",
-        "subtitle": "Systemparameter konfigurieren",
-        "open": "Einstellungen öffnen"
-      }
-    },
+    
     "audit": {
       "card": {
         "title": "Audit-Log",
@@ -562,6 +801,22 @@
       "deleteReturns": "Rückgabeverlauf löschen",
       "deleteServiceHistory": "Serviceverlauf löschen",
       "deleteEmployees": "Mitarbeiterdaten löschen"
+    },
+    "toast": {
+      "historyDeleted": "Ausgabeverlauf wurde gelöscht",
+      "historyDeleteError": "Fehler beim Löschen des Verlaufs",
+      "employeesDeleted": "Alle Mitarbeiter wurden gelöscht",
+      "employeesDeleteError": "Fehler beim Löschen der Mitarbeiter",
+      "serviceHistoryDeleted": "Serviceverlauf wurde gelöscht",
+      "serviceHistoryDeleteError": "Fehler beim Löschen des Serviceverlaufs",
+      "toolIssuesHistoryDeleted": "Verlauf der WERKZEUG-AUSGABEN gelöscht",
+      "toolIssuesHistoryDeleteError": "Fehler beim Löschen des Ausgabeverlaufs der Werkzeuge",
+      "toolReturnsHistoryDeleted": "Verlauf der WERKZEUG-RÜCKGABEN gelöscht",
+      "toolReturnsHistoryDeleteError": "Fehler beim Löschen des Rückgabeverlaufs der Werkzeuge",
+      "bhpIssuesHistoryDeleted": "Verlauf der BHP-AUSGABEN gelöscht",
+      "bhpIssuesHistoryDeleteError": "Fehler beim Löschen des Ausgabeverlaufs der BHP-Ausrüstung",
+      "bhpReturnsHistoryDeleted": "Verlauf der BHP-RÜCKGABEN gelöscht",
+      "bhpReturnsHistoryDeleteError": "Fehler beim Löschen des Rückgabeverlaufs der BHP-Ausrüstung"
     },
     "modals": {
       "deleteAllIssues": {
@@ -847,6 +1102,58 @@
       "NotReadableError": "Kamera wird von einer anderen Anwendung verwendet. Schließen Sie andere Apps, die die Kamera nutzen.",
       "OverconstrainedError": "Kamera kann mit den ausgewählten Einstellungen nicht gestartet werden. Bitte erneut versuchen.",
       "Generic": "Beim Starten der Kamera ist ein Fehler aufgetreten: {message}"
+    }
+  },
+  "tools": {
+    "errors": {
+      "noManagePermission": "Keine Berechtigung zur Verwaltung von Werkzeugen (MANAGE_TOOLS)",
+      "deleteFailed": "Fehler beim Löschen des Werkzeugs"
+    },
+    "confirm": {
+      "deleteTool": "Möchten Sie dieses Werkzeug wirklich löschen?"
+    },
+    "suggestions": { "loadFailed": "Abrufen von Vorschlägen vom Backend fehlgeschlagen, lokale Daten werden verwendet" },
+    "prefix": { "loadFailed": "Werkzeug-Codepräfix konnte nicht geladen werden" },
+    "service": {
+      "chooseQty": "Wählen Sie eine Menge von 1 bis",
+      "sendSuccess": "Werkzeuge zum Service gesendet",
+      "sendFailed": "Senden zum Service fehlgeschlagen",
+      "receiveNone": "Keine Stücke im Service zum Empfang",
+      "receiveSuccess": "Vom Service erhalten",
+      "receiveFailed": "Empfang vom Service fehlgeschlagen"
+    },
+    "labels": {
+      "generateError": "Fehler beim Generieren des Etiketts",
+      "generateQrError": "Fehler beim Generieren des Etiketts (QR)",
+      "generateBarcodeError": "Fehler beim Generieren des Etiketts (Barcode)",
+      "sku": "SKU",
+      "scanPrompt": "Code scannen, um den Status zu prüfen",
+      "filenameLabel": "etikett",
+      "filenameQr": "etikett-qr",
+      "filenameBarcode": "etikett-barcode"
+    },
+    "validation": {
+      "nameRequired": "Name ist erforderlich",
+      "categoryRequired": "Kategorie ist erforderlich",
+      "quantityMin": "Menge muss größer als 0 sein",
+      "inventoryInUse": "Inventarnummer wird bereits verwendet",
+      "skuExists": "Ein Werkzeug mit dieser SKU existiert bereits",
+      "minStockInvalid": "Ungültiger Mindestbestand (Zahl ≥ 0)",
+      "maxStockInvalid": "Ungültiger Höchstbestand (Zahl ≥ 0)",
+      "maxLessThanMin": "Höchstbestand darf nicht kleiner als Mindestbestand sein"
+    },
+    "save": {
+      "updateSuccess": "Werkzeugdaten erfolgreich aktualisiert",
+      "error": "Beim Speichern des Werkzeugs ist ein Fehler aufgetreten"
+    },
+    "weldInspection": {
+      "title": "Schweißprüfung: ",
+      "in": " in ",
+      "days": " Tagen",
+      "lessEqual30": " (<=30 Tage)"
+    },
+    "common": {
+      "tool": "Werkzeug"
     }
   }
 }

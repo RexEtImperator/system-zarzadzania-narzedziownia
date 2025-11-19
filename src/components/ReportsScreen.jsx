@@ -223,16 +223,16 @@ const ReportsScreen = ({ user, employees = [], tools = [] }) => {
   };
 
   const deleteReport = async (id) => {
-    const confirmed = window.confirm('Na pewno usunąć zgłoszenie?');
+    const confirmed = window.confirm(t('reports.delete.messageGeneric'));
     if (!confirmed) return;
     setDeletingId(id);
     try {
       await api.delete(`/api/reports/${id}`);
-      toast.success('Zgłoszenie zostało usunięte');
+      toast.success(t('reports.toast.deleted'));
       await fetchList();
     } catch (err) {
       console.error('Delete report failed:', err);
-      toast.error('Nie udało się usunąć zgłoszenia');
+      toast.error(t('reports.toast.deleteError'));
     } finally {
       setDeletingId(null);
     }
@@ -250,13 +250,13 @@ const ReportsScreen = ({ user, employees = [], tools = [] }) => {
     setDeletingId(deleteTarget.id);
     try {
       const resp = await api.delete(`/api/reports/${deleteTarget.id}`);
-      toast.success(resp?.message || 'Usunięto zgłoszenie');
+      toast.success(resp?.message || t('reports.toast.deleted'));
       await fetchList();
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (err) {
       console.error('Błąd usuwania zgłoszenia:', err);
-      toast.error(err?.message || 'Nie udało się usunąć zgłoszenia');
+      toast.error(err?.message || t('reports.toast.deleteError'));
     } finally {
       setDeletingId(null);
       setDeleteLoading(false);

@@ -201,7 +201,7 @@ function EmployeesScreen({ employees, setEmployees, user }) {
   const handleSendCredentials = async (employee) => {
     try {
       if (!employee?.email) {
-        toast.warn('Brak adresu e-mail dla pracownika');
+        toast.warn(t('employees.toast.noEmail'));
         return;
       }
       setLoading(true);
@@ -213,16 +213,16 @@ function EmployeesScreen({ employees, setEmployees, user }) {
         setEmployees(prev => prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e));
       }
       if (emailSent) {
-        toast.success(createdLogin ? 'Utworzono login i wysłano dane' : 'Wysłano dane logowania');
+        toast.success(createdLogin ? t('employees.toast.loginCreatedAndEmailSent') : t('employees.toast.emailSent'));
       } else {
-        toast.info(createdLogin ? 'Utworzono login, ale e-mail nie wysłany' : 'E-mail nie został wysłany');
+        toast.info(createdLogin ? t('employees.toast.loginCreatedEmailNotSent') : t('employees.toast.emailNotSent'));
       }
       // Logowanie audytowe
       await addAuditLog(user, AUDIT_ACTIONS.EMPLOYEE_SEND_CREDENTIALS, 
         `Wysłano dane logowania dla pracownika ID=${employee.id}, login=${updatedEmployee?.login || employee.login || 'brak'}, emailSent=${emailSent}, createdLogin=${createdLogin}`);
     } catch (error) {
       console.error('Error sending credentials:', error);
-      toast.error('Błąd wysyłki danych logowania');
+      toast.error(t('employees.toast.sendError'));
     } finally {
       setLoading(false);
     }

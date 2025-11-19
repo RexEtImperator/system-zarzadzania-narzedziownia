@@ -230,11 +230,11 @@ const DashboardScreen = ({ user }) => {
       const response = await api.get(`/api/tools/search?code=${encodeURIComponent(code.trim())}`);
       const tool = response || null;
       if (!tool) {
-        toast.error(`Nie znaleziono narzędzia dla kodu: ${code}`);
+        toast.error(t('dashboard.quick.issue.errors.toolNotFoundWithCode', { code }));
         return;
       }
       if (tool.status !== 'dostępne') {
-        toast.error(`Niedostępne: ${tool.name} (SKU: ${tool.sku})`);
+        toast.error(t('dashboard.quick.issue.errors.toolUnavailableDetails', { name: tool.name, sku: tool.sku }));
         return;
       }
       const existsIdx = quickIssueItems.findIndex(it => it.tool?.id === tool.id);
@@ -245,7 +245,7 @@ const DashboardScreen = ({ user }) => {
         setQuickIssueItems(prev => [...prev, { tool, quantity: 1 }]);
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Błąd dodawania po kodzie');
+      toast.error(err?.response?.data?.message || t('dashboard.quick.issue.errors.addByCode'));
     }
   };
 

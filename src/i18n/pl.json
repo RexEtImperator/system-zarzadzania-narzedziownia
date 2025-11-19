@@ -1,6 +1,6 @@
 {
   "sidebar": {
-    "dashboard": "Dashboard",
+    "dashboard": "Strona główna",
     "tools": "Narzędzia",
     "bhp": "BHP",
     "inventory": "Inwentaryzacja",
@@ -134,7 +134,9 @@
       "error": "Nie udało się wysłać zgłoszenia",
       "fetchError": "Błąd pobierania zgłoszeń",
       "statusUpdated": "Status zgłoszenia zaktualizowany",
-      "statusError": "Nie udało się zaktualizować statusu"
+      "statusError": "Nie udało się zaktualizować statusu",
+      "deleted": "Zgłoszenie zostało usunięte",
+      "deleteError": "Nie udało się usunąć zgłoszenia"
     }
   },
   "inventory": {
@@ -374,9 +376,245 @@
     "updateError": "Błąd podczas aktualizacji danych pracownika",
     "deletedSuccess": "Pracownik został usunięty",
     "deleteError": "Błąd podczas usuwania pracownika",
-    "confirmDelete": "Czy na pewno chcesz usunąć pracownika"
-  }
-  ,
+    "confirmDelete": "Czy na pewno chcesz usunąć pracownika",
+    "modal": {
+      "title": { "add": "Dodaj nowego pracownika", "edit": "Edytuj pracownika" },
+      "labels": {
+        "firstName": "Imię *",
+        "lastName": "Nazwisko *",
+        "phone": "Telefon",
+        "email": "E-mail",
+        "brandNumber": "Numer służbowy",
+        "department": "Dział *",
+        "position": "Stanowisko *",
+        "status": "Status"
+      },
+      "placeholders": {
+        "firstName": "np. Jan",
+        "lastName": "np. Kowalski",
+        "phone": "np. 500 600 700",
+        "email": "np. jan.kowalski@example.com",
+        "brandNumber": "np. ID-1234"
+      },
+      "select": { "department": "Wybierz dział", "position": "Wybierz stanowisko" },
+      "buttons": { "save": "Zapisz", "saving": "Zapisywanie...", "cancel": "Anuluj" },
+      "errors": {
+        "firstNameRequired": "Imię jest wymagane",
+        "lastNameRequired": "Nazwisko jest wymagane",
+        "departmentRequired": "Dział jest wymagany",
+        "positionRequired": "Stanowisko jest wymagane",
+        "submitFailed": "Wystąpił błąd podczas zapisywania"
+      }
+    },
+    "status": { "active": "Aktywny", "inactive": "Nieaktywny", "suspended": "Zawieszony" }
+  },
+  "departments": {
+    "modal": {
+      "title": { "add": "Dodaj dział", "edit": "Edytuj dział" },
+      "labels": {
+        "name": "Nazwa *",
+        "description": "Opis",
+        "manager": "Kierownik działu"
+      },
+      "placeholders": {
+        "name": "np. Sprzedaż",
+        "description": "Krótki opis działu"
+      },
+      "buttons": { "save": "Zapisz", "cancel": "Anuluj" },
+      "errors": { "nameRequired": "Nazwa jest wymagana", "submit": "Wystąpił błąd podczas zapisywania" }
+    }
+  },
+  "positions": {
+    "list": {
+      "statusMissing": "Brak w bazie",
+      "departmentPrefix": "Dział: "
+    },
+    "delete": {
+      "title": "Usuń stanowisko",
+      "message": "Czy na pewno chcesz usunąć stanowisko",
+      "confirmText": "Usuń"
+    },
+    "modal": {
+      "title": { "add": "Dodaj stanowisko", "edit": "Edytuj stanowisko" },
+      "labels": { "department": "Departament", "description": "Opis" },
+      "select": { "department": "Wybierz departament" },
+      "placeholders": { "description": "Krótki opis stanowiska" },
+      "buttons": { "save": "Zapisz", "cancel": "Anuluj" },
+      "errors": { "departmentRequired": "Departament jest wymagany" }
+    }
+  },
+  "auth": { "invalid": "Nieprawidłowe zdarzenie uwierzytelniania: {reason}" },
+  "appConfig": {
+    "header": {
+      "title": "Konfiguracja aplikacji",
+      "subtitle": "Zarządzaj ustawieniami systemu i tłumaczeniami"
+    },
+    "tabs": {
+      "general": "Ogólne",
+      "security": "Bezpieczeństwo",
+      "email": "E-mail",
+      "users": "Użytkownicy",
+      "features": "Funkcje",
+      "departments": "Działy",
+      "positions": "Stanowiska",
+      "categories": "Kategorie",
+      "codes": "Kody qr/kreskowe",
+      "translations": "Tłumaczenia",
+      "backup": "Kopie zapasowe"
+    },
+    "save": {
+      "success": "Konfiguracja zapisana",
+      "error": "Nie udało się zapisać konfiguracji"
+    },
+    "general": {
+      "title": "Ustawienia ogólne",
+      "appName": "Nazwa aplikacji",
+      "companyName": "Nazwa firmy",
+      "timezone": "Strefa czasowa",
+      "timezones": {
+        "warsaw": "Warszawa",
+        "london": "Londyn",
+        "newYork": "Nowy Jork",
+        "tokyo": "Tokio"
+      },
+      "language": "Język interfejsu",
+      "language_pl": "Polski",
+      "language_en": "Angielski",
+      "language_de": "Niemiecki",
+      "dateFormat": "Format daty"
+    },
+    "logo": {
+      "title": "Logo aplikacji",
+      "currentAlt": "Aktualne logo",
+      "dimensionsHint": "Dopuszczalny rozmiar: {minW}x{minH}–{maxW}x{maxH}px",
+      "uploadLabel": "Prześlij logo (PNG)",
+      "saveNew": "Zapisz nowe logo",
+      "historyTitle": "Historia logo",
+      "historyEmpty": "Brak historii logo",
+      "apply": "Zastosuj",
+      "onlyPng": "Dozwolone są tylko pliki PNG",
+      "fileTooLarge": "Plik jest zbyt duży",
+      "dimensionsOutOfRange": "Wymiary obrazu poza zakresem",
+      "invalidImageFile": "Nieprawidłowy plik obrazu",
+      "selectPng": "Wybierz plik PNG",
+      "updated": "Logo zaktualizowane",
+      "uploadError": "Błąd przesyłania logo",
+      "rollbackSuccess": "Przywrócono poprzednie logo",
+      "rollbackError": "Błąd przywracania poprzedniego logo",
+      "deleteSuccess": "Logo usunięte",
+      "deleteError": "Nie udało się usunąć logo",
+      "deleteTitle": "Usuń logo",
+      "deleteMessagePrefix": "Usunąć plik",
+      "deleteMessage": "Usunąć logo?"
+    },
+    "security": {
+      "title": "Bezpieczeństwo",
+      "sessionTimeout": "Limit czasu sesji (minuty)",
+      "passwordMinLength": "Minimalna długość hasła",
+      "maxLoginAttempts": "Maks. liczba prób logowania",
+      "lockoutDuration": "Czas blokady (minuty)",
+      "requireSpecialChars": "Wymagaj znaków specjalnych",
+      "requireNumbers": "Wymagaj cyfr"
+    },
+    "email": {
+      "title": "E-mail",
+      "host": "Serwer SMTP",
+      "port": "Port",
+      "secure": "Szyfrowanie",
+      "yes": "TAK",
+      "no": "NIE",
+      "user": "Użytkownik",
+      "pass": "Hasło",
+      "from": "Adres nadawcy",
+      "description": "Ustawienia wysyłki wiadomości e-mail",
+      "fixConfig": "Uzupełnij konfigurację e-mail",
+      "test": {
+        "title": "Test wysyłki",
+        "description": "Wyślij wiadomość testową na wybrany adres",
+        "recipient": "Adres odbiorcy",
+        "recipientPlaceholder": "np. jan.kowalski@example.com",
+        "fixConfig": "Uzupełnij konfigurację e-mail",
+        "invalidRecipient": "Nieprawidłowy adres odbiorcy",
+        "success": "Wiadomość testowa wysłana",
+        "error": "Błąd wysyłki",
+        "sending": "Wysyłanie…",
+        "send": "Wyślij test"
+      },
+      "validation": {
+        "hostRequired": "Podaj host SMTP",
+        "portInvalid": "Nieprawidłowy port",
+        "fromInvalid": "Nieprawidłowy adres nadawcy"
+      }
+    },
+    "notifications": {
+      "title": "Powiadomienia",
+      "email": "E-mail",
+      "sms": "SMS",
+      "push": "Push"
+    },
+    "features": {
+      "title": "Funkcje",
+      "auditLog": "Dziennik audytu",
+      "auditLogDesc": "Rejestruj istotne działania użytkowników",
+      "reports": "Raporty",
+      "reportsDesc": "Generuj raporty i zestawienia",
+      "mobileApp": "Aplikacja mobilna",
+      "mobileAppDesc": "Korzystaj z aplikacji w terenie",
+      "apiAccess": "Dostęp API",
+      "apiAccessDesc": "Integruj system z zewnętrznymi narzędziami",
+      "dataExport": "Eksport danych",
+      "dataExportDesc": "Eksportuj dane do plików",
+      "otherSettings": "Pozostałe ustawienia",
+      "auditRetention": "Retencja dziennika audytu (dni)",
+      "backupFrequency": "Częstotliwość kopii zapasowych",
+      "frequency": {
+        "daily": "codziennie",
+        "weekly": "co tydzień",
+        "monthly": "co miesiąc"
+      }
+    },
+    "codes": {
+      "title": "Prefiksy kodów",
+      "toolsPrefix": "Prefiks kodów narzędzi",
+      "toolsPrefixPlaceholder": "np. NR",
+      "bhpPrefix": "Prefiks kodów BHP",
+      "bhpPrefixPlaceholder": "np. BHP",
+      "categoryPrefixesTitle": "Prefiksy kategorii narzędzi",
+      "categoryPrefixesDesc": "Zdefiniuj prefiksy dla poszczególnych kategorii",
+      "categoryPrefixPlaceholder": "np. ML",
+      "toolsCountSuffix": "narzędzi",
+      "categoryPrefixNote": "Zmiana prefiksu nie modyfikuje istniejących numerów"
+    },
+    "translations": {
+      "title": "Tłumaczenia",
+      "addTranslation": "Dodaj tłumaczenie",
+      "searchPlaceholder": "Szukaj po kluczu",
+      "loading": "Ładowanie tłumaczeń…",
+      "empty": "Brak tłumaczeń",
+      "key": "Klucz",
+      "keyPlaceholder": "np. appConfig.header.title",
+      "keyExists": "Taki klucz już istnieje",
+      "saved": "Tłumaczenia zapisane",
+      "saveError": "Nie udało się zapisać tłumaczeń",
+      "added": "Tłumaczenie dodane",
+      "addError": "Nie udało się dodać tłumaczenia"
+    },
+    "backup": {
+      "title": "Kopia zapasowa",
+      "lastFromConfig": "Ostatnia z konfiguracji",
+      "lastFile": "Ostatni plik",
+      "running": "Tworzenie kopii…",
+      "run": "Utwórz kopię",
+      "adminRequired": "Wymagane uprawnienia administratora"
+    },
+    "categories": {
+      "title": "Kategorie narzędzi",
+      "newCategory": "Nowa kategoria",
+      "newCategoryPlaceholder": "np. Młotki",
+      "add": "Dodaj",
+      "edit": "Edytuj"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Witaj, {name}! Oto przegląd systemu zarządzania.",
@@ -403,8 +641,11 @@
         "errorItem": "Błąd wydania: {name}",
         "errors": {
           "toolNotFound": "Nie znaleziono narzędzia o podanym kodzie",
+          "toolNotFoundWithCode": "Nie znaleziono narzędzia dla kodu: {code}",
           "toolNotAvailable": "Narzędzie nie jest dostępne do wydania",
           "toolNotAvailableSimple": "Narzędzie nie jest dostępne",
+          "toolUnavailableDetails": "Niedostępne: {name} (SKU: {sku})",
+          "addByCode": "Błąd dodawania po kodzie",
           "noEmployeeSelected": "Wybierz pracownika, któremu chcesz wydać narzędzie"
         }
       },
@@ -530,13 +771,6 @@
       "title": "Ustawienia",
       "subtitle": "Zarządzaj systemem i konfiguracją"
     },
-    "appConfig": {
-      "card": {
-        "title": "Ustawienia aplikacji",
-        "subtitle": "Konfiguruj parametry systemu",
-        "open": "Otwórz ustawienia"
-      }
-    },
     "audit": {
       "card": {
         "title": "Dziennik audytu",
@@ -577,6 +811,22 @@
       "deleteReturns": "Usuń historię zwrotów",
       "deleteServiceHistory": "Usuń historię serwisowania",
       "deleteEmployees": "Usuń dane pracowników"
+    },
+    "toast": {
+      "historyDeleted": "Historia wydań została usunięta",
+      "historyDeleteError": "Błąd podczas usuwania historii",
+      "employeesDeleted": "Usunięto wszystkich pracowników",
+      "employeesDeleteError": "Błąd podczas usuwania pracowników",
+      "serviceHistoryDeleted": "Historia serwisowania została usunięta",
+      "serviceHistoryDeleteError": "Błąd podczas usuwania historii serwisowania",
+      "toolIssuesHistoryDeleted": "Historia WYDAŃ narzędzi została usunięta",
+      "toolIssuesHistoryDeleteError": "Błąd podczas usuwania historii wydań narzędzi",
+      "toolReturnsHistoryDeleted": "Historia ZWROTÓW narzędzi została usunięta",
+      "toolReturnsHistoryDeleteError": "Błąd podczas usuwania historii zwrotów narzędzi",
+      "bhpIssuesHistoryDeleted": "Historia WYDAŃ BHP została usunięta",
+      "bhpIssuesHistoryDeleteError": "Błąd podczas usuwania historii wydań BHP",
+      "bhpReturnsHistoryDeleted": "Historia ZWROTÓW BHP została usunięta",
+      "bhpReturnsHistoryDeleteError": "Błąd podczas usuwania historii zwrotów BHP"
     },
     "modals": {
       "deleteAllIssues": {
@@ -866,6 +1116,58 @@
       "NotReadableError": "Kamera jest używana przez inną aplikację. Zamknij inne aplikacje używające kamery.",
       "OverconstrainedError": "Nie można uruchomić kamery z wybranymi ustawieniami. Spróbuj ponownie.",
       "Generic": "Wystąpił błąd podczas uruchamiania kamery: {message}"
+    }
+  },
+  "tools": {
+    "errors": {
+      "noManagePermission": "Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)",
+      "deleteFailed": "Wystąpił błąd podczas usuwania narzędzia"
+    },
+    "confirm": {
+      "deleteTool": "Czy na pewno chcesz usunąć to narzędzie?"
+    },
+    "suggestions": { "loadFailed": "Nie udało się pobrać sugestii z backendu, używam danych lokalnych" },
+    "prefix": { "loadFailed": "Nie udało się załadować prefiksu narzędzi" },
+    "service": {
+      "chooseQty": "Wybierz ilość od 1 do",
+      "sendSuccess": "Wysłano narzędzia na serwis",
+      "sendFailed": "Nie udało się wysłać na serwis",
+      "receiveNone": "Brak sztuk w serwisie do odebrania",
+      "receiveSuccess": "Odebrano z serwisu",
+      "receiveFailed": "Nie udało się odebrać z serwisu"
+    },
+    "labels": {
+      "generateError": "Wystąpił błąd podczas generowania etykiety",
+      "generateQrError": "Wystąpił błąd podczas generowania etykiety (QR)",
+      "generateBarcodeError": "Wystąpił błąd podczas generowania etykiety (kod kreskowy)",
+      "sku": "SKU",
+      "scanPrompt": "Zeskanuj kod aby sprawdzić status",
+      "filenameLabel": "etykieta",
+      "filenameQr": "etykieta-qr",
+      "filenameBarcode": "etykieta-kreskowy"
+    },
+    "validation": {
+      "nameRequired": "Nazwa jest wymagana",
+      "categoryRequired": "Kategoria jest wymagana",
+      "quantityMin": "Ilość musi być większa od 0",
+      "inventoryInUse": "Numer ewidencyjny jest już używany",
+      "skuExists": "Narzędzie o tym SKU już istnieje",
+      "minStockInvalid": "Nieprawidłowy minimalny stan (liczba ≥ 0)",
+      "maxStockInvalid": "Nieprawidłowy maksymalny stan (liczba ≥ 0)",
+      "maxLessThanMin": "Maksymalny stan nie może być mniejszy niż minimalny"
+    },
+    "save": {
+      "updateSuccess": "Pomyślnie zaktualizowano dane narzędzia",
+      "error": "Wystąpił błąd podczas zapisywania narzędzia"
+    },
+    "weldInspection": {
+      "title": "Przegląd spawalniczy: ",
+      "in": " za ",
+      "days": " dni",
+      "lessEqual30": " (<=30 dni)"
+    },
+    "common": {
+      "tool": "narzędzie"
     }
   }
 }

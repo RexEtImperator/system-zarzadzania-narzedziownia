@@ -251,84 +251,84 @@ function AdminPanel({ user, onNavigate }) {
   const handleDeleteHistory = async () => {
     try {
       await api.delete('/tools/history');
-      toast.success('Historia wydań została usunięta');
+      toast.success(t('admin.toast.historyDeleted'));
       setShowDeleteHistoryConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię wydań narzędzi');
     } catch (error) {
       console.error('Error deleting history:', error);
-      toast.error('Błąd podczas usuwania historii');
+      toast.error(t('admin.toast.historyDeleteError'));
     }
   };
 
   const handleDeleteEmployees = async () => {
     try {
       await api.delete('/employees/all');
-      toast.success('Wszyscy pracownicy zostali usunięci');
+      toast.success(t('admin.toast.employeesDeleted'));
       setShowDeleteEmployeesConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto wszystkich pracowników');
     } catch (error) {
       console.error('Error deleting employees:', error);
-      toast.error('Błąd podczas usuwania pracowników');
+      toast.error(t('admin.toast.employeesDeleteError'));
     }
   };
 
   const handleDeleteServiceHistory = async () => {
     try {
       await api.delete('/api/service-history');
-      toast.success('Historia serwisowania została usunięta');
+      toast.success(t('admin.toast.serviceHistoryDeleted'));
       setShowDeleteServiceHistoryConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię serwisowania');
     } catch (error) {
       console.error('Error deleting service history:', error);
-      toast.error('Błąd podczas usuwania historii serwisowania');
+      toast.error(t('admin.toast.serviceHistoryDeleteError'));
     }
   };
 
   const handleDeleteToolIssuesHistory = async () => {
     try {
       await api.delete('/api/tools/history/issues');
-      toast.success('Usunięto historię WYDAŃ narzędzi');
+      toast.success(t('admin.toast.toolIssuesHistoryDeleted'));
       setShowDeleteToolIssuesConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię WYDAŃ narzędzi');
     } catch (error) {
       console.error('Error deleting tool issues history:', error);
-      toast.error('Błąd podczas usuwania historii wydań narzędzi');
+      toast.error(t('admin.toast.toolIssuesHistoryDeleteError'));
     }
   };
 
   const handleDeleteToolReturnsHistory = async () => {
     try {
       await api.delete('/api/tools/history/returns');
-      toast.success('Usunięto historię ZWROTÓW narzędzi');
+      toast.success(t('admin.toast.toolReturnsHistoryDeleted'));
       setShowDeleteToolReturnsConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię ZWROTÓW narzędzi');
     } catch (error) {
       console.error('Error deleting tool returns history:', error);
-      toast.error('Błąd podczas usuwania historii zwrotów narzędzi');
+      toast.error(t('admin.toast.toolReturnsHistoryDeleteError'));
     }
   };
 
   const handleDeleteBhpIssuesHistory = async () => {
     try {
       await api.delete('/api/bhp/history/issues');
-      toast.success('Usunięto historię WYDAŃ BHP');
+      toast.success(t('admin.toast.bhpIssuesHistoryDeleted'));
       setShowDeleteBhpIssuesConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię WYDAŃ BHP');
     } catch (error) {
       console.error('Error deleting BHP issues history:', error);
-      toast.error('Błąd podczas usuwania historii wydań BHP');
+      toast.error(t('admin.toast.bhpIssuesHistoryDeleteError'));
     }
   };
 
   const handleDeleteBhpReturnsHistory = async () => {
     try {
       await api.delete('/api/bhp/history/returns');
-      toast.success('Usunięto historię ZWROTÓW BHP');
+      toast.success(t('admin.toast.bhpReturnsHistoryDeleted'));
       setShowDeleteBhpReturnsConfirm(false);
       addAuditLog(user, AUDIT_ACTIONS.ACCESS_ADMIN, 'Usunięto historię ZWROTÓW BHP');
     } catch (error) {
       console.error('Error deleting BHP returns history:', error);
-      toast.error('Błąd podczas usuwania historii zwrotów BHP');
+      toast.error(t('admin.toast.bhpReturnsHistoryDeleteError'));
     }
   };
 
@@ -649,23 +649,20 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [appName, setAppName] = useState('SZN - System Zarządzania Narzędziownią');
   const [initialSearchTerm, setInitialSearchTerm] = useState({ tools: '', bhp: '' });
+  const { t } = useLanguage();
 
-  // Sprawdź czy użytkownik jest już zalogowany przy starcie aplikacji
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     const savedScreen = localStorage.getItem('currentScreen');
-    
+
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-        // Ustaw token w API client
         api.setToken(token);
-        // Załaduj uprawnienia ról z backendu
         loadRolePermissions();
         
-        // Przywróć ostatni ekran jeśli istnieje
         if (savedScreen) {
           setCurrentScreen(savedScreen);
         }
@@ -683,24 +680,20 @@ function App() {
       fetchTools();
       fetchEmployees();
       fetchAppConfig();
-      // Odśwież uprawnienia ról po zalogowaniu/zmianie użytkownika
       loadRolePermissions();
     }
   }, [user]);
 
-  // Odśwież narzędzia przy wejściu do Analityki, aby mieć aktualne daty przeglądów
   useEffect(() => {
     if (user && currentScreen === 'analytics') {
       fetchTools();
     }
   }, [user, currentScreen]);
 
-  // Automatyczne wylogowanie przy nieprawidłowym tokenie (zdarzenie z klienta API)
   useEffect(() => {
     const onAuthInvalid = (e) => {
       const reason = e?.detail?.reason || 'Sesja wygasła lub token jest nieprawidłowy';
-      // Pokaż komunikat i wyloguj użytkownika
-      toast.error(`${reason}. Zaloguj się ponownie.`);
+      toast.error(t('auth.invalid', { reason }));
       handleLogout();
     };
 
@@ -710,7 +703,6 @@ function App() {
       try {
         const { screen, q } = e?.detail || {};
         if (screen === 'bhp' || screen === 'tools') {
-          // Ustaw ekran i przekaż wstępny filtr
           if (screen === 'bhp') {
             setInitialSearchTerm(prev => ({ ...prev, bhp: q || '' }));
           } else {
@@ -791,21 +783,14 @@ function App() {
   const handleLogin = async (credentials) => {
     try {
       const response = await api.post('/api/login', credentials);
-      
       if (response && response.token) {
         setUser(response);
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response));
-        
-        // Ustaw token w API client PRZED wywołaniem addAuditLog
         api.setToken(response.token);
-        // Załaduj uprawnienia ról z backendu po zalogowaniu
         await loadRolePermissions();
-        
-        // Dodaj wpis do dziennika audytu (poprawne argumenty: user, action, details)
         await addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
-        
-        toast.success(`Witaj, ${response.full_name}!`);
+        toast.success(t('dashboard.welcome', { name: response.full_name }));
       } else {
         throw new Error('Nieprawidłowa odpowiedź serwera');
       }
@@ -816,50 +801,38 @@ function App() {
     }
   };
 
-  // Ładowanie mapy uprawnień ról z backendu do silnika uprawnień
   const loadRolePermissions = async () => {
     try {
       const data = await api.get('/api/role-permissions');
       setDynamicRolePermissions(data || null);
     } catch (error) {
       console.error('Błąd pobierania uprawnień ról:', error);
-      // Brak danych – korzystamy z statycznego fallbacku
       setDynamicRolePermissions(null);
     }
   };
 
   const handleLogout = () => {
-    // Dodaj wpis audytu o wylogowaniu
     addAuditLog(user, AUDIT_ACTIONS.LOGOUT, 'Wylogowano z systemu');
-    
-    // Usuń dane z localStorage
+
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('currentScreen');
-    
-    // Wyczyść token z API client
+
     api.setToken(null);
-    
-    // Wyczyść stan użytkownika
+
     setUser(null);
     setCurrentScreen('dashboard');
   };
 
   if (!user) {
     return (
-      <LanguageProvider>
-        <ThemeProvider>
-          <Suspense fallback={<Preloader fullscreen label="Ładowanie…" /> }>
-            <LoginScreen onLogin={handleLogin} />
-          </Suspense>
-        </ThemeProvider>
-      </LanguageProvider>
+      <Suspense fallback={<Preloader fullscreen label="Ładowanie…" /> }>
+        <LoginScreen onLogin={handleLogin} />
+      </Suspense>
     );
   }
 
   return (
-    <LanguageProvider>
-      <ThemeProvider>
       <div className="flex h-screen bg-slate-50 dark:bg-gray-900 overflow-hidden transition-colors duration-200">
         <Sidebar 
           onNav={handleNavigation} 
@@ -868,7 +841,6 @@ function App() {
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={closeMobileMenu}
         />
-        
         <div className="flex-1 flex flex-col min-w-0">
           {/* TopBar + content w Suspense, aby nie blokować pierwszego renderu */}
           <Suspense fallback={<div className="h-14 border-b border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800"/>}>
@@ -933,8 +905,6 @@ function App() {
           bodyClassName="text-sm"
         />
       </div>
-      </ThemeProvider>
-    </LanguageProvider>
   );
 }
 

@@ -340,7 +340,7 @@ Uwaga: od wersji 1.8.0 usunięto przestarzałe pola `codePrefix` (ogólny prefik
 
 ## Licencja
 
-Projekt jest licencjonowany na zasadach MIT. Szczegóły licencji znajdziesz w pliku [license.md](license.md).
+Projekt jest licencjonowany na zasadach GPL-3.0. Szczegóły licencji znajdziesz w pliku [license.md](license.md).
 
 ## Changelog
 

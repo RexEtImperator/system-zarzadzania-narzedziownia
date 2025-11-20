@@ -1,10 +1,10 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.0.0)
+[![Wersja](https://img.shields.io/badge/version-2.1.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.1.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
-System zarządzania narzędziami i pracownikami - aplikacja webowa do zarządzania wydawaniem/zwracaniem narzędzi przez pracowników w firmie.
+System zarządzania narzędziownią i pracownikami - aplikacja webowa do zarządzania wydawaniem/zwracaniem narzędzi przez pracowników w firmie.
 
 ## Opis projektu
 
@@ -98,80 +98,83 @@ Uwagi:
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml             # Pipeline CI (build/test)
-│       └── release.yml        # Workflow publikacji wydań
-├── .nvmrc                     # Wersja Node używana lokalnie
+│       ├── ci.yml             # CI: build/test/lint
+│       └── release.yml        # Publikacja wydań
+├── .gitignore
+├── .nvmrc                     # Wersja Node do użytku lokalnego
+├── CHANGELOG.md               # Historia zmian
+├── LICENSE
+├── README.md                  # Dokumentacja projektu
+├── app.js                     # Skrypty pomocnicze (narzędzia)
 ├── backend/
-│   └── package.json           # Metadane/backend (pomocnicze)
-├── backups/                   # Zrzuty kopii zapasowych
-├── public/                    # Pliki statyczne
+│   └── package.json           # Metadane backendu (pomocnicze)
+├── package.json               # Frontend: metadane, zależności, wersja
+├── package-lock.json
+├── public/                    # Pliki statyczne frontendu
 │   ├── index.html
 │   ├── favicon.ico
 │   ├── localhost.crt          # Certyfikat dev (HTTPS frontend)
 │   ├── logo*.png/svg          # Ikony
-│   └── logos/                 # Zasoby graficzne
-├── scripts/
-│   └── normalize_tools_codes.js  # Normalizacja kodów narzędzi
+│   └── logos/
+├── scripts/                   # Skrypty narzędziowe
+│   ├── generate_logins_for_employees.js
+│   ├── normalize_tools_codes.js
+│   ├── report_translation_diff.js
+│   └── sync_translations_from_files.js
+├── server.js                  # Backend (Express, API, i18n)
 ├── src/                       # Kod źródłowy frontendu (React)
 │   ├── App.jsx                # Główny komponent aplikacji
-│   ├── App.test.jsx           # Testy jednostkowe App
-│   ├── api.js                 # Klient API + tokeny
+│   ├── App.test.jsx           # Testy jednostkowe
+│   ├── api.js                 # Klient HTTP do API
 │   ├── constants.js           # Stałe aplikacji
-│   ├── index.js               # Punkt wejścia
 │   ├── index.css              # Style globalne
+│   ├── index.js               # Punkt wejścia
 │   ├── setupProxy.js          # Proxy do backendu w dev
-│   ├── contexts/
-│   │   └── ThemeContext.js    # Kontekst motywu
-│   ├── utils/
-│   │   └── dateUtils.js       # Pomocnicze funkcje dat
-│   └── components/            # Ekrany i komponenty UI
-│       ├── DashboardScreen.jsx
-│       ├── ToolsScreen.jsx
-│       ├── InventoryScreen.jsx
-│       ├── LabelsManager.jsx
-│       ├── BhpScreen.jsx
-│       ├── EmployeesScreen.jsx
-│       ├── EmployeeModal.jsx
-│       ├── AppConfigScreen.jsx
-│       ├── PositionManagementScreen.jsx
-│       ├── PermissionsModal.jsx
-│       ├── AnalyticsScreen.jsx
-│       ├── AuditLogScreen.jsx
-│       ├── DbViewerScreen.jsx
-│       ├── LoginScreen.jsx
-│       ├── MobileHeader.jsx
-│       ├── BarcodeScanner.jsx
-│       ├── Sidebar.jsx
-│       ├── TopBar.jsx
-│       ├── UserManagementScreen.jsx
-│       ├── UserSettingsScreen.jsx
-│       └── index.js           # Rejestr eksportów komponentów
+│   ├── components/            # Ekrany i komponenty UI
+│   │   ├── AppConfigScreen.jsx
+│   │   ├── AuditLogScreen.jsx
+│   │   ├── BarcodeScanner.jsx
+│   │   ├── BhpScreen.jsx
+│   │   ├── DashboardScreen.jsx
+│   │   ├── DbViewerScreen.jsx
+│   │   ├── DepartmentManagementScreen.jsx
+│   │   ├── EmployeeModal.jsx
+│   │   ├── EmployeesScreen.jsx
+│   │   ├── InventoryScreen.jsx
+│   │   ├── LabelsManager.jsx
+│   │   ├── LoginScreen.jsx
+│   │   ├── MobileHeader.jsx
+│   │   ├── PermissionsModal.jsx
+│   │   ├── PositionManagementScreen.jsx
+│   │   ├── ReportsScreen.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── SkeletonList.jsx
+│   │   ├── ToolsScreen.jsx
+│   │   ├── TopBar.jsx
+│   │   ├── UserManagementScreen.jsx
+│   │   ├── UserSettingsScreen.jsx
+│   │   └── index.js
+│   ├── contexts/              # Konteksty aplikacji
+│   │   ├── LanguageContext.jsx
+│   │   └── ThemeContext.js
+│   ├── i18n/                  # Pliki tłumaczeń bazowych
+│   │   ├── de.json
+│   │   ├── en.json
+│   │   └── pl.json
+│   └── utils/                 # Pomocnicze narzędzia
+│       ├── dateUtils.js
+│       └── statusUtils.js
 ├── ssl/                       # Klucze/certyfikaty lokalne
 │   ├── localhost.crt
 │   └── localhost.key
-├── server.js                  # Serwer Express (API, proxy, backupy)
-├── app.js                     # Wejście aplikacji serwera (skrypty narzędziowe)
 ├── tailwind.config.js         # Konfiguracja Tailwind CSS
-├── mobile-cert-install.md     # Instrukcja instalacji certyfikatu na telefonach
-├── check_all_tools_status.js  # Skrypt diagnostyczny
-├── check_database.js          # Sprawdzenie połączenia z bazą
-├── check_database_counts.js   # Licznik rekordów w bazie
-├── check_database_schema.js   # Weryfikacja schematu bazy
-├── check_employee_ids.js      # Kontrola spójności ID pracowników
-├── debug_all_issues.js        # Diagnostyka wydań/zwrotów
-├── debug_cors.js              # Diagnostyka CORS
-├── debug_login.js             # Diagnostyka logowania
-├── debug_receive.js           # Diagnostyka przyjęć
-├── debug_token.js             # Diagnostyka tokenów
-├── dump_db.js                 # Zrzut bazy danych
-├── generate-ssl.js            # Generator certyfikatów dev
-├── install-cert.bat           # Instalator certyfikatu w Windows
-├── README.md                  # Dokumentacja
-├── CHANGELOG.md               # Zmiany w wersjach
-├── license.md                 # Licencja MIT
-├── package.json               # Zależności i skrypty npm
-└── package-lock.json          # Lockfile npm
 ```
+
+Kluczowe zasady:
+- Frontend działa z katalogu `src/` i używa kontekstów `LanguageContext` oraz `ThemeContext`.
+- Tłumaczenia bazowe są w `src/i18n/*.json`, a nadpisania pochodzą z bazy i są ładowane przez backend.
+- Backend startuje z `server.js` i udostępnia API (w tym administracyjną obsługę tłumaczeń).
+- W dev: frontend pod `https://localhost:3001`, backend pod `http://localhost:3000`.
 
 ## Jak uruchomić
 
@@ -344,10 +347,10 @@ Projekt jest licencjonowany na zasadach GPL-3.0. Szczegóły licencji znajdziesz
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [2.0.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.0.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [2.1.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.1.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 2.0.0
+System Zarządzania Narzędziownią - wersja 2.1.0

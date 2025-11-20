@@ -4,9 +4,16 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/2.0.0...HEAD
+[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/2.1.0...HEAD
+
+## [2.1.0] - 2025-11-20
 
 ### Dodane / Zmienione
+- Powiadomienia (TopBar): poprawione pozycjonowanie panelu (mobile/desktop), tytuł wpisu dla „Prośba o zwrot” ustalony na numer ewidencyjny, chip typu rozróżnia „Narzędzie”/„BHP”, dodatkowa linia z numerem służbowym pracownika.
+- Backend powiadomień: `GET /api/notifications` zwraca `employee_id`, `employee_brand_number`, `manufacturer`, `model`; endpointy `POST /api/tools/:id/notify-return` oraz `POST /api/bhp/:id/notify-return` przyjmują `target_employee_id` lub `target_brand_number` i mapują je do `employee_id` odbiorcy.
+- Wydania narzędzi/BHP: odpowiedzi `POST /api/tools/:id/issue` i `POST /api/bhp/:id/issue` zawierają teraz dane pracownika wraz z `employee_brand_number`; listy i szczegóły wydań (`GET /api/tool-issues`, `GET /api/tools/:id/details`, `GET /api/bhp-issues`, `GET /api/bhp/:id/details`) uzupełnione o `employee_brand_number`.
+- Frontend (Tools/BHP): w szczegółach oraz historii wydań wyświetlany jest `brand_number` pracownika (np. „Jan Kowalski [002]”).
+- i18n: przetłumaczono „Stanowiska” i „Działy”, ujednolicono etykiety statusów i akcji, zastosowano `common.edit`; po operacjach usunięcia odświeżane są listy z bazy.
 - i18n - tłumaczenie całego systemu w językach `PL/EN/DE`.
 - Konfiguracja → „Tłumaczenie”: nowa zakładka w sekcji „Kody qr/kreskowe” do edycji tłumaczeń `PL/EN/DE`.
   - Przełącznik języków (PL/EN/DE), wyszukiwanie po kluczu, zapis tylko zmienionych par `klucz|język`.
@@ -19,9 +26,18 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
   - `PUT /api/translate/bulk` (admin, `SYSTEM_SETTINGS`) — masowa aktualizacja.
   - Inicjalne zasilenie tabeli (`seed`) z `pl.json`, `en.json`, `de.json`.
 - Utils: `src/utils/dateUtils.js` lokalizuje formaty dat i „czas temu” dla `PL/EN/DE` (pluralizacja PL, locale per język).
+ - Backend: `GET /api/tool-issues` zwraca teraz również pole `tool_sku` (SKU narzędzia), ułatwiając filtrowanie po kodzie z Dashboardu.
+- Pola wyszukiwania: dodano przycisk czyszczenia z ikoną `XMark` (Heroicons) w zakładkach „Narzędzia”, „BHP” oraz „Pracownicy”. Wycentrowano przycisk, zwiększono prawy padding wejść i dodano `aria-label` (`common.clearInput`).
+- Toasty: ujednolicono komunikaty powiadomień z wykorzystaniem kluczy i18n `common.toastr.*` na ekranach AuditLog, DbViewer oraz PositionManagement. Zaktualizowano tłumaczenia w `pl.json`, `en.json`, `de.json`.
+- Poprawki deweloperskie: przetłumaczono polskie komunikaty `console.error` na angielskie we wszystkich ekranach, aby ułatwić diagnostykę i raportowanie błędów.
 
 ### Dokumentacja
 - README: sekcja „Tłumaczenia (i18n)” — opis zakładki, endpointów i inicjalizacji bazy; uwagi o `LanguageContext` i `dateUtils`.
+
+### Techniczne
+- Logi: przetłumaczono polskie komunikaty `console.error` na angielskie w kluczowych komponentach.
+
+[2.1.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.1.0
 
 ## [2.0.0] - 2025-11-17
 
@@ -95,67 +111,26 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 [1.8.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.8.0
 
-## [1.1.0] - 2025-10-03
+## [1.7.0] - 2025-10-22
 
 ### Dodane / Zmienione
-- Konfiguracja aplikacji: przebudowa układu zakładek na pionowy (lewy panel nawigacyjny, prawa część z treścią).
-- Sticky lewy panel na większych ekranach, poprawiona użyteczność.
-- Dynamiczny nagłówek sekcji po prawej: wyświetla ikonę i nazwę aktywnej zakładki.
-- Dark mode: poprawki w `EmployeeModal` i spójne style w modalach.
-- README: link do licencji MIT, dodany badge wersji i statusu builda.
-- Licencja: dodany plik `license.md` (MIT).
-- Wersja: podbicie wersji w `package.json` (root i backend) na `1.1.0`.
-- Repozytorium: przygotowanie do zmiany nazwy na `system-zarzadzania-narzedziownia`.
+- Stan magazynowy (Inventory): widok mobilny — ukryto kolumny `SKU`, `Min`, `Max`; przeniesiono szczegóły do podglądu w komórce `Nazwa`.
+- Dziennik audytu (Audit Log): widok mobilny — ukryto `Użytkownik`, `Data i czas`, `IP` oraz `Akcja`; dodano chip „Akcja” w podglądzie komórki `Szczegóły` wraz z Użytkownikiem, IP i Szczegółami.
+- UI: poprawiona responsywność tabel na telefonach, spójne style elementów mobilnego podglądu.
 
-### Techniczne
-- Ujednolicone style i placeholdery w modalach.
-- Minimalne porządki w strukturze komponentów konfiguracyjnych.
+[1.7.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0
 
-[1.1.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.0
-
-## [1.1.1] - 2025-10-03
-
-### Zmienione
-- BHP: poprawna odmiana w przypomnieniach przeglądu ("Przegląd za 1 dzień" zamiast "1 dni").
-- API BHP: endpoint `PUT /api/bhp/:id` zwraca zaktualizowany rekord w odpowiedzi (`{ message, item }`).
-- API BHP: zabezpieczenie aktualizacji przed nadpisywaniem istniejących danych `NULL` lub pustym stringiem (użycie `COALESCE/NULLIF`).
-
-### Techniczne
-- Drobne porządki w komponentach UI, nowe logotypy w `public/logos/`.
-
-[1.1.1]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.1
-
-## [1.2.0] - 2025-10-03
+## [1.6.0] - 2025-10-21
 
 ### Dodane / Zmienione
-- Narzędzia: komunikat potwierdzenia po edycji (toast) — „Pomyślnie zaktualizowano dane narzędzia”.
-- BHP: poprawione sortowanie listy przeglądów dla „Najbliższy” i „Najdalszy”.
-- API Narzędzia: poprawione endpointy w UI (`PUT/DELETE /api/tools/:id`).
-- Konfiguracja: zakładka „Backup” — wyświetlanie ostatniej kopii, listy plików oraz przycisk „Wykonaj kopię”.
-- Dokumentacja: zaktualizowana sekcja „Struktura projektu” w README.
+- ConfirmationModal: pełne wsparcie trybu ciemnego (dark mode) dla wszystkich elementów modala.
+- Dziennik audytu: dodano modal potwierdzenia dla akcji usuwania logów (zastępuje `window.confirm`).
+- UI: spójne kolory i zachowanie modali w trybie jasnym i ciemnym.
 
-### Techniczne
-- Fix: obsługa odpowiedzi `POST /api/tools` bez użycia `.data` (klient zwraca obiekt bez wrappera).
-- Guard: defensywny `filter(Boolean)` przy filtrowaniu listy narzędzi, aby uniknąć błędów na pustych wpisach.
+### Backend
+- Audyt: ujednolicenie endpointu usuwania logów — korzystanie z `DELETE /api/audit`.
 
-[1.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0
-
-## [1.4.0] - 2025-10-06
-
-### Dodane / Zmienione
-- Uprawnienia: dodano `MANAGE_EMPLOYEES` do listy dostępnych uprawnień oraz do domyślnych ról (`administrator`, `manager`).
-- API Pracownicy: wymagane uprawnienie `MANAGE_EMPLOYEES` dla endpointów `POST/PUT/DELETE /api/employees`.
-- UI: warunkowe wyświetlanie kafelka „Dodaj pracownika” na Dashboardzie i przycisku w ekranie Pracownicy w zależności od uprawnienia.
-- Wersja: podbicie wersji frontendu (`package.json`) do `1.4.0`.
- - Porty dev: stała konfiguracja — backend na `http://localhost:3000`, frontend na `https://localhost:3001` (proxy do backendu).
- - Dashboard: zmieniono kafelek „Stanowiska” na „Pracownicy” i wyświetlanie łącznej liczby pracowników.
- - Analityka: usunięto kafelki statystyk na górze sekcji.
- - Nawigacja: usunięto zakładkę „Etykiety” z menu i tras aplikacji.
-
-### Techniczne
-- Spójność polityki uprawnień między backendem a frontendem (wspólne stałe i walidacja).
-
-[1.4.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0
+[1.6.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0
 
 ## [1.5.0] - 2025-10-16
 
@@ -174,23 +149,64 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 [1.5.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.5.0
 
-## [1.6.0] - 2025-10-21
+## [1.4.0] - 2025-10-06
 
 ### Dodane / Zmienione
-- ConfirmationModal: pełne wsparcie trybu ciemnego (dark mode) dla wszystkich elementów modala.
-- Dziennik audytu: dodano modal potwierdzenia dla akcji usuwania logów (zastępuje `window.confirm`).
-- UI: spójne kolory i zachowanie modali w trybie jasnym i ciemnym.
+- Uprawnienia: dodano `MANAGE_EMPLOYEES` do listy dostępnych uprawnień oraz do domyślnych ról (`administrator`, `manager`).
+- API Pracownicy: wymagane uprawnienie `MANAGE_EMPLOYEES` dla endpointów `POST/PUT/DELETE /api/employees`.
+- UI: warunkowe wyświetlanie kafelka „Dodaj pracownika” na Dashboardzie i przycisku w ekranie Pracownicy w zależności od uprawnienia.
+- Wersja: podbicie wersji frontendu (`package.json`) do `1.4.0`.
+ - Porty dev: stała konfiguracja — backend na `http://localhost:3000`, frontend na `https://localhost:3001` (proxy do backendu).
+ - Dashboard: zmieniono kafelek „Stanowiska” na „Pracownicy” i wyświetlanie łącznej liczby pracowników.
+ - Analityka: usunięto kafelki statystyk na górze sekcji.
+ - Nawigacja: usunięto zakładkę „Etykiety” z menu i tras aplikacji.
 
-### Backend
-- Audyt: ujednolicenie endpointu usuwania logów — korzystanie z `DELETE /api/audit`.
+### Techniczne
+- Spójność polityki uprawnień między backendem a frontendem (wspólne stałe i walidacja).
 
-[1.6.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.6.0
+[1.4.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.4.0
 
-## [1.7.0] - 2025-10-22
+## [1.2.0] - 2025-10-03
 
 ### Dodane / Zmienione
-- Stan magazynowy (Inventory): widok mobilny — ukryto kolumny `SKU`, `Min`, `Max`; przeniesiono szczegóły do podglądu w komórce `Nazwa`.
-- Dziennik audytu (Audit Log): widok mobilny — ukryto `Użytkownik`, `Data i czas`, `IP` oraz `Akcja`; dodano chip „Akcja” w podglądzie komórki `Szczegóły` wraz z Użytkownikiem, IP i Szczegółami.
-- UI: poprawiona responsywność tabel na telefonach, spójne style elementów mobilnego podglądu.
+- Narzędzia: komunikat potwierdzenia po edycji (toast) — „Pomyślnie zaktualizowano dane narzędzia”.
+- BHP: poprawione sortowanie listy przeglądów dla „Najbliższy” i „Najdalszy”.
+- API Narzędzia: poprawione endpointy w UI (`PUT/DELETE /api/tools/:id`).
+- Konfiguracja: zakładka „Backup” — wyświetlanie ostatniej kopii, listy plików oraz przycisk „Wykonaj kopię”.
+- Dokumentacja: zaktualizowana sekcja „Struktura projektu” w README.
 
-[1.7.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.7.0
+### Techniczne
+- Fix: obsługa odpowiedzi `POST /api/tools` bez użycia `.data` (klient zwraca obiekt bez wrappera).
+- Guard: defensywny `filter(Boolean)` przy filtrowaniu listy narzędzi, aby uniknąć błędów na pustych wpisach.
+
+[1.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.2.0
+
+## [1.1.1] - 2025-10-03
+
+### Zmienione
+- BHP: poprawna odmiana w przypomnieniach przeglądu ("Przegląd za 1 dzień" zamiast "1 dni").
+- API BHP: endpoint `PUT /api/bhp/:id` zwraca zaktualizowany rekord w odpowiedzi (`{ message, item }`).
+- API BHP: zabezpieczenie aktualizacji przed nadpisywaniem istniejących danych `NULL` lub pustym stringiem (użycie `COALESCE/NULLIF`).
+
+### Techniczne
+- Drobne porządki w komponentach UI, nowe logotypy w `public/logos/`.
+
+[1.1.1]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.1
+
+## [1.1.0] - 2025-10-03
+
+### Dodane / Zmienione
+- Konfiguracja aplikacji: przebudowa układu zakładek na pionowy (lewy panel nawigacyjny, prawa część z treścią).
+- Sticky lewy panel na większych ekranach, poprawiona użyteczność.
+- Dynamiczny nagłówek sekcji po prawej: wyświetla ikonę i nazwę aktywnej zakładki.
+- Dark mode: poprawki w `EmployeeModal` i spójne style w modalach.
+- README: link do licencji MIT, dodany badge wersji i statusu builda.
+- Licencja: dodany plik `license.md` (MIT).
+- Wersja: podbicie wersji w `package.json` (root i backend) na `1.1.0`.
+- Repozytorium: przygotowanie do zmiany nazwy na `system-zarzadzania-narzedziownia`.
+
+### Techniczne
+- Ujednolicone style i placeholdery w modalach.
+- Minimalne porządki w strukturze komponentów konfiguracyjnych.
+
+[1.1.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/1.1.0

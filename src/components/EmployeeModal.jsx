@@ -100,7 +100,7 @@ const EmployeeModal = ({
       await onSave(formData);
       onClose();
     } catch (error) {
-      console.error('Błąd podczas zapisywania pracownika:', error);
+      console.error('Error saving employee:', error);
       setErrors({ submit: t('employees.modal.errors.submitFailed') });
     } finally {
       setIsLoading(false);

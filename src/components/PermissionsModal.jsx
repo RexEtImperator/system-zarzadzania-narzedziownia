@@ -66,6 +66,8 @@ const PermissionsModal = ({ isOpen, onClose, user }) => {
     'INVENTORY_DELETE_CORRECTION': 'Inwentaryzacja - usuwanie korekt',
     'INVENTORY_EXPORT_CSV': 'Inwentaryzacja - eksport CSV',
     'VIEW_LABELS': 'Etykiety - przeglądanie',
+    'EXPORT_TOOLS': 'Narzędzia - eksport',
+    'EXPORT_BHP': 'BHP - eksport',
   };
 
   useEffect(() => {

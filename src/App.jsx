@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { initFlowbite } from 'flowbite';
 import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
-import { Bars3Icon } from '@heroicons/react/24/outline';
+import { Bars3Icon, HomeIcon, WrenchScrewdriverIcon, ShieldCheckIcon, ArchiveBoxIcon, UsersIcon, TagIcon, ChartBarIcon, Cog6ToothIcon, FlagIcon } from '@heroicons/react/24/solid';
 import 'react-toastify/dist/ReactToastify.css';
 import api from './api';
-// Ekrany ładowane dynamicznie (code-splitting)
+// Screens loaded dynamically (code-splitting)
 const LoginScreen = lazy(() => import('./components/LoginScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
 const ToolsScreen = lazy(() => import('./components/ToolsScreen'));
@@ -14,7 +15,6 @@ const AnalyticsScreen = lazy(() => import('./components/AnalyticsScreen'));
 const AuditLogScreen = lazy(() => import('./components/AuditLogScreen'));
 const TopBar = lazy(() => import('./components/TopBar'));
 const UserSettingsScreen = lazy(() => import('./components/UserSettingsScreen'));
-const UserManagementScreen = lazy(() => import('./components/UserManagementScreen'));
 const ReportsScreen = lazy(() => import('./components/ReportsScreen'));
 const AppConfigScreen = lazy(() => import('./components/AppConfigScreen'));
 const DepartmentManagementScreen = lazy(() => import('./components/DepartmentManagementScreen'));
@@ -151,7 +151,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
   );
 }
 
-function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
+function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose, collapsed = false }) {
   const [now, setNow] = useState(new Date());
   const { t, language } = useLanguage();
   useEffect(() => {
@@ -159,17 +159,16 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
     return () => clearInterval(i);
   }, []);
   const locale = language === 'en' ? 'en-GB' : (language === 'de' ? 'de-DE' : 'pl-PL');
-  const formattedDateTime = now.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'medium' });
   const menuItems = [
-    { id: 'dashboard', label: t('sidebar.dashboard'), icon: '🏠', permission: null },
-    { id: 'tools', label: t('sidebar.tools'), icon: '🔧', permission: PERMISSIONS.VIEW_TOOLS },
-    { id: 'bhp', label: t('sidebar.bhp'), icon: '🦺', permission: PERMISSIONS.VIEW_BHP },
-    { id: 'inventory', label: t('sidebar.inventory'), icon: '📦', permission: PERMISSIONS.VIEW_INVENTORY },
-    { id: 'employees', label: t('sidebar.employees'), icon: '👥', permission: PERMISSIONS.VIEW_EMPLOYEES },
-    { id: 'labels', label: t('sidebar.labels'), icon: '🔖', permission: PERMISSIONS.VIEW_LABELS },
-    { id: 'analytics', label: t('sidebar.analytics'), icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
-    { id: 'report', label: t('sidebar.report'), icon: '🚩', permission: null },
-    { id: 'admin', label: t('sidebar.admin'), icon: '⚙️', permission: PERMISSIONS.VIEW_ADMIN }
+    { id: 'dashboard', label: t('sidebar.dashboard'), icon: (<HomeIcon className="w-5 h-5" aria-hidden="true" />), permission: null },
+    { id: 'tools', label: t('sidebar.tools'), icon: (<WrenchScrewdriverIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_TOOLS },
+    { id: 'bhp', label: t('sidebar.bhp'), icon: (<ShieldCheckIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_BHP },
+    { id: 'inventory', label: t('sidebar.inventory'), icon: (<ArchiveBoxIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_INVENTORY },
+    { id: 'employees', label: t('sidebar.employees'), icon: (<UsersIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_EMPLOYEES },
+    { id: 'labels', label: t('sidebar.labels'), icon: (<TagIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_LABELS },
+    { id: 'analytics', label: t('sidebar.analytics'), icon: (<ChartBarIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_ANALYTICS },
+    { id: 'report', label: t('sidebar.report'), icon: (<FlagIcon className="w-5 h-5" aria-hidden="true" />), permission: null },
+    { id: 'admin', label: t('sidebar.admin'), icon: (<Cog6ToothIcon className="w-5 h-5" aria-hidden="true" />), permission: PERMISSIONS.VIEW_ADMIN }
   ];
 
   const filteredItems = menuItems.filter(item => 
@@ -187,29 +186,42 @@ function Sidebar({ onNav, current, user, isMobileOpen, onMobileClose }) {
       )}
       
       {/* Sidebar */}
-      <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-200 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} `}>
+      <div className={`fixed lg:static inset-y-0 left-0 z-50 ${collapsed ? 'w-16' : ''} bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transform transition-all duration-200 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} `}>
         <div className="flex flex-col h-full">
-          <div className="border-b border-slate-200 dark:border-gray-700">
-            <img src="/logo.png" alt="Logo systemu" className="mx-auto w-24 h-24 drop-shadow-lg" />
+          <div className={`flex items-center justify-center ${collapsed ? 'pt-4' : ''}`}>
+            <img
+              src="/logo.png"
+              alt="Logo systemu"
+              className={`${collapsed ? 'w-12 h-12' : 'w-24 h-24 -mb-5'} drop-shadow-lg`}
+            />
           </div>
-          <div className="px-6 py-3 text-xs text-center text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
-            {formattedDateTime}
-          </div>
-          
-          <nav className="flex-1 p-4 space-y-2">
+
+          <nav className={`flex-1 ${collapsed ? 'px-2 pt-6' : 'p-4'} space-y-2`}>
             {filteredItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onNav(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors duration-200 ${
-                  current === item.id
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                    : 'text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-              </button>
+              <div key={item.id} className="relative">
+                <button
+                  onClick={() => onNav(item.id)}
+                  className={`w-full flex items-center ${collapsed ? 'justify-center' : ''} gap-3 ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-lg text-left transition-colors duration-200 ${
+                    current === item.id
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700'
+                  }`}
+                  {...(collapsed ? { 'data-tooltip-target': `tooltip-${item.id}`, 'data-tooltip-placement': 'right' } : {})}
+                >
+                <span>{item.icon}</span>
+                  {!collapsed && <span className="font-medium">{item.label}</span>}
+                </button>
+                {collapsed && (
+                  <div
+                    id={`tooltip-${item.id}`}
+                    role="tooltip"
+                    className="absolute z-50 inline-block px-3 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700 whitespace-nowrap min-w-max max-w-none"
+                  >
+                    {item.label}
+                    <div className="tooltip-arrow" data-popper-arrow></div>
+                  </div>
+                )}
+              </div>
             ))}
           </nav>
         </div>
@@ -647,6 +659,23 @@ function App() {
   const [tools, setTools] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      const savedCollapsed = localStorage.getItem('sidebarCollapsed');
+      if (savedCollapsed === null) return false;
+      const normalized = String(savedCollapsed).trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1') return true;
+      if (normalized === 'false' || normalized === '0') return false;
+      try {
+        const parsed = JSON.parse(savedCollapsed);
+        return Boolean(parsed);
+      } catch (_) {
+        return false;
+      }
+    } catch (_) {
+      return false;
+    }
+  });
   const [appName, setAppName] = useState('SZN - System Zarządzania Narzędziownią');
   const [initialSearchTerm, setInitialSearchTerm] = useState({ tools: '', bhp: '' });
   const { t } = useLanguage();
@@ -675,6 +704,19 @@ function App() {
     }
   }, []);
 
+  // Save sidebar collapse preference on each change
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebarCollapsed', isSidebarCollapsed ? 'true' : 'false');
+      if (isSidebarCollapsed) {
+        // Po pojawieniu się elementów tooltipów zainicjuj Flowbite
+        initFlowbite();
+      }
+    } catch (e) {
+      // Ignore errors localStorage
+    }
+  }, [isSidebarCollapsed]);
+
   useEffect(() => {
     if (user) {
       fetchTools();
@@ -698,7 +740,7 @@ function App() {
     };
 
     window.addEventListener('auth:invalid', onAuthInvalid);
-    // Obsługa nawigacji z głębokim linkiem (z Analityki)
+    // Deep link navigation support (from Analytics)
     const onNavigate = (e) => {
       try {
         const { screen, q } = e?.detail || {};
@@ -780,6 +822,10 @@ function App() {
     setIsMobileMenuOpen(false);
   };
 
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => !prev);
+  };
+
   const handleLogin = async (credentials) => {
     try {
       const response = await api.post('/api/login', credentials);
@@ -792,7 +838,7 @@ function App() {
         await addAuditLog(response, AUDIT_ACTIONS.LOGIN, 'Użytkownik zalogował się do systemu');
         toast.success(t('dashboard.welcome', { name: response.full_name }));
       } else {
-        throw new Error('Nieprawidłowa odpowiedź serwera');
+        throw new Error('Invalid server response');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -806,7 +852,7 @@ function App() {
       const data = await api.get('/api/role-permissions');
       setDynamicRolePermissions(data || null);
     } catch (error) {
-      console.error('Błąd pobierania uprawnień ról:', error);
+      console.error('Error getting role permissions:', error);
       setDynamicRolePermissions(null);
     }
   };
@@ -840,6 +886,7 @@ function App() {
           user={user}
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={closeMobileMenu}
+          collapsed={isSidebarCollapsed}
         />
         <div className="flex-1 flex flex-col min-w-0">
           {/* TopBar + content w Suspense, aby nie blokować pierwszego renderu */}
@@ -848,6 +895,8 @@ function App() {
               user={user} 
               onLogout={handleLogout} 
               onToggleSidebar={toggleMobileMenu}
+              isSidebarCollapsed={isSidebarCollapsed}
+              onToggleSidebarCollapse={toggleSidebarCollapse}
               isSidebarOpen={isMobileMenuOpen}
               appName={appName}
               onNavigate={handleNavigation}

@@ -644,6 +644,30 @@ function initializeDatabase() {
       console.log('Table bhp_issues has been created or already exists');
     }
   });
+
+  // Notifications table (user-specific notifications like return requests)
+  db.run(`CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    employee_id INTEGER NULL,
+    message TEXT,
+    read INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT (datetime('now')),
+    read_at DATETIME NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating table notifications:', err.message);
+    } else {
+      console.log('Table notifications has been created or already exists');
+      // Helpful indexes
+      db.run('CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_notifications_item ON notifications(item_type, item_id)');
+    }
+  });
 // Employees table
   db.run(`CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1258,8 +1282,10 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
         SELECT 
           ti.*, 
           t.name as tool_name,
+          t.sku as tool_sku,
           e.first_name as employee_first_name,
           e.last_name as employee_last_name,
+          e.brand_number as employee_brand_number,
           u.full_name as issued_by_user_name
         FROM tool_issues ti
         LEFT JOIN tools t ON ti.tool_id = t.id
@@ -1311,8 +1337,10 @@ app.get('/api/tool-issues', authenticateToken, requirePermission('VIEW_TOOL_HIST
     SELECT 
       ti.*,
       t.name as tool_name,
+      t.sku as tool_sku,
       e.first_name as employee_first_name,
       e.last_name as employee_last_name,
+      e.brand_number as employee_brand_number,
       u.full_name as issued_by_user_name
     FROM tool_issues ti
     LEFT JOIN tools t ON ti.tool_id = t.id
@@ -1408,6 +1436,7 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
           b.model AS bhp_model,
           e.first_name AS employee_first_name,
           e.last_name AS employee_last_name,
+          e.brand_number AS employee_brand_number,
           u.full_name AS issued_by_user_name
         FROM bhp_issues bi
         LEFT JOIN bhp b ON bi.bhp_id = b.id
@@ -1462,6 +1491,7 @@ app.get('/api/bhp-issues', authenticateToken, requirePermission('VIEW_BHP_HISTOR
       b.model AS bhp_model,
       e.first_name AS employee_first_name,
       e.last_name AS employee_last_name,
+      e.brand_number AS employee_brand_number,
       u.full_name AS issued_by_user_name
     FROM bhp_issues bi
     LEFT JOIN bhp b ON bi.bhp_id = b.id
@@ -1569,12 +1599,42 @@ app.get('/api/tools/search', authenticateToken, (req, res) => {
 });
 
 // Tools fetch endpoint
-app.get('/api/tools', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM tools', [], (err, tools) => {
-    if (err) {
-      return res.status(500).json({ message: 'Server error' });
+app.get('/api/tools', authenticateToken, requirePermission('VIEW_TOOLS'), (req, res) => {
+  const rawRole = String(req.user.role || '').trim().toLowerCase();
+  const isEmployeeRole = rawRole === 'employee';
+
+  if (!isEmployeeRole) {
+    return db.all('SELECT * FROM tools ORDER BY inventory_number COLLATE NOCASE', [], (err, tools) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error' });
+      }
+      res.status(200).json(tools);
+    });
+  }
+
+  db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+    if (mapErr) {
+      console.error('Error mapping user to employee:', mapErr.message);
+      return res.status(500).json({ message: 'Server error', error: mapErr.message });
     }
-    res.status(200).json(tools);
+    if (!empRow || !empRow.id) {
+      return res.status(200).json([]);
+    }
+    const sql = `
+      SELECT t.*
+      FROM tools t
+      WHERE EXISTS (
+        SELECT 1 FROM tool_issues ti
+        WHERE ti.tool_id = t.id AND ti.status = 'wydane' AND ti.employee_id = ?
+      )
+      ORDER BY t.inventory_number COLLATE NOCASE
+    `;
+    db.all(sql, [empRow.id], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+      }
+      res.status(200).json(rows);
+    });
   });
 });
 
@@ -1890,7 +1950,10 @@ app.get('/api/service-history/summary', authenticateToken, (req, res) => {
 // ====== BHP Endpoints ======
 // Fetch PPE equipment
 app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res) => {
-  const query = `
+  const rawRole = String(req.user.role || '').trim().toLowerCase();
+  const isEmployeeRole = rawRole === 'employee';
+
+  const baseSelect = `
     SELECT 
       b.*, 
       (
@@ -1918,13 +1981,33 @@ app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res)
         LIMIT 1
       ) AS assigned_employee_last_name
     FROM bhp b
-    ORDER BY b.inventory_number
   `;
-  db.all(query, [], (err, items) => {
-    if (err) {
-      return res.status(500).json({ message: 'Server error' });
+
+  if (!isEmployeeRole) {
+    const query = `${baseSelect} ORDER BY b.inventory_number`;
+    return db.all(query, [], (err, items) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error' });
+      }
+      res.status(200).json(items);
+    });
+  }
+
+  db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+    if (mapErr) {
+      console.error('Error mapping user to employee (BHP):', mapErr.message);
+      return res.status(500).json({ message: 'Server error', error: mapErr.message });
     }
-    res.status(200).json(items);
+    if (!empRow || !empRow.id) {
+      return res.status(200).json([]);
+    }
+    const query = `${baseSelect} WHERE EXISTS (SELECT 1 FROM bhp_issues bi WHERE bi.bhp_id = b.id AND bi.status = 'wydane' AND bi.employee_id = ?) ORDER BY b.inventory_number`;
+    db.all(query, [empRow.id], (err, items) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error' });
+      }
+      res.status(200).json(items);
+    });
   });
 });
 
@@ -2098,7 +2181,14 @@ app.post('/api/bhp/:id/issue', authenticateToken, requirePermission('MANAGE_BHP'
           if (err) return res.status(500).json({ message: 'Server error' });
           db.run('UPDATE bhp SET status = ? WHERE id = ?', ['wydane', bhpId], function(err) {
             if (err) return res.status(500).json({ message: 'Server error' });
-            res.status(200).json({ message: 'BHP item issued', issue_id: this.lastID });
+            res.status(200).json({ 
+              message: 'BHP item issued', 
+              issue_id: this.lastID,
+              employee_id: employee.id,
+              employee_first_name: employee.first_name,
+              employee_last_name: employee.last_name,
+              employee_brand_number: employee.brand_number || null
+            });
           });
         }
       );
@@ -2142,6 +2232,7 @@ app.get('/api/bhp/:id/details', authenticateToken, (req, res) => {
         bi.*, 
         e.first_name as employee_first_name, 
         e.last_name as employee_last_name, 
+        e.brand_number as employee_brand_number,
         u.full_name as issued_by_user_name
       FROM bhp_issues bi
       LEFT JOIN employees e ON bi.employee_id = e.id
@@ -4962,7 +5053,11 @@ app.post('/api/tools/:id/issue', authenticateToken, (req, res) => {
                 res.status(200).json({ 
                   message: `Issued ${quantity} items of the tool`,
                   issue_id: this.lastID,
-                  available_quantity: availableQuantity - quantity
+                  available_quantity: availableQuantity - quantity,
+                  employee_id: employee.id,
+                  employee_first_name: employee.first_name,
+                  employee_last_name: employee.last_name,
+                  employee_brand_number: employee.brand_number || null
                 });
               }
             );
@@ -5111,6 +5206,7 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
         ti.*,
         e.first_name as employee_first_name,
         e.last_name as employee_last_name,
+        e.brand_number as employee_brand_number,
         u.full_name as issued_by_user_name
       FROM tool_issues ti
       LEFT JOIN employees e ON ti.employee_id = e.id
@@ -5119,7 +5215,7 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
       ORDER BY ti.issued_at DESC
     `;
 
-    db.all(issuesQuery, [toolId], (err, issues) => {
+  db.all(issuesQuery, [toolId], (err, issues) => {
       if (err) {
         console.error(`Błąd przy pobieraniu wydań narzędzia ID ${toolId}:`, err);
         return res.status(500).json({ message: 'Server error', error: err.message });
@@ -5137,37 +5233,218 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
   });
 });
 
+// ===== Notifications API =====
+// Get user-specific notifications (e.g., return requests)
+app.get('/api/notifications', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const query = `
+    SELECT 
+      n.id,
+      n.type,
+      n.item_type,
+      n.item_id,
+      n.employee_id,
+      n.message,
+      n.read,
+      n.created_at,
+      -- inventory number
+      CASE WHEN n.item_type = 'bhp' THEN (
+        SELECT b.inventory_number FROM bhp b WHERE b.id = n.item_id
+      ) ELSE (
+        SELECT t.inventory_number FROM tools t WHERE t.id = n.item_id
+      ) END AS inventory_number,
+      -- manufacturer
+      CASE WHEN n.item_type = 'bhp' THEN (
+        SELECT b.manufacturer FROM bhp b WHERE b.id = n.item_id
+      ) ELSE (
+        SELECT t.manufacturer FROM tools t WHERE t.id = n.item_id
+      ) END AS manufacturer,
+      -- model or tool name
+      CASE WHEN n.item_type = 'bhp' THEN (
+        SELECT b.model FROM bhp b WHERE b.id = n.item_id
+      ) ELSE (
+        SELECT t.name FROM tools t WHERE t.id = n.item_id
+      ) END AS model,
+      -- employee brand number
+      (SELECT e.brand_number FROM employees e WHERE e.id = n.employee_id) AS employee_brand_number
+    FROM notifications n
+    WHERE n.user_id = ?
+    ORDER BY n.created_at DESC
+  `;
+
+  db.all(query, [userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching notifications:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    const result = (rows || []).map(r => ({
+      id: r.id,
+      type: r.type || 'return_request',
+      itemType: r.item_type,
+      inventory_number: r.inventory_number || '-',
+      manufacturer: r.manufacturer || '',
+      model: r.model || '',
+      message: r.message || '',
+      read: !!r.read,
+      employee_id: r.employee_id || null,
+      employee_brand_number: r.employee_brand_number || null
+    }));
+    res.json(result);
+  });
+});
+
+// Mark a notification as read
+app.post('/api/notifications/:id/read', authenticateToken, (req, res) => {
+  const notifId = parseInt(req.params.id, 10);
+  if (!notifId) {
+    return res.status(400).json({ message: 'Nieprawidłowe ID powiadomienia' });
+  }
+  const sql = 'UPDATE notifications SET read = 1, read_at = datetime("now") WHERE id = ? AND user_id = ?';
+  db.run(sql, [notifId, req.user.id], function(err) {
+    if (err) {
+      console.error('Error marking notification as read:', err.message);
+      return res.status(500).json({ message: 'Błąd serwera' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ message: 'Powiadomienie nie zostało znalezione' });
+    }
+    res.json({ message: 'Powiadomienie oznaczone jako przeczytane' });
+  });
+});
+
+// Create a return request notification for BHP item
+app.post('/api/bhp/:id/notify-return', authenticateToken, requirePermission('MANAGE_BHP'), (req, res) => {
+  const bhpId = parseInt(req.params.id, 10);
+  const { message, target_employee_id, target_brand_number } = req.body || {};
+  const userId = req.user.id;
+
+  if (!bhpId) {
+    return res.status(400).json({ message: 'Nieprawidłowe ID pozycji BHP' });
+  }
+
+  db.get('SELECT id FROM bhp WHERE id = ?', [bhpId], (err, item) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+
+    const resolveEmployeeId = (cb) => {
+      if (target_employee_id) return cb(null, target_employee_id);
+      if (target_brand_number) {
+        return db.get('SELECT id FROM employees WHERE brand_number = ?', [String(target_brand_number)], (e1, r1) => {
+          if (e1) return cb(e1);
+          if (r1 && r1.id) return cb(null, r1.id);
+          return cb(null, null);
+        });
+      }
+      db.get('SELECT employee_id FROM bhp_issues WHERE bhp_id = ? AND status = "wydane" ORDER BY issued_at DESC LIMIT 1', [bhpId], (e2, active) => {
+        if (e2) return cb(e2);
+        cb(null, active ? active.employee_id : null);
+      });
+    };
+
+    resolveEmployeeId((mapErr, employeeId) => {
+      if (mapErr) return res.status(500).json({ message: 'Błąd serwera' });
+      db.run(
+        'INSERT INTO notifications (user_id, type, item_type, item_id, employee_id, message) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, 'return_request', 'bhp', bhpId, employeeId, message || null],
+        function(err3) {
+          if (err3) {
+            console.error('Error creating notification (bhp):', err3.message);
+            return res.status(500).json({ message: 'Błąd serwera' });
+          }
+          res.status(201).json({ message: 'Powiadomienie o zwrocie utworzone', id: this.lastID, employee_id: employeeId });
+        }
+      );
+    });
+  });
+});
+
+// Create a return request notification for tool
+app.post('/api/tools/:id/notify-return', authenticateToken, requirePermission('MANAGE_TOOLS'), (req, res) => {
+  const toolId = parseInt(req.params.id, 10);
+  const { message, target_employee_id, target_brand_number } = req.body || {};
+  const userId = req.user.id;
+
+  if (!toolId) {
+    return res.status(400).json({ message: 'Nieprawidłowe ID narzędzia' });
+  }
+
+  db.get('SELECT id FROM tools WHERE id = ?', [toolId], (err, tool) => {
+    if (err) return res.status(500).json({ message: 'Błąd serwera' });
+    if (!tool) return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+
+    const resolveEmployeeId = (cb) => {
+      if (target_employee_id) return cb(null, target_employee_id);
+      if (target_brand_number) {
+        return db.get('SELECT id FROM employees WHERE brand_number = ?', [String(target_brand_number)], (e1, r1) => {
+          if (e1) return cb(e1);
+          if (r1 && r1.id) return cb(null, r1.id);
+          return cb(null, null);
+        });
+      }
+      db.get('SELECT employee_id FROM tool_issues WHERE tool_id = ? AND status = "wydane" ORDER BY issued_at DESC LIMIT 1', [toolId], (e2, active) => {
+        if (e2) return cb(e2);
+        cb(null, active ? active.employee_id : null);
+      });
+    };
+
+    resolveEmployeeId((mapErr, employeeId) => {
+      if (mapErr) return res.status(500).json({ message: 'Błąd serwera' });
+      db.run(
+        'INSERT INTO notifications (user_id, type, item_type, item_id, employee_id, message) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, 'return_request', 'tool', toolId, employeeId, message || null],
+        function(err3) {
+          if (err3) {
+            console.error('Error creating notification (tool):', err3.message);
+            return res.status(500).json({ message: 'Błąd serwera' });
+          }
+          res.status(201).json({ message: 'Powiadomienie o zwrocie utworzone', id: this.lastID, employee_id: employeeId });
+        }
+      );
+    });
+  });
+});
+
 // Endpoints for managing role permissions
 
 // Fetch permissions for all roles
 app.get('/api/role-permissions', authenticateToken, (req, res) => {
-// Check whether the user has administrator permissions
-  if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Insufficient permissions to manage roles' });
+  const rawRole = String(req.user.role || '').trim().toLowerCase();
+  const isAdmin = rawRole === 'administrator' || rawRole === 'admin';
+
+  if (isAdmin) {
+    const query = `
+      SELECT role, permission 
+      FROM role_permissions 
+      ORDER BY role, permission
+    `;
+    return db.all(query, [], (err, rows) => {
+      if (err) {
+        console.error('Błąd podczas pobierania uprawnień ról:', err.message);
+        return res.status(500).json({ message: 'Server error', error: err.message });
+      }
+      const rolePermissions = {};
+      rows.forEach(row => {
+        if (!rolePermissions[row.role]) {
+          rolePermissions[row.role] = [];
+        }
+        rolePermissions[row.role].push(row.permission);
+      });
+      res.json(rolePermissions);
+    });
   }
 
+  const apiRole = rawRole; // expected: 'manager', 'employee', etc.
   const query = `
-    SELECT role, permission 
-    FROM role_permissions 
-    ORDER BY role, permission
+    SELECT permission FROM role_permissions WHERE role = ? ORDER BY permission
   `;
-
-  db.all(query, [], (err, rows) => {
+  db.all(query, [apiRole], (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania uprawnień ról:', err.message);
+      console.error('Błąd podczas pobierania uprawnień roli:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
-
-// Group permissions by role
-    const rolePermissions = {};
-    rows.forEach(row => {
-      if (!rolePermissions[row.role]) {
-        rolePermissions[row.role] = [];
-      }
-      rolePermissions[row.role].push(row.permission);
-    });
-
-    res.json(rolePermissions);
+    const out = {};
+    out[apiRole] = (rows || []).map(r => r.permission);
+    res.json(out);
   });
 });
 
@@ -5277,6 +5554,7 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'DELETE_USERS',
     'VIEW_ANALYTICS',
     'VIEW_TOOLS',
+    'EXPORT_TOOLS',
     'VIEW_LABELS',
     'MANAGE_DEPARTMENTS',
     'MANAGE_POSITIONS',
@@ -5284,6 +5562,7 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'VIEW_ADMIN',
     'VIEW_AUDIT_LOG',
     'VIEW_BHP',
+    'EXPORT_BHP',
     'VIEW_TOOL_HISTORY',
     'VIEW_BHP_HISTORY',
     'MANAGE_BHP',
@@ -5301,6 +5580,9 @@ app.get('/api/permissions', authenticateToken, (req, res) => {
     'INVENTORY_DELETE_CORRECTION',
     'INVENTORY_EXPORT_CSV'
   ];
+  // Rozszerzenie: dedykowane uprawnienia eksportu
+  availablePermissions.push('EXPORT_TOOLS');
+  availablePermissions.push('EXPORT_BHP');
 
   res.json(availablePermissions);
 });

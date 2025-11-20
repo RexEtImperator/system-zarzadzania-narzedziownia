@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import api from '../api';
@@ -193,7 +193,7 @@ function LabelsManager({ tools = [], user }) {
         setToolsCodePrefix(cfg?.toolsCodePrefix || '');
         setToolCategoryPrefixes(cfg?.toolCategoryPrefixes || {});
       } catch (err) {
-        console.error('Błąd ładowania konfiguracji etykiet:', err);
+        console.error('Error loading label configuration:', err);
       }
     };
     loadConfig();
@@ -217,7 +217,7 @@ function LabelsManager({ tools = [], user }) {
         const list = Array.isArray(resp) ? resp : (resp?.data || []);
         setToolsData(list);
       } catch (err) {
-        console.error('Błąd pobierania narzędzi dla etykiet:', err);
+        console.error('Error fetching tools for labels:', err);
         setToolsData([]);
       }
     };
@@ -305,7 +305,7 @@ function LabelsManager({ tools = [], user }) {
       const barcodeUrl = generateBarcode(codeText);
       setPreviews(prev => ({ ...prev, [id]: { qr: qrUrl, barcode: barcodeUrl } }));
     } catch (e) {
-      console.error('Błąd generowania podglądu:', e);
+      console.error('Error generating preview:', e);
     }
   };
 
@@ -410,7 +410,7 @@ function LabelsManager({ tools = [], user }) {
         img.src = qrUrl;
       }
     } catch (error) {
-      console.error('Błąd generowania etykiety QR:', error);
+      console.error('Error generating QR label:', error);
       alert('Wystąpił błąd podczas generowania etykiety QR');
     }
   };
@@ -511,7 +511,7 @@ function LabelsManager({ tools = [], user }) {
         img.src = qrUrl;
       }
     } catch (error) {
-      console.error('Błąd drukowania etykiety QR:', error);
+      console.error('Error printing QR label:', error);
       alert('Wystąpił błąd podczas wysyłania do drukarki (QR)');
     }
   };
@@ -623,7 +623,7 @@ function LabelsManager({ tools = [], user }) {
       };
       img.src = barcodeCanvas.toDataURL('image/png', 1.0);
     } catch (error) {
-      console.error('Błąd generowania etykiety kreskowej:', error);
+      console.error('Error generating barcode label:', error);
       alert('Wystąpił błąd podczas generowania etykiety kreskowej');
     }
   };
@@ -732,7 +732,7 @@ function LabelsManager({ tools = [], user }) {
       };
       img.src = barcodeCanvas.toDataURL('image/png', 1.0);
     } catch (error) {
-      console.error('Błąd drukowania etykiety kodu kreskowego:', error);
+      console.error('Error printing barcode label:', error);
       alert('Wystąpił błąd podczas wysyłania do drukarki (Kod kreskowy)');
     }
   };
@@ -1432,7 +1432,22 @@ function LabelsManager({ tools = [], user }) {
 
               {/* Sekcja QR */}
               <section className="mb-6">
-                <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">Szablon etykiety QR</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">Szablon etykiety QR</h4>
+                  <button
+                    type="button"
+                    disabled={!previewTool}
+                    className="ml-2 inline-flex items-center justify-center rounded-md p-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={async () => {
+                      if (!previewTool) return;
+                      await downloadQrLabelSized(previewTool, qrTemplateConfig.sizeKey || '70x40');
+                    }}
+                    aria-label={'Pobierz etykietę (tylko QR)'}
+                    title={'Pobierz etykietę (tylko QR)'}
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
                     <h5 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Tytuł i SKU</h5>
@@ -1556,17 +1571,6 @@ function LabelsManager({ tools = [], user }) {
                         </select>
                       </div>
                       <div className="flex-1" />
-                      <button
-                        type="button"
-                        disabled={!previewTool}
-                        className="px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white"
-                        onClick={async () => {
-                          if (!previewTool) return;
-                          await downloadQrLabelSized(previewTool, qrTemplateConfig.sizeKey || '70x40');
-                        }}
-                      >
-                        Pobierz etykietę (tylko QR)
-                      </button>
                     </div>
                     {/* Kafelek: Drukowanie (QR) */}
                     <div className="mt-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
@@ -1636,7 +1640,22 @@ function LabelsManager({ tools = [], user }) {
 
               {/* Sekcja Kod kreskowy */}
               <section>
-                <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">Szablon etykiety kodu kreskowego</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">Szablon etykiety kodu kreskowego</h4>
+                  <button
+                    type="button"
+                    disabled={!previewTool}
+                    className="ml-2 inline-flex items-center justify-center rounded-md p-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={async () => {
+                      if (!previewTool) return;
+                      await downloadBarcodeLabelSized(previewTool, barcodeTemplateConfig.sizeKey || '70x40');
+                    }}
+                    aria-label={'Pobierz etykietę (tylko kod kreskowy)'}
+                    title={'Pobierz etykietę (tylko kod kreskowy)'}
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
                     <h5 className="font-medium text-slate-900 dark:text-slate-100 mb-2">Tytuł i SKU</h5>
@@ -1788,17 +1807,6 @@ function LabelsManager({ tools = [], user }) {
                         </select>
                       </div>
                       <div className="flex-1" />
-                      <button
-                        type="button"
-                        disabled={!previewTool}
-                        className="px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white"
-                        onClick={async () => {
-                          if (!previewTool) return;
-                          await downloadBarcodeLabelSized(previewTool, barcodeTemplateConfig.sizeKey || '70x40');
-                        }}
-                      >
-                        Pobierz etykietę (tylko kod kreskowy)
-                      </button>
                     </div>
                     {/* Kafelek: Drukowanie (Kod kreskowy) */}
                     <div className="mt-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">

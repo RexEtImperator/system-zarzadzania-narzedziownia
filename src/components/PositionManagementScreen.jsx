@@ -67,14 +67,14 @@ const PositionManagementScreen = ({ apiClient }) => {
   const addToolCategory = async () => {
     const name = (toolCatNewName || '').trim();
     if (!name) {
-      toast.error('Podaj nazwę kategorii');
+      toast.error(t('common.toastr.positions.categoryNameRequired'));
       return;
     }
     try {
       const created = await apiClient.post('/api/categories', { name });
       setToolCategories(prev => [...prev, { id: created.id, name: created.name }]);
       setToolCatNewName('');
-      toast.success('Dodano kategorię');
+      toast.success(t('common.toastr.positions.categoryAdded'));
     } catch (err) {
       const msg = err?.message || 'Nie udało się dodać kategorii';
       toast.error(msg);
@@ -96,14 +96,14 @@ const PositionManagementScreen = ({ apiClient }) => {
     const name = (toolCatEditingName || '').trim();
     if (!id) return;
     if (!name) {
-      toast.error('Nazwa nie może być pusta');
+      toast.error(t('common.toastr.positions.categoryNameEmpty'));
       return;
     }
     try {
       const updated = await apiClient.put(`/api/categories/${id}`, { name });
       setToolCategories(prev => prev.map(c => c.id === id ? { id, name: updated.name || name } : c));
       cancelEditToolCategory();
-      toast.success('Zaktualizowano kategorię');
+      toast.success(t('common.toastr.positions.categoryUpdated'));
     } catch (err) {
       const msg = err?.message || 'Nie udało się zaktualizować kategorii';
       toast.error(msg);
@@ -116,7 +116,7 @@ const PositionManagementScreen = ({ apiClient }) => {
     try {
       await apiClient.delete(`/api/categories/${cat.id}`);
       setToolCategories(prev => prev.filter(c => c.id !== cat.id));
-      toast.success('Usunięto kategorię');
+      toast.success(t('common.toastr.positions.categoryDeleted'));
     } catch (err) {
       const msg = err?.message || 'Nie udało się usunąć kategorii';
       toast.error(msg);
@@ -140,7 +140,7 @@ const PositionManagementScreen = ({ apiClient }) => {
       }));
       setDbPositions(normalized);
     } catch (error) {
-      console.error('Błąd podczas pobierania stanowisk:', error);
+      console.error('Error fetching positions:', error);
       // Fallback: użyj domyślnych nazw stanowisk z wymagań
       const fallbackNames = [
         'Kierownik działu',
@@ -176,7 +176,7 @@ const PositionManagementScreen = ({ apiClient }) => {
       const normalized = (Array.isArray(data) ? data : []).map(d => ({ id: d.id, name: d.name }));
       setDepartments(normalized);
     } catch (error) {
-      console.error('Błąd podczas pobierania departamentów:', error);
+      console.error('Error fetching departments:', error);
       // Fallback: lista działów zgodna z wymaganiami
       setDepartments([
         { id: 1, name: 'Administracja' },
@@ -202,7 +202,7 @@ const PositionManagementScreen = ({ apiClient }) => {
       }));
       setEmployees(normalized);
     } catch (error) {
-      console.error('Błąd podczas pobierania pracowników:', error);
+      console.error('Error fetching employees:', error);
       setEmployees([
         { id: 1, name: 'Jan Kowalski', position: '' },
         { id: 2, name: 'Anna Nowak', position: '' }
@@ -302,10 +302,11 @@ const PositionManagementScreen = ({ apiClient }) => {
         }
         setPositions(prev => prev.filter(pos => (pos.name || '').trim() !== name));
       }
-      toast.success('Stanowisko zostało usunięte');
+      toast.success(t('common.toastr.positions.positionDeleted'));
+      try { await fetchPositions(); } catch (_) {}
     } catch (error) {
-      console.error('Błąd podczas usuwania stanowiska:', error);
-      toast.error('Nie udało się usunąć stanowiska');
+      console.error('Error deleting position:', error);
+      toast.error(t('common.toastr.positions.positionDeleteError'));
     } finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);
@@ -333,7 +334,7 @@ const PositionManagementScreen = ({ apiClient }) => {
       const departmentIdNum = Number(formData.departmentId);
       if (!Number.isInteger(departmentIdNum) || departmentIdNum <= 0) {
         setErrors(prev => ({ ...prev, departmentId: 'Nieprawidłowy departament' }));
-        toast.error('Nieprawidłowy departament');
+        toast.error(t('common.toastr.positions.invalidDepartment'));
         return;
       }
       const departmentName = departments.find(d => d.id.toString() === formData.departmentId)?.name || '';
@@ -361,7 +362,7 @@ const PositionManagementScreen = ({ apiClient }) => {
               }
             : pos
         ));
-        toast.success('Stanowisko zostało zaktualizowane');
+        toast.success(t('common.toastr.positions.positionUpdated'));
       } else {
         // Dodawanie pełnych szczegółów do DB
         const created = await apiClient.post('/api/positions', {
@@ -383,7 +384,7 @@ const PositionManagementScreen = ({ apiClient }) => {
         };
         setDbPositions(prev => [...prev, { id: created.id, name: created.name, description: created.description || '' }]);
         setPositions(prev => [...prev, { ...newPosition, isMissing: false }]);
-        toast.success('Stanowisko zostało utworzone');
+        toast.success(t('common.toastr.positions.positionCreated'));
       }
       // Odśwież listę pozycji z API, aby mieć najnowsze dane i spójność z DB
       try {
@@ -393,7 +394,7 @@ const PositionManagementScreen = ({ apiClient }) => {
       }
       setShowModal(false);
     } catch (error) {
-      console.error('Błąd podczas zapisywania stanowiska:', error);
+      console.error('Error saving position:', error);
       let apiMsg = 'Nie udało się zapisać stanowiska';
       if (error && typeof error.message === 'string') {
         try {
@@ -410,8 +411,8 @@ const PositionManagementScreen = ({ apiClient }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { label: 'Aktywne', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' },
-      inactive: { label: 'Nieaktywne', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' }
+      active: { label: t('positions.status.active'), className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' },
+      inactive: { label: t('positions.status.inactive'), className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' }
     };
     
     const config = statusConfig[status] || statusConfig.active;
@@ -422,124 +423,28 @@ const PositionManagementScreen = ({ apiClient }) => {
       </span>
     );
   };
-
-  // Wynagrodzenie nie jest używane na stanowisku
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Zarządzanie stanowiskami</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Zarządzaj stanowiskami pracy w organizacji
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('positions.header.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('positions.header.subtitle')}</p>
         </div>
         <button
           onClick={handleAdd}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <PlusIcon className="w-4 h-4 mr-2" aria-hidden="true" />
-          Dodaj stanowisko
+          {t('positions.actions.add')}
         </button>
-      </div>
-
-      {/* Panel edycji kategorii narzędzi */}
-      <div className="mt-4 p-4 border border-slate-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-md font-medium text-gray-900 dark:text-white">Kategorie narzędzi</h3>
-          <button
-            type="button"
-            onClick={() => setShowCatPanel(prev => !prev)}
-            className="px-3 py-1 rounded bg-indigo-600 dark:bg-indigo-700 text-white"
-          >
-            {showCatPanel ? 'Ukryj edycję' : 'Edytuj kategorie'}
-          </button>
-        </div>
-        {showCatPanel && (
-          <div>
-            <div className="flex items-end gap-2 mb-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nowa kategoria</label>
-                <input
-                  type="text"
-                  value={toolCatNewName}
-                  onChange={(e) => setToolCatNewName(e.target.value)}
-                  placeholder="np. Ręczne"
-                  className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={addToolCategory}
-                className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800"
-              >
-                Dodaj
-              </button>
-            </div>
-
-            {toolCatLoading ? (
-              <div className="text-sm text-gray-500 dark:text-gray-400">Ładowanie kategorii...</div>
-            ) : toolCategories.length === 0 ? (
-              <div className="text-sm text-gray-500 dark:text-gray-400">Brak kategorii</div>
-            ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-gray-700">
-                {toolCategories.map(cat => (
-                  <li key={cat.id} className="py-3 flex items-center justify-between">
-                    <div className="flex-1">
-                      {toolCatEditingId === cat.id ? (
-                        <input
-                          type="text"
-                          value={toolCatEditingName}
-                          onChange={(e) => setToolCatEditingName(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-900 dark:text-white">{cat.name} <span className="text-gray-500 dark:text-gray-400">({cat.tool_count ?? 0})</span></span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {toolCatEditingId === cat.id ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={saveEditToolCategory}
-                            className="px-3 py-1 rounded bg-green-600 dark:bg-green-700 text-white"
-                          >Zapisz</button>
-                          <button
-                            type="button"
-                            onClick={cancelEditToolCategory}
-                            className="px-3 py-1 rounded bg-slate-200 dark:bg-gray-700 text-slate-800 dark:text-gray-200"
-                          >Anuluj</button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => startEditToolCategory(cat)}
-                            className="px-3 py-1 rounded bg-indigo-600 dark:bg-indigo-700 text-white"
-                          >Edytuj</button>
-                          <button
-                            type="button"
-                            onClick={() => deleteToolCategory(cat)}
-                            className="px-3 py-1 rounded bg-red-600 dark:bg-red-700 text-white"
-                          >Usuń</button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
       {/* Positions Table */}
       <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
         {loading ? (
           <div className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Ładowanie stanowisk...</p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('loading.data')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -579,13 +484,13 @@ const PositionManagementScreen = ({ apiClient }) => {
                       onClick={() => handleEdit(position)}
                       className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
                     >
-                      Edytuj
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={() => promptDelete(position)}
                       className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
                     >
-                      Usuń
+                      {t('common.remove')}
                     </button>
                   </div>
                 </div>
@@ -607,7 +512,7 @@ const PositionManagementScreen = ({ apiClient }) => {
               <form onSubmit={handleSubmit}>
                 <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-                    {editingPosition ? 'Edytuj stanowisko' : 'Dodaj nowe stanowisko'}
+                    {editingPosition ? t('positions.modal.titles.edit') : t('positions.modal.titles.add')}
                   </h3>
                   {errors.submit && (
                     <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
@@ -618,7 +523,7 @@ const PositionManagementScreen = ({ apiClient }) => {
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Nazwa *
+                        {t('positions.modal.labels.name')}
                       </label>
                       <input
                         type="text"
@@ -626,19 +531,19 @@ const PositionManagementScreen = ({ apiClient }) => {
                         id="name"
                         value={formData.name}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="np. Specjalista ds. IT"
+                        placeholder={t('positions.modal.placeholders.name')}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
                           errors.name ? 'border-red-300 dark:border-red-600' : 'border-slate-300 dark:border-gray-600'
                         }`}
                       />
                       {errors.name && (
-                        <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                        <p className="mt-1 text-sm text-red-600">{t('positions.modal.errors.nameRequired')}</p>
                       )}
                     </div>
 
                     <div>
                       <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Departament *
+                        {t('positions.modal.labels.department')}
                       </label>
                       <select
                         name="departmentId"
@@ -680,7 +585,7 @@ const PositionManagementScreen = ({ apiClient }) => {
 
                     <div>
                       <label htmlFor="requirements" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Wymagania
+                        {t('positions.modal.labels.requirements')}
                       </label>
                       <textarea
                         name="requirements"
@@ -689,13 +594,13 @@ const PositionManagementScreen = ({ apiClient }) => {
                         value={formData.requirements}
                         onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="Wymagania dla tego stanowiska..."
+                        placeholder={t('positions.modal.placeholders.requirements')}
                       />
                     </div>
 
                     <div>
                       <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Status
+                        {t('positions.modal.labels.status')}
                       </label>
                       <select
                         name="status"
@@ -704,8 +609,8 @@ const PositionManagementScreen = ({ apiClient }) => {
                         onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       >
-                        <option value="active">Aktywne</option>
-                        <option value="inactive">Nieaktywne</option>
+                        <option value="active">{t('positions.status.active')}</option>
+                        <option value="inactive">{t('positions.status.inactive')}</option>
                       </select>
                     </div>
                   </div>

@@ -76,7 +76,7 @@ const BarcodeScannerComponent = ({
             });
           };
         } else {
-          console.error('getUserMedia nie jest dostępne w tej przeglądarce');
+          console.error('getUserMedia is not available in this browser');
           setIsSupported(false);
           if (onError) {
             onError(t('scanner.browserNotSupported.message'));
@@ -105,7 +105,7 @@ const BarcodeScannerComponent = ({
 
       // Sprawdź czy getUserMedia jest dostępne po dodaniu polyfill
       if (!navigator.mediaDevices.getUserMedia) {
-        console.error('getUserMedia nie jest dostępne');
+        console.error('getUserMedia is not available');
         setIsSupported(false);
         if (onError) {
           onError(t('scanner.browserNotSupported.message'));
@@ -162,12 +162,12 @@ const BarcodeScannerComponent = ({
         }, 250);
       }
     } else if (err) {
-      console.error('Błąd skanowania:', err);
+      console.error('Scan error:', err);
     }
   };
 
   const handleError = (error) => {
-    console.error('Błąd kamery:', error);
+    console.error('Camera error:', error);
     
     // Różne typy błędów i ich obsługa
     if (error.name === "NotAllowedError") {

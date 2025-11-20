@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PencilSquareIcon, TrashIcon, EnvelopeIcon, ArrowUpOnSquareIcon, ArrowDownOnSquareIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import * as XLSX from 'xlsx';
 import api from '../api';
 import { toast } from 'react-toastify';
@@ -7,6 +8,8 @@ import BarcodeScannerComponent from './BarcodeScanner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { useLanguage } from '../contexts/LanguageContext.jsx';
+import SkeletonList from './SkeletonList';
+import { getBhpStatusInfo } from '../utils/statusUtils';
 
 function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const { t } = useLanguage();
@@ -73,6 +76,9 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   const [detailsData, setDetailsData] = useState(null);
   const [issueModal, setIssueModal] = useState(false);
   const [returnModal, setReturnModal] = useState(false);
+  const [notifyModal, setNotifyModal] = useState(false);
+  const [notifyItem, setNotifyItem] = useState(null);
+  const [notifySending, setNotifySending] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeIssueId, setActiveIssueId] = useState('');
   const [sortBy, setSortBy] = useState('inspection');
@@ -86,7 +92,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
         const cfg = await api.get('/api/config/general');
         setBhpCodePrefix(cfg?.bhpCodePrefix || '');
       } catch (err) {
-        console.error('Błąd ładowania konfiguracji:', err);
+        console.error('Error loading configuration:', err);
       }
     };
     loadConfig();
@@ -499,7 +505,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       setItems(result || []);
       notifyInspections(result || []);
     } catch (e) {
-      console.error('Błąd pobierania BHP:', e);
+      console.error('Error fetching BHP:', e);
       setItems([]);
     } finally {
       setLoading(false);
@@ -519,7 +525,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
   }
 
   const notifiedRef = useRef(new Set());
-  // Odmiana jednostki dni: 1 dzień, pozostałe dni
+  // Day unit variation: 1 day, remaining days
   const dayWord = (n) => (Math.abs(n) === 1 ? 'dzień' : 'dni');
   const notifyInspections = (list) => {
     (list || []).forEach(item => {
@@ -712,53 +718,6 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
     setFormData(prev => ({ ...prev, inventory_number: next }));
   };
 
-  const downloadBhpLabel = async (item) => {
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const scale = 4;
-      canvas.width = 400 * scale;
-      canvas.height = 300 * scale;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#000000';
-      ctx.font = `bold ${26 * scale}px Arial`;
-      ctx.textAlign = 'center';
-      const title = [item.manufacturer, item.model].filter(Boolean).join(' ');
-      ctx.fillText(title || 'Sprzęt BHP', canvas.width / 2, 40 * scale);
-      ctx.font = `${18 * scale}px Arial`;
-      ctx.fillText(`Nr ew.: ${item.inventory_number || ''}`, canvas.width / 2, 70 * scale);
-      const codeText = computeCodeText(item.inventory_number || '');
-      const qrCodeUrl = await generateQRCode(codeText, 400);
-      if (qrCodeUrl) {
-        const qrImg = new Image();
-        qrImg.onload = () => {
-          ctx.drawImage(qrImg, 20 * scale, 90 * scale, 160 * scale, 160 * scale);
-          const barcodeUrl = generateBarcode(codeText);
-          if (barcodeUrl) {
-            const barcodeImg = new Image();
-            barcodeImg.onload = () => {
-              ctx.drawImage(barcodeImg, 200 * scale, 90 * scale, 200 * scale, 100 * scale);
-              ctx.font = `${14 * scale}px Arial`;
-              ctx.textAlign = 'center';
-              ctx.fillText('Zeskanuj kod aby sprawdzić status', canvas.width / 2, 280 * scale);
-              const link = document.createElement('a');
-              link.download = `etykieta-bhp-${item.inventory_number || 'pozycja'}.png`;
-              link.href = canvas.toDataURL('image/png', 1.0);
-              link.click();
-            };
-            barcodeImg.src = barcodeUrl;
-          }
-        };
-        qrImg.src = qrCodeUrl;
-      }
-    } catch (error) {
-      console.error('Error generating BHP label:', error);
-      alert('Wystąpił błąd podczas generowania etykiety');
-    }
-  };
 
   const downloadBhpQrLabel = async (item) => {
     try {
@@ -901,19 +860,20 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
           // Zsynchronizuj nagłówek szczegółów z najnowszymi danymi
           setDetailsItem(prev => (prev ? { ...prev, ...payload } : prev));
         } catch (err) {
-          console.error('Błąd odświeżania szczegółów po zapisie:', err);
+          console.error('Error refreshing details after save:', err);
         }
       }
 
       // Potwierdzenie zapisu jako toast
       toast.success('Dane sprzętu zostały zaktualizowane');
     } catch (e) {
-      console.error('Błąd zapisu BHP:', e);
+      console.error('Error saving BHP:', e);
       alert('Wystąpił błąd podczas zapisywania wpisu');
     }
   };
 
   const canManageBhp = (user?.role === 'administrator' || user?.role === 'manager');
+  const canExportBhp = hasPermission(user, PERMISSIONS.EXPORT_BHP);
 
   const deleteItem = async (id) => {
     if (!canManageBhp) {
@@ -924,7 +884,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       await api.delete(`/api/bhp/${id}`);
       setItems(prev => prev.filter(i => i.id !== id));
     } catch (e) {
-      console.error('Błąd usuwania BHP:', e);
+      console.error('Error deleting BHP:', e);
       alert('Wystąpił błąd podczas usuwania');
     }
   };
@@ -935,7 +895,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       const data = await api.get(`/api/bhp/${item.id}/details`);
       setDetailsData(data);
     } catch (e) {
-      console.error('Błąd pobierania szczegółów:', e);
+      console.error('Error fetching details:', e);
       alert('Nie udało się pobrać szczegółów');
     }
   };
@@ -956,7 +916,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       setIssueModal(false);
       fetchItems();
     } catch (e) {
-      console.error('Błąd wydania:', e);
+      console.error('Error issuing:', e);
       alert('Nie udało się wydać');
     }
   };
@@ -969,9 +929,14 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       setActiveIssueId(active ? active.id : '');
       setReturnModal(true);
     } catch (e) {
-      console.error('Błąd przygotowania zwrotu:', e);
+      console.error('Error preparing return:', e);
       alert('Nie udało się pobrać danych zwrotu');
     }
+  };
+
+  const openNotify = (item) => {
+    setNotifyItem(item);
+    setNotifyModal(true);
   };
 
   const confirmReturn = async () => {
@@ -984,8 +949,45 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
       setReturnModal(false);
       fetchItems();
     } catch (e) {
-      console.error('Błąd zwrotu:', e);
+      console.error('Error returning:', e);
       alert('Nie udało się zwrócić');
+    }
+  };
+
+  const confirmNotify = async () => {
+    if (!canManageBhp) {
+      return alert('Brak uprawnień do powiadomień');
+    }
+    if (!notifyItem) return;
+    try {
+      setNotifySending(true);
+      let targetEmployeeId = null;
+      let targetBrandNumber = '';
+      try {
+        const details = await api.get(`/api/bhp/${notifyItem.id}/details`);
+        const issues = Array.isArray(details?.issues) ? details.issues : [];
+        const active = issues.find(i => i.status === 'wydane') || issues[issues.length - 1];
+        if (active && (active.employee_id || active.employeeId)) {
+          targetEmployeeId = active.employee_id ?? active.employeeId;
+          try {
+            const emp = await api.get(`/api/employees/${targetEmployeeId}`);
+            targetBrandNumber = emp?.brand_number || '';
+          } catch (_) {}
+        }
+      } catch (_) {}
+      await api.post(`/api/bhp/${notifyItem.id}/notify-return`, {
+        message: t('topbar.returnRequest'),
+        target_employee_id: targetEmployeeId || undefined,
+        target_brand_number: targetBrandNumber || undefined
+      });
+      toast.success(t('bhp.notify.sent'));
+      setNotifyModal(false);
+      setNotifyItem(null);
+    } catch (e) {
+      console.error('Error sending notification:', e);
+      toast.error(t('bhp.notify.error'));
+    } finally {
+      setNotifySending(false);
     }
   };
 
@@ -1048,8 +1050,8 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen dark:bg-slate-900">
-        <span className="text-slate-500 dark:text-slate-400">Ładowanie...</span>
+      <div className="p-6">
+        <SkeletonList rows={12} cols={6} />
       </div>
     );
   }
@@ -1096,13 +1098,35 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.search')}</label>
-            <input
-              type="text"
-              placeholder={t('bhp.filters.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={t('bhp.filters.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pr-12 px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  aria-label={t('common.clearInput')}
+                  title={t('common.clearInput')}
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('bhp.filters.status')}</label>
@@ -1140,40 +1164,45 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
             </div>
           )}
         </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={exportListToPDF}
-            className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90"
-          >
-            {t('bhp.export.exportPDF')}
-          </button>
-          <button
-            type="button"
-            onClick={exportListToXLSX}
-            className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800"
-          >
-            {t('bhp.export.exportXLSX')}
-          </button>
-        </div>
+        {canExportBhp && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={exportListToPDF}
+              className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90"
+            >
+              {t('bhp.export.exportPDF')}
+            </button>
+            <button
+              type="button"
+              onClick={exportListToXLSX}
+              className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800"
+            >
+              {t('bhp.export.exportXLSX')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Widok desktop (tabela) */}
       <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-700">
+          <thead className="bg-slate-50 dark:bg-slate-700 border-l-4 border-slate-50 dark:border-slate-700">
             <tr>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.inventoryShort')}</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.manufacturerModel')}</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.serialCatalog')}</th>
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.inspection')}</th>
-              <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.status')}</th>
+              
               <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100">{t('bhp.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
-            {filteredItems.map(item => (
-              <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={() => openDetails(item)}>
+            {filteredItems.map(item => {
+              const { displayStatus, statusBorderColor } = getBhpStatusInfo(item, t);
+              
+              return (
+              <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={() => openDetails(item)} style={{ borderLeft: '4px solid', borderLeftColor: statusBorderColor }}>
                 <td className="p-4 font-mono text-sm text-slate-700 dark:text-slate-200">{item.inventory_number}</td>
                 <td className="p-4 text-slate-700 dark:text-slate-200">
                   <div className="font-medium">{item.manufacturer || '-'} {item.model ? `— ${item.model}` : ''}</div>
@@ -1206,25 +1235,55 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   <div className="text-slate-700 dark:text-slate-200">{item.inspection_date ? new Date(item.inspection_date).toLocaleDateString('pl-PL') : '-'}</div>
                   <div className="mt-1">{renderReminderBadge(item.inspection_date)}</div>
                 </td>
-                <td className="p-4">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                    item.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                    item.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                    'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
-                  }`}>
-                    {item.status || t('bhp.status.unknown')}
-                  </span>
-                </td>
+                
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     {canManageBhp ? (
                       <>
-                        <button onClick={() => openModal(item)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">{t('bhp.actions.edit')}</button>
-                        <button onClick={() => deleteItem(item.id)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium">{t('bhp.actions.delete')}</button>
+                        <button
+                          onClick={() => openModal(item)}
+                          className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                          aria-label={t('bhp.actions.edit')}
+                          title={t('bhp.actions.edit')}
+                        >
+                          <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="p-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          aria-label={t('bhp.actions.delete')}
+                          title={t('bhp.actions.delete')}
+                        >
+                          <TrashIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
                         {item.status !== 'wydane' ? (
-                          <button onClick={() => openIssue(item)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 text-sm font-medium">{t('bhp.actions.issue')}</button>
+                          <button
+                            onClick={() => openIssue(item)}
+                            className="p-2 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
+                            aria-label={t('bhp.actions.issue')}
+                            title={t('bhp.actions.issue')}
+                          >
+                            <ArrowUpOnSquareIcon className="h-5 w-5" aria-hidden="true" />
+                          </button>
                         ) : (
-                          <button onClick={() => openReturn(item)} className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 text-sm font-medium">{t('bhp.actions.return')}</button>
+                          <>
+                            <button
+                              onClick={() => openReturn(item)}
+                              className="p-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                              aria-label={t('bhp.actions.return')}
+                              title={t('bhp.actions.return')}
+                            >
+                              <ArrowDownOnSquareIcon className="h-5 w-5" aria-hidden="true" />
+                            </button>
+                            <button
+                              onClick={() => openNotify(item)}
+                              className="p-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
+                              aria-label={t('bhp.actions.notifyReturn')}
+                              title={t('bhp.actions.notifyReturn')}
+                            >
+                              <EnvelopeIcon className="h-5 w-5" aria-hidden="true" />
+                            </button>
+                          </>
                         )}
                       </>
                     ) : (
@@ -1233,18 +1292,22 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                   </div>
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>
 
       {/* Widok mobilny (karty) */}
       <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
-        {filteredItems.map((item) => (
+        {filteredItems.map((item) => {
+          const { displayStatus, statusBorderColor } = getBhpStatusInfo(item, t);
+          
+          return (
           <div
             key={item.id}
             className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800"
             onClick={() => openDetails(item)}
+            style={{ borderLeft: '4px solid', borderLeftColor: statusBorderColor }}
           >
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -1262,13 +1325,6 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                     </div>
                   ) : null}
                 </div>
-                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                  item.status === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                  item.status === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                  'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
-                }`}>
-                  {item.status || 'nieznany'}
-                </span>
               </div>
 
             <div className="space-y-2 text-sm mb-4">
@@ -1316,12 +1372,20 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                       {t('bhp.actions.issue')}
                     </button>
                   ) : (
-                    <button
-                      onClick={() => openReturn(item)}
-                      className="flex-1 bg-orange-50 dark:bg-orange-900 text-orange-600 dark:text-orange-300 py-2 px-3 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-800 transition-colors text-sm font-medium"
-                    >
-                      {t('bhp.actions.return')}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openReturn(item)}
+                        className="flex-1 bg-orange-50 dark:bg-orange-900 text-orange-600 dark:text-orange-300 py-2 px-3 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-800 transition-colors text-sm font-medium"
+                      >
+                        {t('bhp.actions.return')}
+                      </button>
+                      <button
+                        onClick={() => openNotify(item)}
+                        className="flex-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 py-2 px-3 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors text-sm font-medium"
+                      >
+                        {t('bhp.actions.notifyReturn')}
+                      </button>
+                    </>
                   )}
                 </>
               ) : (
@@ -1329,7 +1393,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
               )}
             </div>
           </div>
-        ))}
+        );})}
       </div>
 
       {/* Modal dodawania/edycji */}
@@ -1528,18 +1592,22 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
             <div className="p-6 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Szczegóły BHP: {detailsItem.inventory_number}</h2>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={exportDetailsToPDF}
-                  className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90"
-                >
-                  Eksportuj do PDF
-                </button>
-                <button
-                  onClick={exportDetailsToXLSX}
-                  className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800"
-                >
-                  Eksportuj do EXCEL
-                </button>
+                {canExportBhp && (
+                  <>
+                    <button
+                      onClick={exportDetailsToPDF}
+                      className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90"
+                    >
+                      Eksportuj do PDF
+                    </button>
+                    <button
+                      onClick={exportDetailsToXLSX}
+                      className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800"
+                    >
+                      Eksportuj do EXCEL
+                    </button>
+                  </>
+                )}
                 <button onClick={() => { setDetailsItem(null); setDetailsData(null); }} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><span className="text-2xl">×</span></button>
               </div>
             </div>
@@ -1553,6 +1621,7 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Rozpoczęcie użytkowania:</span><span className="text-slate-900 dark:text-slate-100">{detailsData.harness_start_date ? new Date(detailsData.harness_start_date).toLocaleDateString('pl-PL') : '-'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Przegląd:</span><span className="text-slate-900 dark:text-slate-100">{detailsData.inspection_date ? new Date(detailsData.inspection_date).toLocaleDateString('pl-PL') : '-'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Przypisany:</span><span className="text-slate-900 dark:text-slate-100">{(detailsItem?.assigned_employee_first_name || detailsItem?.assigned_employee_last_name) ? `${detailsItem?.assigned_employee_first_name || ''} ${detailsItem?.assigned_employee_last_name || ''}`.trim() : '-'}</span></div>
+                {(() => { const ai = (detailsData?.issues || []).find(i => i.status === 'wydane'); const bn = ai?.employee_brand_number || ''; return bn ? (<div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">{t('employees.brandNumber')}:</span><span className="text-slate-900 dark:text-slate-100 font-mono">{bn}</span></div>) : null; })()}
 
                 {(() => {
                   const hasShock = !!(detailsData.shock_absorber_name || detailsData.shock_absorber_model || detailsData.shock_absorber_serial || detailsData.shock_absorber_catalog_number || detailsData.shock_absorber_production_date);
@@ -1590,59 +1659,64 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
                 <div className="mt-2">{renderReminderBadge(detailsData.inspection_date)}</div>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Historia wydań/zwrotów</h3>
-                <div className="space-y-2">
-                  {(detailsData.issues || []).length === 0 ? (
-                    <div className="text-sm text-slate-500 dark:text-slate-400">Brak wpisów</div>
-                  ) : (
-                    detailsData.issues.map((issue) => (
-                      <div key={issue.id} className="p-2 bg-slate-50 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
-                        <div className="text-sm text-slate-900 dark:text-slate-100">
-                          {issue.status === 'wydane' ? 'Wydano' : 'Zwrócono'} — {issue.employee_first_name} {issue.employee_last_name}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{issue.issued_at ? new Date(issue.issued_at).toLocaleString('pl-PL') : '-'}{issue.returned_at ? ` • Zwrot: ${new Date(issue.returned_at).toLocaleString('pl-PL')}` : ''}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {/* QR i Kod kreskowy */}
+                {canManageBhp && (
+                  <>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Historia wydań/zwrotów</h3>
+                    <div className="space-y-2">
+                      {(detailsData.issues || []).length === 0 ? (
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Brak wpisów</div>
+                      ) : (
+                        detailsData.issues.map((issue) => (
+                          <div key={issue.id} className="p-2 bg-slate-50 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                            <div className="text-sm text-slate-900 dark:text-slate-100">
+                              {issue.status === 'wydane' ? 'Wydano' : 'Zwrócono'} — {issue.employee_first_name} {issue.employee_last_name}{issue.employee_brand_number ? ` [${issue.employee_brand_number}]` : ''}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">{issue.issued_at ? new Date(issue.issued_at).toLocaleString('pl-PL') : '-'}{issue.returned_at ? ` • Zwrot: ${new Date(issue.returned_at).toLocaleString('pl-PL')}` : ''}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {canManageBhp && (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Kod QR</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Kod QR</h3>
+                      <button
+                        onClick={() => downloadBhpQrLabel(detailsItem)}
+                        className="bg-blue-600 dark:bg-blue-700 text-white p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center"
+                        aria-label={t('tools.qr.downloadLabel')}
+                        title={t('tools.qr.downloadLabel')}
+                      >
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <span className="sr-only">{t('tools.qr.downloadLabel')}</span>
+                      </button>
+                    </div>
                     <div className="flex justify-center">
                       <QRCodeDisplay text={computeCodeText(detailsItem.inventory_number)} />
                     </div>
-                    <div className="pt-2">
+                  </div>
+                  )}
+                  {canManageBhp && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Kod kreskowy</h3>
                       <button
-                        onClick={() => downloadBhpQrLabel(detailsItem)}
-                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                        onClick={() => downloadBhpBarcodeLabel(detailsItem)}
+                        className="bg-blue-600 dark:bg-blue-700 text-white p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center"
+                        aria-label={t('tools.barcode.downloadLabel')}
+                        title={t('tools.barcode.downloadLabel')}
                       >
-                        Pobierz etykietę (tylko QR)
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <span className="sr-only">{t('tools.barcode.downloadLabel')}</span>
                       </button>
                     </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Kod kreskowy</h3>
                     <div className="flex justify-center">
                       <BarcodeDisplay text={computeCodeText(detailsItem.inventory_number)} />
                     </div>
-                    <div className="pt-2">
-                      <button
-                        onClick={() => downloadBhpBarcodeLabel(detailsItem)}
-                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                      >
-                        Pobierz etykietę (tylko kod kreskowy)
-                      </button>
-                    </div>
                   </div>
-                </div>
-                <div className="pt-2">
-                  <button
-                    onClick={() => downloadBhpLabel(detailsItem)}
-                    className="w-full bg-indigo-600 dark:bg-indigo-700 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-800 transition-colors"
-                  >
-                    Pobierz etykietę (QR + kod kreskowy)
-                  </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1694,6 +1768,27 @@ function BhpScreen({ employees = [], user, initialSearchTerm = '' }) {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setReturnModal(false)} className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg">Anuluj</button>
                 <button onClick={confirmReturn} disabled={!activeIssueId} className="flex-1 px-4 py-2 bg-orange-600 dark:bg-orange-700 text-white rounded-lg disabled:opacity-50">Zwróć</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal powiadomienia o zwrocie */}
+      {notifyModal && notifyItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) setNotifyModal(false); }}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('bhp.actions.notifyReturn')}</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-slate-700 dark:text-slate-200">
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.inventoryLabel')}:</span><span className="text-slate-900 dark:text-slate-100 font-mono text-xs">{notifyItem.inventory_number || '-'}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-slate-500 dark:text-slate-400">{t('bhp.labels.assigned')}:</span><span className="text-slate-900 dark:text-slate-100">{(notifyItem.assigned_employee_first_name || notifyItem.assigned_employee_last_name) ? `${notifyItem.assigned_employee_first_name || ''} ${notifyItem.assigned_employee_last_name || ''}`.trim() : '-'}</span></div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setNotifyModal(false)} className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
+                <button onClick={confirmNotify} disabled={notifySending} className="flex-1 px-4 py-2 bg-indigo-600 dark:bg-indigo-700 text-white rounded-lg disabled:opacity-50">{t('confirmation.confirm')}</button>
               </div>
             </div>
           </div>

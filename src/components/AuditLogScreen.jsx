@@ -49,7 +49,7 @@ function AuditLogScreen({ user }) {
         setError('Nie udało się pobrać dziennika audytu');
       }
     } catch (error) {
-      console.error('Błąd podczas pobierania dziennika audytu:', error);
+      console.error('Error fetching audit log:', error);
       setError('Nie udało się pobrać dziennika audytu');
     } finally {
       setLoading(false);
@@ -75,7 +75,7 @@ function AuditLogScreen({ user }) {
 
   const handleDeleteAuditLogs = () => {
     if (!canManageAuditLogs) {
-      toast.error('Brak uprawnień administratora do usunięcia logów');
+      toast.error(t('common.toastr.audit.deleteNoPermission'));
       return;
     }
     setShowDeleteModal(true);
@@ -85,14 +85,14 @@ function AuditLogScreen({ user }) {
     try {
       setDeleteLoading(true);
       await api.delete('/api/audit');
-      toast.success('Logi audytu zostały usunięte');
+      toast.success(t('common.toastr.audit.deletedSuccess'));
       setShowDeleteModal(false);
       // Odśwież listę po usunięciu
       setPagination(prev => ({ ...prev, page: 1 }));
       await fetchAuditLogs();
     } catch (err) {
-      console.error('Błąd podczas usuwania logów audytu:', err);
-      toast.error('Błąd podczas usuwania logów audytu');
+      console.error('Error deleting audit logs:', err);
+      toast.error(t('common.toastr.audit.deleteError'));
     } finally {
       setDeleteLoading(false);
     }

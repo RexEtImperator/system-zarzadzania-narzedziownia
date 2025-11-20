@@ -58,7 +58,7 @@ const DashboardScreen = ({ user }) => {
       const data = await api.get('/api/employees');
       setEmployees(data);
     } catch (error) {
-      console.error('Błąd podczas pobierania pracowników:', error);
+      console.error('Error fetching employees:', error);
       setEmployees([]);
     } finally {
       setEmployeesLoading(false);
@@ -122,7 +122,7 @@ const DashboardScreen = ({ user }) => {
       }));
       setIssuedTools(issuedToolsData);
     } catch (error) {
-      console.error('Błąd podczas pobierania wydanych narzędzi:', error);
+      console.error('Error fetching issued tools:', error);
       setIssuedTools([]);
     } finally {
       setIssuedToolsLoading(false);
@@ -151,7 +151,7 @@ const DashboardScreen = ({ user }) => {
         await fetchDashboardData();
       }
     } catch (error) {
-      console.error('Błąd podczas dodawania pracownika:', error);
+      console.error('Error adding employee:', error);
       const msg = error?.response?.data?.message || t('dashboard.quick.employee.addError');
       toast.error(msg);
       throw error; // pozwala EmployeeModal zarządzać stanem ładowania
@@ -184,7 +184,7 @@ const DashboardScreen = ({ user }) => {
         setFoundTool(null);
       }
     } catch (error) {
-      console.error('Błąd podczas wyszukiwania narzędzia:', error);
+      console.error('Error searching tool:', error);
       console.error('Error details:', error.message);
       setFoundTool(null);
     } finally {
@@ -298,7 +298,7 @@ const DashboardScreen = ({ user }) => {
       // Odśwież dane dashboard
       fetchDashboardData();
     } catch (error) {
-      console.error('Błąd wsadowego wydawania:', error);
+      console.error('Error batch issuing:', error);
       alert(error?.response?.data?.message || t('dashboard.quick.issue.batchError'));
     }
   };
@@ -339,7 +339,7 @@ const DashboardScreen = ({ user }) => {
         fetchDashboardData();
       }
     } catch (error) {
-      console.error('Błąd podczas wydawania narzędzia:', error);
+      console.error('Error issuing tool:', error);
       const errorMessage = error.response?.data?.message || t('dashboard.quick.issue.errorGeneral');
       alert(errorMessage);
     }
@@ -365,7 +365,7 @@ const DashboardScreen = ({ user }) => {
         fetchDashboardData();
       }
     } catch (error) {
-      console.error('Błąd podczas zwracania narzędzia:', error);
+      console.error('Error returning tool:', error);
       const errorMessage = error.response?.data?.message || t('dashboard.quick.return.errorGeneral');
       alert(errorMessage);
     }
@@ -475,6 +475,7 @@ const DashboardScreen = ({ user }) => {
         action: issue.status === 'wydane' ? 'wydanie' : 'zwrot',
         toolName: issue.tool_name,
         toolId: issue.tool_id,
+        toolSku: issue.tool_sku || null,
         employeeName: `${issue.employee_first_name} ${issue.employee_last_name}`,
         issuedByName: issue.issued_by_user_name || '',
         time: formatTimeAgo(issue.status === 'zwrócone' && issue.returned_at ? issue.returned_at : issue.issued_at),
@@ -507,7 +508,7 @@ const DashboardScreen = ({ user }) => {
       
       setStats(dashboardStats);
     } catch (error) {
-      console.error('Błąd podczas pobierania danych dashboard:', error);
+      console.error('Error fetching dashboard data:', error);
       // Fallback do pustych danych w przypadku błędu
       const mockStats = {
         totalEmployees: 0,
@@ -581,7 +582,6 @@ const DashboardScreen = ({ user }) => {
 
   return (
     <div className="space-y-8 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 transition-colors duration-200">
         <div className="flex items-center justify-between">
           <div>
@@ -599,8 +599,7 @@ const DashboardScreen = ({ user }) => {
           </div>
         </div>
       </div>
-
-      {/* Stats Grid - ukryj dla roli 'employee' */}
+      {/* Stats Grid - hide for role 'employee' */}
       {String(user?.role) !== 'employee' && (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -611,7 +610,6 @@ const DashboardScreen = ({ user }) => {
           }
           color="orange"
         />
-        
         <StatCard
           title={t('dashboard.stats.bhp')}
           value={stats.totalBhp}
@@ -620,7 +618,6 @@ const DashboardScreen = ({ user }) => {
           }
           color="green"
         />
-        
         <StatCard
           title={t('dashboard.stats.employees')}
           value={stats.totalEmployees}
@@ -629,7 +626,6 @@ const DashboardScreen = ({ user }) => {
           }
           color="purple"
         />
-        
         <StatCard
           title={t('dashboard.stats.overdueInspections')}
           value={stats.overdueInspections}
@@ -652,7 +648,6 @@ const DashboardScreen = ({ user }) => {
         />
       </div>
       )}
-
       {/* Quick Actions */}
       {hasPermission(user, PERMISSIONS.VIEW_QUICK_ACTIONS) && (
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
@@ -666,7 +661,6 @@ const DashboardScreen = ({ user }) => {
             </h3>
           </div>
         </div>
-        
         <div className="p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES) && (
@@ -682,7 +676,6 @@ const DashboardScreen = ({ user }) => {
                 </span>
               </button>
             )}
-            
             <button 
               onClick={() => setShowQuickIssueModal(true)}
               className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-green-300 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
@@ -696,7 +689,6 @@ const DashboardScreen = ({ user }) => {
                 {t('dashboard.quick.issue.subtitle')}
               </span>
             </button>
-            
             <button 
               onClick={() => setShowQuickReturnModal(true)}
               className="group relative block w-full border-2 border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
@@ -714,7 +706,6 @@ const DashboardScreen = ({ user }) => {
         </div>
       </div>
       )}
-
       {/* Tool History */}
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
         <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -732,7 +723,6 @@ const DashboardScreen = ({ user }) => {
             </span>
           </div>
         </div>
-        
         <div className="p-6">
           {!hasPermission(user, PERMISSIONS.VIEW_TOOL_HISTORY) ? (
             <div className="text-center py-8">
@@ -757,26 +747,23 @@ const DashboardScreen = ({ user }) => {
               <ul className="-mb-8">
                 {stats.toolHistory.map((item, index) => (
                   <li key={item.id}>
-                    <div className="relative pb-8">
+                    <div className="relative pb-6">
                       {index !== stats.toolHistory.length - 1 && (
-                        <span
-                          className="absolute top-5 left-6 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"
-                          aria-hidden="true"
-                        />
+                        <span className="absolute top-5 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
                       )}
-                      <div className="relative flex space-x-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2" onClick={() => { window.dispatchEvent(new CustomEvent('navigate', { detail: { screen: 'tools', q: item.toolName } })); }}>
-                        <div>
-                          <span className={`h-12 w-12 rounded-xl ${getActionColor(item.action)} flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-lg`}>
+                      <div className="relative flex space-x-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2" onClick={() => { window.dispatchEvent(new CustomEvent('navigate', { detail: { screen: 'tools', q: item.toolSku || item.toolName } })); }}>
+                        <div className="flex items-center justify-center">
+                          <span className={`h-8 w-8 rounded-xl ${getActionColor(item.action)} flex items-center justify-center`}>
                             {getActionIcon(item.action)}
                           </span>
                         </div>
                         <div className="min-w-0 flex-1 pt-1.5">
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-200">
                                 {getActionText(item.action)} {t('dashboard.history.labels.tool')}: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{item.toolName}</span>
                               </p>
-                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 transition-colors duration-200">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
                                 <span className="flex items-center">
                                   <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                   {item.employeeName}
@@ -793,8 +780,8 @@ const DashboardScreen = ({ user }) => {
                                 </span>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center transition-colors duration-200">
+                            <div className="mt-1 sm:mt-0 sm:text-right">
+                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center sm:justify-end transition-colors duration-200">
                                 <ClockIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                 {item.time}
                               </div>
@@ -822,7 +809,7 @@ const DashboardScreen = ({ user }) => {
         <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+              <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center mr-3">
                 <ClockIcon className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-200">
@@ -861,24 +848,21 @@ const DashboardScreen = ({ user }) => {
                   <li key={item.id}>
                     <div className="relative pb-8">
                       {index !== stats.bhpHistory.length - 1 && (
-                        <span
-                          className="absolute top-5 left-6 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"
-                          aria-hidden="true"
-                        />
+                        <span className="absolute top-5 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
                       )}
                       <div className="relative flex space-x-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2" onClick={() => { window.dispatchEvent(new CustomEvent('navigate', { detail: { screen: 'bhp', q: item.bhpInventoryNumber || item.bhpModel || item.bhpLabel } })); }}>
-                        <div>
-                          <span className={`h-12 w-12 rounded-xl ${getActionColor(item.action)} flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-lg`}>
+                        <div className="flex items-center justify-center">
+                          <span className={`h-8 w-8 rounded-xl ${getActionColor(item.action)} flex items-center justify-center shadow-lg`}>
                             {getActionIcon(item.action)}
                           </span>
                         </div>
                         <div className="min-w-0 flex-1 pt-1.5">
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 transition-colors duration-200">
                                 {getActionText(item.action)} {t('dashboard.history.labels.bhp')}: <span className="font-semibold text-green-600 dark:text-green-400">{item.bhpLabel}</span>
                               </p>
-                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 transition-colors duration-200">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
                                 <span className="flex items-center">
                                   <UserCircleIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                   {item.employeeName}
@@ -889,10 +873,16 @@ const DashboardScreen = ({ user }) => {
                                     {t('dashboard.history.labels.issuedBy')}: {item.issuedByName}
                                   </span>
                                 )}
+                                {typeof item.quantity !== 'undefined' && (
+                                  <span className="flex items-center">
+                                    <Bars3Icon className="w-4 h-4 mr-1" aria-hidden="true" />
+                                    {t('dashboard.history.labels.quantity')}: {item.quantity}
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center transition-colors duration-200">
+                            <div className="mt-1 sm:mt-0 sm:text-right">
+                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center sm:justify-end transition-colors duration-200">
                                 <ClockIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                                 {item.time}
                               </div>

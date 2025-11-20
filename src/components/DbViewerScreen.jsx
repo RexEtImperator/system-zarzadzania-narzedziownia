@@ -55,8 +55,8 @@ const DbViewerScreen = ({ user }) => {
         setSelectedTable(data[0]);
       }
     } catch (error) {
-      console.error('Błąd pobierania listy tabel:', error);
-      toast.error('Błąd pobierania listy tabel bazy danych');
+      console.error('Error getting table list:', error);
+      toast.error(t('common.toastr.db.tablesFetchError'));
     } finally {
       setLoadingTables(false);
     }
@@ -76,8 +76,8 @@ const DbViewerScreen = ({ user }) => {
       setColumnTypes(data.columnTypes || {});
       setNewRowValues({});
     } catch (error) {
-      console.error('Błąd pobierania danych tabeli:', error);
-      toast.error('Błąd pobierania danych z tabeli');
+      console.error('Error fetching table data:', error);
+      toast.error(t('common.toastr.db.tableDataFetchError'));
     } finally {
       setLoadingData(false);
     }
@@ -99,7 +99,7 @@ const DbViewerScreen = ({ user }) => {
 
   const startEditRow = (row) => {
     if (!primaryKey) {
-      toast.warn('Brak klucza głównego – edycja niewspierana');
+      toast.warn(t('common.toastr.db.noPrimaryKeyWarn'));
       return;
     }
     setEditingId(row[primaryKey]);
@@ -134,12 +134,12 @@ const DbViewerScreen = ({ user }) => {
         id: pkValue,
         updates
       });
-      toast.success('Wiersz został zaktualizowany');
+      toast.success(t('common.toastr.db.rowUpdatedSuccess'));
       cancelEditRow();
       fetchTableData(selectedTable, limit, offset);
     } catch (error) {
-      console.error('Błąd zapisu wiersza:', error);
-      toast.error(error?.message || 'Błąd zapisu wiersza');
+      console.error('Error writing line:', error);
+      toast.error(error?.message || t('common.toastr.db.rowSaveError'));
     }
   };
 
@@ -184,12 +184,12 @@ const DbViewerScreen = ({ user }) => {
     try {
       const values = { ...newRowValues };
       await api.post(`/api/db/table/${encodeURIComponent(selectedTable)}/row`, { values });
-      toast.success('Wiersz został dodany');
+      toast.success(t('common.toastr.db.rowAddedSuccess'));
       setShowAddRowModal(false);
       fetchTableData(selectedTable, limit, offset);
     } catch (error) {
-      console.error('Błąd dodawania wiersza:', error);
-      toast.error(error?.message || 'Błąd dodawania wiersza');
+      console.error('Error adding row:', error);
+      toast.error(error?.message || t('common.toastr.db.rowAddError'));
     } finally {
       setAddRowLoading(false);
     }
@@ -220,7 +220,7 @@ const DbViewerScreen = ({ user }) => {
     setCreateTableLoading(true);
     const invalid = !newTableName || newTableColumns.length === 0 || newTableColumns.some(c => !c.name || !/^[A-Za-z0-9_]+$/.test(c.name));
     if (invalid) {
-      toast.error('Uzupełnij poprawnie nazwę i kolumny');
+      toast.error(t('common.toastr.db.tableCreateInvalid'));
       setCreateTableLoading(false);
       return;
     }
@@ -230,14 +230,14 @@ const DbViewerScreen = ({ user }) => {
         columns: newTableColumns,
         primaryKey: newTablePrimaryKey
       });
-      toast.success(`Tabela ${newTableName} została utworzona`);
+      toast.success(t('common.toastr.db.tableCreateSuccess', { table: newTableName }));
       setShowCreateTableModal(false);
       fetchTables();
       setSelectedTable(newTableName);
       setOffset(0);
     } catch (error) {
-      console.error('Błąd tworzenia tabeli:', error);
-      toast.error(error?.message || 'Błąd tworzenia tabeli');
+      console.error('Error creating table:', error);
+      toast.error(error?.message || t('common.toastr.db.tableCreateError'));
     } finally {
       setCreateTableLoading(false);
     }
@@ -245,7 +245,7 @@ const DbViewerScreen = ({ user }) => {
 
   const requestDeleteRow = (row) => {
     if (!primaryKey) {
-      toast.warn('Brak klucza głównego – usuwanie niewspierane');
+      toast.warn(t('common.toastr.db.noPrimaryKeyDeleteWarn'));
       return;
     }
     setDeleteRowTarget(row);
@@ -258,13 +258,13 @@ const DbViewerScreen = ({ user }) => {
     try {
       const pkValue = deleteRowTarget[primaryKey];
       await api.delete(`/api/db/table/${encodeURIComponent(selectedTable)}/row?pk=${encodeURIComponent(primaryKey)}&id=${encodeURIComponent(pkValue)}`);
-      toast.success('Wiersz został usunięty');
+      toast.success(t('common.toastr.db.rowDeletedSuccess'));
       setShowDeleteRowModal(false);
       setDeleteRowTarget(null);
       fetchTableData(selectedTable, limit, offset);
     } catch (error) {
-      console.error('Błąd usuwania wiersza:', error);
-      toast.error(error?.message || 'Błąd usuwania wiersza');
+      console.error('Error deleting row:', error);
+      toast.error(error?.message || t('common.toastr.db.rowDeleteError'));
     } finally {
       setDeleteRowLoading(false);
     }
@@ -280,7 +280,7 @@ const DbViewerScreen = ({ user }) => {
     setDeleteTableLoading(true);
     try {
       await api.delete(`/api/db/table/${encodeURIComponent(selectedTable)}`);
-      toast.success(`Tabela ${selectedTable} została usunięta`);
+      toast.success(t('common.toastr.db.tableDeletedSuccess', { table: selectedTable }));
       setShowDeleteTableModal(false);
       // odśwież listę tabel
       await fetchTables();
@@ -290,8 +290,8 @@ const DbViewerScreen = ({ user }) => {
       setTotal(0);
       setPrimaryKey(null);
     } catch (error) {
-      console.error('Błąd usuwania tabeli:', error);
-      toast.error(error?.message || 'Błąd usuwania tabeli');
+      console.error('Error deleting table:', error);
+      toast.error(error?.message || t('common.toastr.db.tableDeleteError'));
     } finally {
       setDeleteTableLoading(false);
     }

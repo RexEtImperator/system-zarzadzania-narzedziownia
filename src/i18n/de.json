@@ -34,7 +34,56 @@
     "cancel": "Abbrechen",
     "close": "Schließen",
     "remove": "Entfernen",
-    "clearList": "Liste leeren"
+    "clearList": "Liste leeren",
+    "clearInput": "Eingabe löschen",
+    "toastr": {
+      "users": {
+        "fetchError": "Benutzer konnten nicht geladen werden",
+        "deletedSuccess": "Benutzer wurde gelöscht",
+        "deleteError": "Benutzer konnte nicht gelöscht werden",
+        "updatedSuccess": "Benutzer wurde aktualisiert",
+        "addedSuccess": "Benutzer wurde hinzugefügt",
+        "saveError": "Benutzer konnte nicht gespeichert werden"
+      },
+      "form": {
+        "requiredFields": "Bitte füllen Sie alle Pflichtfelder aus",
+        "passwordMismatch": "Passwörter stimmen nicht überein"
+      },
+      "audit": {
+        "deleteNoPermission": "Keine Admin-Berechtigung zum Löschen von Logs",
+        "deletedSuccess": "Audit-Logs wurden gelöscht",
+        "deleteError": "Audit-Logs konnten nicht gelöscht werden"
+      },
+      "db": {
+        "tablesFetchError": "Tabellen konnten nicht geladen werden",
+        "tableDataFetchError": "Tabellendaten konnten nicht geladen werden",
+        "noPrimaryKeyWarn": "Kein Primärschlüssel — Bearbeitung nicht unterstützt",
+        "rowUpdatedSuccess": "Zeile wurde aktualisiert",
+        "rowSaveError": "Zeile konnte nicht gespeichert werden",
+        "rowAddedSuccess": "Zeile wurde hinzugefügt",
+        "rowAddError": "Zeile konnte nicht hinzugefügt werden",
+        "tableCreateInvalid": "Geben Sie einen gültigen Namen und Spalten an",
+        "tableCreateSuccess": "Tabelle {{table}} wurde erstellt",
+        "tableCreateError": "Tabelle konnte nicht erstellt werden",
+        "noPrimaryKeyDeleteWarn": "Kein Primärschlüssel — Löschen nicht unterstützt",
+        "rowDeletedSuccess": "Zeile wurde gelöscht",
+        "rowDeleteError": "Zeile konnte nicht gelöscht werden",
+        "tableDeletedSuccess": "Tabelle {{table}} wurde gelöscht",
+        "tableDeleteError": "Tabelle konnte nicht gelöscht werden"
+      },
+      "positions": {
+        "categoryNameRequired": "Geben Sie einen Kategorienamen an",
+        "categoryAdded": "Kategorie hinzugefügt",
+        "categoryNameEmpty": "Name darf nicht leer sein",
+        "categoryUpdated": "Kategorie aktualisiert",
+        "categoryDeleted": "Kategorie gelöscht",
+        "positionDeleted": "Position wurde gelöscht",
+        "positionDeleteError": "Position konnte nicht gelöscht werden",
+        "invalidDepartment": "Ungültige Abteilung",
+        "positionUpdated": "Position aktualisiert",
+        "positionCreated": "Position erstellt"
+      }
+    }
   },
   "Theme": {
     "useThemeProvider": "useTheme muss innerhalb von ThemeProvider verwendet werden"
@@ -304,6 +353,8 @@
     "overdueInspections": "Überfällige Prüfungen (BHP und Werkzeuge)",
     "markAllRead": "Alle als gelesen markieren",
     "noNotifications": "Keine neuen Benachrichtigungen",
+    "collapseSidebar": "Seitenleiste einklappen",
+    "expandSidebar": "Seitenleiste ausklappen",
     "type": {
       "bhp": "BHP",
       "tools": "Werkzeuge"
@@ -311,6 +362,8 @@
     "overdue": "Überfällig",
     "read": "Gelesen",
     "markRead": "Als gelesen markieren",
+    "userNotifications": "Benutzerbenachrichtigungen",
+    "returnRequest": "Rückgabeaufforderung",
     "user": "Benutzer",
     "role": "Rolle",
     "settings": "Einstellungen",
@@ -447,7 +500,7 @@
       "subtitle": "Systemeinstellungen und Übersetzungen verwalten"
     },
     "tabs": {
-      "general": "Allgemein",
+      "general": "Allgemeine Einstellungen",
       "security": "Sicherheit",
       "email": "E-Mail",
       "users": "Benutzer",
@@ -455,7 +508,7 @@
       "departments": "Abteilungen",
       "positions": "Positionen",
       "categories": "Kategorien",
-      "codes": "Codes (QR/Bar)",
+      "codes": "Code-Präfixe",
       "translations": "Übersetzungen",
       "backup": "Backups"
     },
@@ -464,7 +517,6 @@
       "error": "Konfiguration konnte nicht gespeichert werden"
     },
     "general": {
-      "title": "Allgemeine Einstellungen",
       "appName": "Anwendungsname",
       "companyName": "Firmenname",
       "timezone": "Zeitzone",
@@ -571,7 +623,6 @@
       }
     },
     "codes": {
-      "title": "Code-Präfixe",
       "toolsPrefix": "Werkzeug-Codepräfix",
       "toolsPrefixPlaceholder": "z. B. WZ",
       "bhpPrefix": "BHP-Codepräfix",
@@ -597,7 +648,6 @@
       "addError": "Hinzufügen der Übersetzung fehlgeschlagen"
     },
     "backup": {
-      "title": "Backup",
       "lastFromConfig": "Letztes aus Konfiguration",
       "lastFile": "Letzte Datei",
       "running": "Backup wird erstellt…",
@@ -866,6 +916,7 @@
       "delete": "Löschen",
       "issue": "Ausgeben",
       "return": "Rückgabe",
+      "notifyReturn": "Rückgabeaufforderung",
       "noPermission": "Keine Berechtigung für Aktionen"
     },
     "filters": {
@@ -923,6 +974,10 @@
       "available": "Verfügbar",
       "issued": "Ausgegeben",
       "unknown": "unbekannt"
+    },
+    "notify": {
+      "sent": "Rückgabeaufforderung gesendet",
+      "error": "Benachrichtigung konnte nicht gesendet werden"
     },
     "modal": {
       "editTitle": "BHP‑Position bearbeiten",
@@ -1109,6 +1164,14 @@
       "noManagePermission": "Keine Berechtigung zur Verwaltung von Werkzeugen (MANAGE_TOOLS)",
       "deleteFailed": "Fehler beim Löschen des Werkzeugs"
     },
+    "actions": {
+      "notifyReturn": "Rückgabe erinnern",
+      "add": "Werkzeug hinzufügen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "service": "Service",
+      "receiveFromService": "Aus Service übernehmen"
+    },
     "confirm": {
       "deleteTool": "Möchten Sie dieses Werkzeug wirklich löschen?"
     },
@@ -1120,7 +1183,13 @@
       "sendFailed": "Senden zum Service fehlgeschlagen",
       "receiveNone": "Keine Stücke im Service zum Empfang",
       "receiveSuccess": "Vom Service erhalten",
-      "receiveFailed": "Empfang vom Service fehlgeschlagen"
+      "receiveFailed": "Empfang vom Service fehlgeschlagen",
+      "modal": { "title": "Zum Service senden" },
+      "available": "Für den Service verfügbar",
+      "quantityLabel": "Menge für den Service",
+      "orderNumberLabel": "Service‑Auftragsnummer",
+      "orderNumberPlaceholder": "z. B. SER-2025-00123",
+      "sendButton": "Senden"
     },
     "labels": {
       "generateError": "Fehler beim Generieren des Etiketts",
@@ -1152,8 +1221,56 @@
       "days": " Tagen",
       "lessEqual30": " (<=30 Tage)"
     },
+    "notify": {
+      "sent": "Rückgabe‑Benachrichtigung gesendet",
+      "error": "Benachrichtigung konnte nicht gesendet werden"
+    },
     "common": {
-      "tool": "Werkzeug"
-    }
+      "toolIssued": "Werkzeug"
+    },
+    "header": {
+      "title": "Werkzeugverwaltung",
+      "subtitle": "Werkzeuge im System hinzufügen, bearbeiten und nachverfolgen"
+    },
+    "search": {
+      "label": "Werkzeug suchen",
+      "placeholder": "Name, SKU, Kategorie, Inventarnummer..."
+    },
+    "filters": {
+      "category": { "label": "Kategorie" },
+      "status": { "label": "Status" },
+      "allCategories": "Alle Kategorien",
+      "allStatuses": "Alle Status"
+    },
+    "export": { "pdf": "Als PDF exportieren", "xlsx": "Als Excel exportieren" },
+    "loading": { "title": "Werkzeuge werden geladen...", "subtitle": "Bitte warten..." },
+    "empty": {
+      "title": "Keine Werkzeuge",
+      "descDefault": "Fügen Sie das erste Werkzeug hinzu, um mit der Verwaltung zu beginnen.",
+      "descFiltered": "Keine Werkzeuge gefunden, die den Suchkriterien entsprechen."
+    },
+    "table": {
+      "headers": {
+        "inventoryNumberShort": "Inv.-Nr.",
+        "name": "Name",
+        "serialNumber": "Seriennummer",
+        "category": "Kategorie",
+        "location": "Standort",
+        "sku": "SKU",
+        "actions": "Aktionen",
+        "status": "Status"
+      },
+      "unreadableSerial": "unleserlich"
+    },
+    "mobile": {
+      "labels": {
+        "inventoryNumber": "Inventarnummer",
+        "serialNumber": "Seriennummer",
+        "category": "Kategorie",
+        "location": "Standort"
+      }
+    },
+    "qr": { "title": "QR‑Code", "generating": "QR‑Code wird generiert...", "downloadLabel": "Etikett herunterladen (nur QR)" },
+    "barcode": { "title": "Barcode", "generating": "Barcode wird generiert...", "downloadLabel": "Etikett herunterladen (nur Barcode)" }
   }
 }

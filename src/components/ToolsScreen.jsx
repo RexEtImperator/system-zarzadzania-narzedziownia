@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { PencilSquareIcon, TrashIcon, WrenchIcon, EnvelopeIcon, ArrowDownOnSquareIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import api from '../api';
 import BarcodeScanner from './BarcodeScanner';
@@ -8,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { PERMISSIONS, hasPermission } from '../constants';
 import SkeletonList from './SkeletonList';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getToolStatusInfo } from '../utils/statusUtils';
 
 function ToolsScreen({ initialSearchTerm = '', user }) {
   const { t, language } = useLanguage();
@@ -40,10 +42,14 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const [serviceTool, setServiceTool] = useState(null);
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [serviceOrderNumber, setServiceOrderNumber] = useState('');
-  // Prefiks dla kodów narzędzi
+  // Notify Return
+  const [notifyModal, setNotifyModal] = useState(false);
+  const [notifyTool, setNotifyTool] = useState(null);
+  const [notifySending, setNotifySending] = useState(false);
+  // Prefix for tool codes
   const [toolsCodePrefix, setToolsCodePrefix] = useState('');
 
-  // Sugestie z backendu dla Elektronarzędzia; fallback do danych wczytanych na froncie
+  // Backend suggestions for Power Tools; fallback to front-end data
   const [elektronarzedziaSuggestions, setElektronarzedziaSuggestions] = useState({ manufacturer: [], model: [], production_year: [] });
   const manufacturerSuggestions = useMemo(() => {
     if ((elektronarzedziaSuggestions.manufacturer || []).length > 0) return elektronarzedziaSuggestions.manufacturer;
@@ -185,8 +191,50 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   }, [filteredTools]);
 
   const canViewTools = hasPermission(user, PERMISSIONS.VIEW_TOOLS);
-
   const canManageTools = hasPermission(user, PERMISSIONS.MANAGE_TOOLS);
+  const canExportTools = hasPermission(user, PERMISSIONS.EXPORT_TOOLS);
+
+  // Actions: Notify when tool is returned
+  const openNotify = (tool) => {
+    setNotifyTool(tool);
+    setNotifyModal(true);
+  };
+
+  const confirmNotify = async () => {
+    if (!canManageTools) {
+      toast.error(t('tools.errors.noManagePermission'));
+      return;
+    }
+    if (!notifyTool) return;
+    try {
+      setNotifySending(true);
+      let targetEmployeeId = null;
+      let targetBrandNumber = '';
+      try {
+        const issues = Array.isArray(notifyTool?.issues) ? notifyTool.issues : [];
+        const active = issues.find(i => i.status === 'wydane') || issues[issues.length - 1];
+        if (active && (active.employee_id || active.employeeId)) {
+          targetEmployeeId = active.employee_id ?? active.employeeId;
+          try {
+            const emp = await api.get(`/api/employees/${targetEmployeeId}`);
+            targetBrandNumber = emp?.brand_number || '';
+          } catch (_) {}
+        }
+      } catch (_) {}
+      await api.post(`/api/tools/${notifyTool.id}/notify-return`, {
+        message: t('topbar.returnRequest'),
+        target_employee_id: targetEmployeeId || undefined,
+        target_brand_number: targetBrandNumber || undefined
+      });
+      toast.success(t('tools.notify.sent'));
+      setNotifyModal(false);
+      setNotifyTool(null);
+    } catch (err) {
+      toast.error(t('tools.notify.error'));
+    } finally {
+      setNotifySending(false);
+    }
+  };
 
   useEffect(() => {
     if (!canViewTools) {
@@ -607,8 +655,15 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     }
   };
 
-  const handleRowClick = (tool) => {
-    setSelectedTool(tool);
+  const handleRowClick = async (tool) => {
+    try {
+      const resp = await api.get(`/api/tools/${tool.id}/details`);
+      const details = resp?.tool || resp;
+      setSelectedTool(details || tool);
+    } catch (err) {
+      console.error('Error fetching tool details:', err);
+      setSelectedTool(tool);
+    }
     setShowDetailsModal(true);
   };
 
@@ -672,6 +727,31 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const updated = resp?.tool || resp;
       setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
       setSelectedTool(prev => ({ ...prev, ...updated }));
+      toast.success(resp?.message || t('tools.service.receiveSuccess'));
+    } catch (err) {
+      const msg = err?.response?.data?.message || t('tools.service.receiveFailed');
+      toast.error(msg);
+    }
+  };
+
+  const handleServiceReceiveFor = async (tool) => {
+    if (!canManageTools) {
+      toast.error(t('tools.errors.noManagePermission'));
+      return;
+    }
+    if (!tool) return;
+    const current = tool.service_quantity || 0;
+    if (current <= 0) {
+      toast.info(t('tools.service.receiveNone'));
+      return;
+    }
+    try {
+      const resp = await api.post(`/api/tools/${tool.id}/service/receive`, { quantity: current });
+      const updated = resp?.tool || resp;
+      setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
+      if (selectedTool?.id === updated.id) {
+        setSelectedTool(prev => ({ ...prev, ...updated }));
+      }
       toast.success(resp?.message || t('tools.service.receiveSuccess'));
     } catch (err) {
       const msg = err?.response?.data?.message || t('tools.service.receiveFailed');
@@ -1210,12 +1290,12 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       }
     }, [text]);
 
-    if (!qrCodeUrl) return <div>Generowanie kodu QR...</div>;
+    if (!qrCodeUrl) return <div>{t('tools.qr.generating')}</div>;
 
     return (
       <img 
         src={qrCodeUrl} 
-        alt="QR Code" 
+        alt={t('tools.qr.title')} 
         className="w-32 h-32 border border-slate-200 rounded"
         style={{ imageRendering: 'crisp-edges' }}
       />
@@ -1250,12 +1330,12 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       }
     }, [text]);
 
-    if (!barcodeUrl) return <div>Generowanie kodu kreskowego...</div>;
+    if (!barcodeUrl) return <div>{t('tools.barcode.generating')}</div>;
 
     return (
       <img 
         src={barcodeUrl} 
-        alt="Barcode" 
+        alt={t('tools.barcode.title')} 
         className="border border-slate-200 rounded"
         style={{ imageRendering: 'crisp-edges' }}
       />
@@ -1266,112 +1346,136 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   if (loading) {
     return (
       <div className="p-6">
-        <SkeletonList rows={10} cols={4} />
+        <SkeletonList rows={12} cols={8} />
       </div>
     );
   }
 
   return (
     <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
-
-
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sharp-text">Zarządzanie narzędziami</h1>
-          <p className="text-slate-600 dark:text-slate-400 sharp-text">Dodawaj, edytuj i śledź narzędzia w systemie</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.header.title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400 sharp-text">{t('tools.header.subtitle')}</p>
         </div>
         {canManageTools && (
           <button
             onClick={() => handleOpenModal()}
             className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors sharp-text"
           >
-            Dodaj narzędzie
+            {t('tools.actions.add')}
           </button>
         )}
       </div>
-
       {/* Search and Filter Section */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
-              Wyszukaj narzędzie
+            <label htmlFor="tools-search" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
+              {t('tools.search.label')}
             </label>
-            <input
-              type="text"
-              placeholder="Nazwa, SKU, kategoria, numer ewidencyjny..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
-            />
+            <div className="relative">
+              <input
+                id="tools-search"
+                name="tools_search"
+                type="text"
+                placeholder={t('tools.search.placeholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pr-12 px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  aria-label={t('common.clearInput')}
+                  title={t('common.clearInput')}
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
-              Kategoria
+            <label htmlFor="tools-filter-category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
+              {t('tools.filters.category.label')}
             </label>
             <select
+              id="tools-filter-category"
+              name="filter_category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
             >
-              <option value="">Wszystkie kategorie</option>
+              <option value="">{t('tools.filters.allCategories')}</option>
               {categories.map(category => (
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
-              Status
+            <label htmlFor="tools-filter-status" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sharp-text">
+              {t('tools.filters.status.label')}
             </label>
             <select
+              id="tools-filter-status"
+              name="filter_status"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
             >
-              <option value="">Wszystkie statusy</option>
+              <option value="">{t('tools.filters.allStatuses')}</option>
               {statuses.map(status => (
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={exportListToPDF}
-            className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90 sharp-text"
-          >
-            Eksportuj jako PDF
-          </button>
-          <button
-            type="button"
-            onClick={exportListToXLSX}
-            className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
-          >
-            Eksportuj jako EXCEL
-          </button>
-        </div>
+        {canExportTools && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={exportListToPDF}
+              className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:opacity-90 sharp-text"
+            >
+              {t('tools.export.pdf')}
+            </button>
+            <button
+              type="button"
+              onClick={exportListToXLSX}
+              className="px-4 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
+            >
+              {t('tools.export.xlsx')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tools List */}
       {loading ? (
         <div className="p-8 text-center">
           <div className="text-slate-400 dark:text-slate-500 text-6xl mb-4">🔧</div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">Ładowanie narzędzi...</h3>
-          <p className="text-slate-600 dark:text-slate-400 sharp-text">
-            Proszę czekać...
-          </p>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">{t('tools.loading.title')}</h3>
+          <p className="text-slate-600 dark:text-slate-400 sharp-text">{t('tools.loading.subtitle')}</p>
         </div>
       ) : filteredTools.length === 0 ? (
         <div className="p-8 text-center">
           <div className="text-slate-400 dark:text-slate-500 text-6xl mb-4">🔧</div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">Brak narzędzi</h3>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">{t('tools.empty.title')}</h3>
           <p className="text-slate-600 dark:text-slate-400 sharp-text">
             {searchTerm || selectedCategory || selectedStatus 
-              ? 'Nie znaleziono narzędzi spełniających kryteria wyszukiwania.'
-              : 'Dodaj pierwsze narzędzie, aby rozpocząć zarządzanie.'}
+              ? t('tools.empty.descFiltered')
+              : t('tools.empty.descDefault')}
           </p>
         </div>
       ) : (
@@ -1379,24 +1483,27 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           {/* Desktop Table View */}
           <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700 border-l-4 border-slate-50 dark:border-slate-700">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Nr. ew.</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Nazwa</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Numer fabryczny</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Kategoria</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Status</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Lokalizacja</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">SKU</th>
-                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">Akcje</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.inventoryNumberShort')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.name')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.serialNumber')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.category')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.location')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.sku')}</th>
+                  <th className="text-left p-4 font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.table.headers.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
-                {sortedTools.map((tool) => (
+                {sortedTools.map((tool) => {
+                  const { statusBorderColor } = getToolStatusInfo(tool);
+                  
+                  return (
                   <tr 
                     key={tool.id} 
                     className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                     onClick={() => handleRowClick(tool)}
+                    style={{ borderLeft: '4px solid', borderLeftColor: statusBorderColor }}
                   >
                     <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.inventory_number || '-'}</td>
                     <td className="p-4">
@@ -1405,61 +1512,80 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                         <div className="text-sm text-slate-500 dark:text-slate-400 sharp-text">{tool.description}</div>
                       )}
                     </td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.serial_number || (tool.serial_unreadable ? 'nieczytelny' : '-')}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{tool.serial_number || (tool.serial_unreadable ? t('tools.table.unreadableSerial') : '-')}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.category || '-'}</td>
-                    <td className="p-4">
-                      {(() => {
-                        const displayStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'nieznany');
-                        const cls = displayStatus === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                          displayStatus === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                          displayStatus === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
-                          'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
-                        return (
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${cls}`}>
-                            {displayStatus}
-                          </span>
-                        );
-                      })()}
-                    </td>
+                    
                     <td className="p-4 text-slate-600 dark:text-slate-300 sharp-text">{tool.location || '-'}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 font-mono text-sm sharp-text">{getToolCodeText(tool) || '-'}</td>
-                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                      {canManageTools && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleOpenServiceModal(tool)}
-                            className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 text-sm font-medium sharp-text"
-                          >
-                            Serwis
-                          </button>
-                          <button
-                            onClick={() => handleOpenModal(tool)}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium sharp-text"
-                          >
-                            Edytuj
-                          </button>
-                          <button
-                            onClick={() => handleDelete(tool.id)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium sharp-text"
-                          >
-                            Usuń
-                          </button>
-                        </div>
+                <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                  {canManageTools ? (
+                    <div className="flex gap-2">
+                      {tool.status === 'wydane' && (
+                        <button
+                          onClick={() => openNotify(tool)}
+                          className="p-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
+                          aria-label={t('tools.actions.notifyReturn')}
+                          title={t('tools.actions.notifyReturn')}
+                        >
+                          <EnvelopeIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
                       )}
-                    </td>
+                      {(tool.service_quantity || 0) > 0 ? (
+                        <button
+                          onClick={() => handleServiceReceiveFor(tool)}
+                          className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                          aria-label={t('tools.actions.receiveFromService')}
+                          title={t('tools.actions.receiveFromService')}
+                        >
+                          <ArrowDownOnSquareIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenServiceModal(tool)}
+                          className="p-2 bg-rose-100 text-rose-700 rounded hover:bg-rose-200 transition-colors"
+                          aria-label={t('tools.actions.service')}
+                          title={t('tools.actions.service')}
+                        >
+                          <WrenchIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleOpenModal(tool)}
+                        className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                        aria-label={t('tools.actions.edit')}
+                        title={t('tools.actions.edit')}
+                      >
+                        <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tool.id)}
+                        className="p-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                        aria-label={t('tools.actions.delete')}
+                        title={t('tools.actions.delete')}
+                      >
+                        <TrashIcon className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('bhp.actions.noPermission')}</span>
+                  )}
+                </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>
 
           {/* Mobile Card View */}
           <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
-            {sortedTools.map((tool) => (
+            {sortedTools.map((tool) => {
+              const { statusBorderColor } = getToolStatusInfo(tool);
+              return (
               <div 
                 key={tool.id} 
                 className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800"
                 onClick={() => handleRowClick(tool)}
+                style={{ borderLeft: '4px solid', borderLeftColor: statusBorderColor }}
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -1468,39 +1594,27 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                       <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 sharp-text">{tool.description}</div>
                     )}
                   </div>
-                  {(() => {
-                    const displayStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'nieznany');
-                    const cls = displayStatus === 'dostępne' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' :
-                      displayStatus === 'wydane' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300' :
-                      displayStatus === 'serwis' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300' :
-                      'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300';
-                    return (
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full sharp-text ${cls}`}>
-                        {displayStatus}
-                      </span>
-                    );
-                  })()}
                 </div>
                 
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer ewidencyjny:</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">{t('tools.mobile.labels.inventoryNumber')}:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.inventory_number || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Numer fabryczny:</span>
-                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.serial_number || (tool.serial_unreadable ? 'nieczytelny' : '-')}</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">{t('tools.mobile.labels.serialNumber')}:</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{tool.serial_number || (tool.serial_unreadable ? t('tools.table.unreadableSerial') : '-')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Kategoria:</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">{t('tools.mobile.labels.category')}:</span>
                     <span className="text-slate-900 dark:text-slate-100 sharp-text">{tool.category || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 sharp-text">Lokalizacja:</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">{t('tools.mobile.labels.location')}:</span>
                     <span className="text-slate-900 dark:text-slate-100 sharp-text">{tool.location || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 sharp-text">SKU:</span>
+                    <span className="text-slate-500 dark:text-slate-400 sharp-text">{t('tools.labels.sku')}:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-mono text-xs sharp-text">{getToolCodeText(tool) || '-'}</span>
                   </div>
                 </div>
@@ -1508,29 +1622,47 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-600" onClick={(e) => e.stopPropagation()}>
                   {canManageTools && (
                     <>
-                      <button
-                        onClick={() => handleOpenServiceModal(tool)}
-                        className="flex-1 bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-300 py-2 px-3 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-800 transition-colors text-sm font-medium sharp-text"
-                      >
-                        Serwis
-                      </button>
+                      {tool.status === 'wydane' && (
+                        <button
+                          onClick={() => openNotify(tool)}
+                          className="flex-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 py-2 px-3 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors text-sm font-medium sharp-text"
+                        >
+                          {t('tools.actions.notifyReturn')}
+                        </button>
+                      )}
+                      {(tool.service_quantity || 0) > 0 ? (
+                        <button
+                          onClick={() => handleServiceReceiveFor(tool)}
+                          className="flex-1 bg-green-50 dark:bg-green-900 text-green-600 dark:text-green-300 py-2 px-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-800 transition-colors text-sm font-medium sharp-text flex items-center justify-center gap-2"
+                        >
+                          <ArrowDownOnSquareIcon className="h-5 w-5" aria-hidden="true" />
+                          {t('tools.actions.receiveFromService')}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenServiceModal(tool)}
+                          className="flex-1 bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-300 py-2 px-3 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-800 transition-colors text-sm font-medium sharp-text"
+                        >
+                          {t('tools.actions.service')}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleOpenModal(tool)}
                         className="flex-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 py-2 px-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors text-sm font-medium sharp-text"
                       >
-                        Edytuj
+                        {t('tools.actions.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(tool.id)}
                         className="flex-1 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 py-2 px-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors text-sm font-medium sharp-text"
                       >
-                        Usuń
+                        {t('tools.actions.delete')}
                       </button>
                     </>
                   )}
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         </>
       )}
@@ -1543,7 +1675,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">Wyślij na serwis</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.service.modal.title')}</h2>
                 <button
                   onClick={handleCloseServiceModal}
                   className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
@@ -1552,10 +1684,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 </button>
               </div>
               <div className="space-y-3">
-                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">Narzędzie: <span className="font-medium">{serviceTool.name}</span></p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">Dostępne do serwisu: <span className="font-medium">{(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}</span> szt.</p>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Ilość do serwisu</label>
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.common.toolIssued')}: <span className="font-medium">{serviceTool.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.service.available')}: <span className="font-medium">{(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}</span> szt.</p>
+                <label htmlFor="service-quantity" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">{t('tools.service.quantityLabel')}</label>
                 <input
+                  id="service-quantity"
                   type="number"
                   min={1}
                   max={(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}
@@ -1563,12 +1696,13 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   onChange={(e) => setServiceQuantity(parseInt(e.target.value || '1', 10))}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
                 />
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Numer zlecenia serwisowego</label>
+                <label htmlFor="service-order-number" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">{t('tools.service.orderNumberLabel')}</label>
                 <input
+                  id="service-order-number"
                   type="text"
                   value={serviceOrderNumber}
                   onChange={(e) => setServiceOrderNumber(e.target.value)}
-                  placeholder="Np. SER-2025-00123"
+                  placeholder={t('tools.service.orderNumberPlaceholder')}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
                 />
               </div>
@@ -1577,13 +1711,55 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   onClick={handleCloseServiceModal}
                   className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text"
                 >
-                  Anuluj
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleConfirmService}
                   className="px-3 py-1.5 bg-rose-600 dark:bg-rose-700 text-white rounded-lg text-sm hover:bg-rose-700 dark:hover:bg-rose-800 sharp-text"
                 >
-                  Wyślij
+                  {t('tools.service.sendButton')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notify Return Modal */}
+      {notifyModal && notifyTool && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) setNotifyModal(false); }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.actions.notifyReturn')}</h2>
+                <button
+                  onClick={() => setNotifyModal(false)}
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <span className="text-2xl">×</span>
+                </button>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.labels.sku')}: <span className="font-mono">{notifyTool.sku || '-'}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.common.toolIssued')}: <span className="font-medium">{notifyTool.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.table.headers.status')}: <span className="font-medium">{notifyTool.status || '-'}</span></p>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setNotifyModal(false)}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={confirmNotify}
+                  disabled={notifySending}
+                  className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-lg text-sm hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-50 sharp-text"
+                >
+                  {t('confirmation.confirm')}
                 </button>
               </div>
             </div>
@@ -1623,10 +1799,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 {/* First row - Name and SKU */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Nazwa *
                     </label>
                     <input
+                      id="tool-name"
                       type="text"
                       name="name"
                       value={formData.name}
@@ -1642,11 +1819,12 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-sku" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       SKU {!editingTool && <span className="text-slate-500 dark:text-slate-400 text-xs">(auto)</span>}
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="tool-sku"
                         type="text"
                         name="sku"
                         value={formData.sku}
@@ -1687,11 +1865,12 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 {/* Inventory and Serial side-by-side */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-inventory-number" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Numer ewidencyjny
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="tool-inventory-number"
                         type="text"
                         name="inventory_number"
                         value={formData.inventory_number || ''}
@@ -1713,10 +1892,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-serial-number" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Numer fabryczny *
                     </label>
                     <input
+                      id="tool-serial-number"
                       type="text"
                       name="serial_number"
                       value={formData.serial_number || ''}
@@ -1747,10 +1927,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 {/* Second row - Category and Location */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Kategoria *
                     </label>
                     <select
+                      id="tool-category"
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
@@ -1772,10 +1953,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                    <label htmlFor="tool-location" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                       Lokalizacja
                     </label>
                     <input
+                      id="tool-location"
                       type="text"
                       name="location"
                       value={formData.location}
@@ -1793,8 +1975,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   if (!isCombustion) return null;
                   return (
                     <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 p-4">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2 sharp-text">Data przeglądu</label>
+                      <label htmlFor="tool-inspection-date" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2 sharp-text">Data przeglądu</label>
                       <input
+                        id="tool-inspection-date"
                         type="date"
                         name="inspection_date"
                         value={formData.inspection_date || ''}
@@ -1817,8 +2000,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Producent</label>
+                          <label htmlFor="tool-manufacturer" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Producent</label>
                           <input
+                            id="tool-manufacturer"
                             type="text"
                             name="manufacturer"
                             value={formData.manufacturer || ''}
@@ -1835,8 +2019,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Model</label>
+                          <label htmlFor="tool-model" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Model</label>
                           <input
+                            id="tool-model"
                             type="text"
                             name="model"
                             value={formData.model || ''}
@@ -1853,8 +2038,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Rok Produkcji</label>
+                          <label htmlFor="tool-production-year" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">Rok Produkcji</label>
                           <input
+                            id="tool-production-year"
                             type="number"
                             name="production_year"
                             value={formData.production_year || ''}
@@ -1879,10 +2065,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
                 {/* Third row - Quantity */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                  <label htmlFor="tool-quantity" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                     Ilość *
                   </label>
                   <input
+                    id="tool-quantity"
                     type="number"
                     name="quantity"
                     value={formData.quantity}
@@ -1916,10 +2103,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   {formData.is_consumable && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                        <label htmlFor="tool-min-stock" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                           Stan minimalny
                         </label>
                         <input
+                          id="tool-min-stock"
                           type="number"
                           name="min_stock"
                           value={formData.min_stock}
@@ -1935,10 +2123,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                         )}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                        <label htmlFor="tool-max-stock" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                           Stan maksymalny
                         </label>
                         <input
+                          id="tool-max-stock"
                           type="number"
                           name="max_stock"
                           value={formData.max_stock}
@@ -1963,10 +2152,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
                 {/* Description - full width */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
+                  <label htmlFor="tool-description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">
                     Opis
                   </label>
                   <textarea
+                    id="tool-description"
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
@@ -2014,18 +2204,22 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 Szczegóły narzędzia: {selectedTool.name}
               </h2>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={exportDetailsToPDF}
-                  className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90 sharp-text"
-                >
-                  Eksportuj do PDF
-                </button>
-                <button
-                  onClick={exportDetailsToXLSX}
-                  className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
-                >
-                  Eksportuj do EXCEL
-                </button>
+                {canExportTools && (
+                  <>
+                    <button
+                      onClick={exportDetailsToPDF}
+                      className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm hover:opacity-90 sharp-text"
+                    >
+                      Eksportuj do PDF
+                    </button>
+                    <button
+                      onClick={exportDetailsToXLSX}
+                      className="px-3 py-1.5 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800 sharp-text"
+                    >
+                      Eksportuj do EXCEL
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setShowDetailsModal(false)}
                   className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
@@ -2099,6 +2293,26 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                           {selectedTool.status || 'nieznany'}
                         </span>
                       </div>
+                      {(selectedTool.status === 'wydane' || selectedTool.status === 'częściowo wydane') && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 dark:text-slate-400 sharp-text">Wydane dla:</span>
+                          <span className="text-slate-900 dark:text-slate-100 sharp-text">
+                            {Array.isArray(selectedTool.issues) && selectedTool.issues.length > 0
+                              ? selectedTool.issues
+                                  .map(i => {
+                                    const fn = i.employee_first_name || '';
+                                    const ln = i.employee_last_name || '';
+                                    const brand = i.employee_brand_number || '';
+                                    const qtyLabel = i.quantity > 1 ? ` (${i.quantity} szt.)` : '';
+                                    const name = `${fn} ${ln}`.trim();
+                                    const brandLabel = brand ? ` [${brand}]` : '';
+                                    return `${name}${brandLabel}${qtyLabel}`;
+                                  })
+                                  .join(', ')
+                              : '-'}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-slate-400 sharp-text">Ilość:</span>
                         <span className="text-slate-900 dark:text-slate-100 font-medium sharp-text">{selectedTool.quantity ?? '-'}</span>
@@ -2137,41 +2351,47 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                       </div>
                     </div>
                   )}
-
-                  {/* Sekcja eksportu przeniesiona do nagłówka modala */}
                 </div>
 
-                {/* QR Code and Barcode */}
                 <div className="space-y-4">
+                  {canManageTools && (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod QR</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.qr.title')}</h3>
+                      <button
+                        onClick={() => downloadQrLabel(selectedTool)}
+                        aria-label={t('tools.qr.downloadLabel')}
+                        title={t('tools.qr.downloadLabel')}
+                        className="bg-blue-600 dark:bg-blue-700 text-white p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center sharp-text"
+                      >
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <span className="sr-only">{t('tools.qr.downloadLabel')}</span>
+                      </button>
+                    </div>
                     <div className="flex justify-center">
                       <QRCodeDisplay text={getToolCodeText(selectedTool)} />
                     </div>
-                    <div className="pt-2">
+                  </div>
+                  )}
+                  {canManageTools && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.barcode.title')}</h3>
                       <button
-                        onClick={() => downloadQrLabel(selectedTool)}
-                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
+                        onClick={() => downloadBarcodeLabel(selectedTool)}
+                        aria-label={t('tools.barcode.downloadLabel')}
+                        title={t('tools.barcode.downloadLabel')}
+                        className="bg-blue-600 dark:bg-blue-700 text-white p-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center sharp-text"
                       >
-                        Pobierz etykietę (tylko QR)
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <span className="sr-only">{t('tools.barcode.downloadLabel')}</span>
                       </button>
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 sharp-text">Kod kreskowy</h3>
                     <div className="flex justify-center">
                       <BarcodeDisplay text={getToolCodeText(selectedTool)} />
                     </div>
-                    <div className="pt-2">
-                      <button
-                        onClick={() => downloadBarcodeLabel(selectedTool)}
-                        className="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 sharp-text"
-                      >
-                        Pobierz etykietę (tylko kod kreskowy)
-                      </button>
-                    </div>
                   </div>
+                  )}
                 </div>
               </div>
             </div>

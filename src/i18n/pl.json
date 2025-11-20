@@ -35,9 +35,58 @@
     "close": "Zamknij",
     "remove": "Usuń",
     "clearList": "Wyczyść listę",
+    "clearInput": "Wyczyść pole",
     "saveChanges": "Zapisz zmiany",
     "saving": "Zapisywanie...",
-    "details": "Szczegóły"
+    "details": "Szczegóły",
+    "toastr": {
+      "users": {
+        "fetchError": "Błąd podczas pobierania użytkowników",
+        "deletedSuccess": "Użytkownik został usunięty",
+        "deleteError": "Błąd podczas usuwania użytkownika",
+        "updatedSuccess": "Użytkownik został zaktualizowany",
+        "addedSuccess": "Użytkownik został dodany",
+        "saveError": "Błąd podczas zapisywania użytkownika"
+      },
+      "form": {
+        "requiredFields": "Wypełnij wszystkie wymagane pola",
+        "passwordMismatch": "Hasła nie są identyczne"
+      },
+      "audit": {
+        "deleteNoPermission": "Brak uprawnień administratora do usunięcia logów",
+        "deletedSuccess": "Logi audytu zostały usunięte",
+        "deleteError": "Błąd podczas usuwania logów audytu"
+      },
+      "db": {
+        "tablesFetchError": "Błąd pobierania listy tabel bazy danych",
+        "tableDataFetchError": "Błąd pobierania danych z tabeli",
+        "noPrimaryKeyWarn": "Brak klucza głównego – edycja niewspierana",
+        "rowUpdatedSuccess": "Wiersz został zaktualizowany",
+        "rowSaveError": "Błąd zapisu wiersza",
+        "rowAddedSuccess": "Wiersz został dodany",
+        "rowAddError": "Błąd dodawania wiersza",
+        "tableCreateInvalid": "Uzupełnij poprawnie nazwę i kolumny",
+        "tableCreateSuccess": "Tabela {{table}} została utworzona",
+        "tableCreateError": "Błąd tworzenia tabeli",
+        "noPrimaryKeyDeleteWarn": "Brak klucza głównego – usuwanie niewspierane",
+        "rowDeletedSuccess": "Wiersz został usunięty",
+        "rowDeleteError": "Błąd usuwania wiersza",
+        "tableDeletedSuccess": "Tabela {{table}} została usunięta",
+        "tableDeleteError": "Błąd usuwania tabeli"
+      },
+      "positions": {
+        "categoryNameRequired": "Podaj nazwę kategorii",
+        "categoryAdded": "Dodano kategorię",
+        "categoryNameEmpty": "Nazwa nie może być pusta",
+        "categoryUpdated": "Zaktualizowano kategorię",
+        "categoryDeleted": "Usunięto kategorię",
+        "positionDeleted": "Stanowisko zostało usunięte",
+        "positionDeleteError": "Nie udało się usunąć stanowiska",
+        "invalidDepartment": "Nieprawidłowy departament",
+        "positionUpdated": "Stanowisko zostało zaktualizowane",
+        "positionCreated": "Stanowisko zostało utworzone"
+      }
+    }
   },
   "Theme": {
     "useThemeProvider": "useTheme musi być używany w ramach ThemeProvider"
@@ -307,6 +356,8 @@
     "overdueInspections": "Przeglądy po terminie (BHP i Narzędzia)",
     "markAllRead": "Oznacz wszystkie jako przeczytane",
     "noNotifications": "Brak nowych powiadomień",
+    "collapseSidebar": "Zwiń sidebar",
+    "expandSidebar": "Rozwiń sidebar",
     "type": {
       "bhp": "BHP",
       "tools": "Narzędzia"
@@ -314,6 +365,8 @@
     "overdue": "Po terminie",
     "read": "Przeczytano",
     "markRead": "Oznacz jako przeczytane",
+    "userNotifications": "Powiadomienia użytkownika",
+    "returnRequest": "Prośba o zwrot",
     "user": "Użytkownik",
     "role": "Rola",
     "settings": "Ustawienia",
@@ -450,7 +503,7 @@
       "subtitle": "Zarządzaj ustawieniami systemu i tłumaczeniami"
     },
     "tabs": {
-      "general": "Ogólne",
+      "general": "Ustawienia ogólne",
       "security": "Bezpieczeństwo",
       "email": "E-mail",
       "users": "Użytkownicy",
@@ -458,7 +511,7 @@
       "departments": "Działy",
       "positions": "Stanowiska",
       "categories": "Kategorie",
-      "codes": "Kody qr/kreskowe",
+      "codes": "Prefiksy kodów",
       "translations": "Tłumaczenia",
       "backup": "Kopie zapasowe"
     },
@@ -467,7 +520,6 @@
       "error": "Nie udało się zapisać konfiguracji"
     },
     "general": {
-      "title": "Ustawienia ogólne",
       "appName": "Nazwa aplikacji",
       "companyName": "Nazwa firmy",
       "timezone": "Strefa czasowa",
@@ -574,7 +626,6 @@
       }
     },
     "codes": {
-      "title": "Prefiksy kodów",
       "toolsPrefix": "Prefiks kodów narzędzi",
       "toolsPrefixPlaceholder": "np. NR",
       "bhpPrefix": "Prefiks kodów BHP",
@@ -600,7 +651,6 @@
       "addError": "Nie udało się dodać tłumaczenia"
     },
     "backup": {
-      "title": "Kopia zapasowa",
       "lastFromConfig": "Ostatnia z konfiguracji",
       "lastFile": "Ostatni plik",
       "running": "Tworzenie kopii…",
@@ -876,6 +926,7 @@
       "delete": "Usuń",
       "issue": "Wydaj",
       "return": "Zwrot",
+      "notifyReturn": "Powiadom o zwrocie",
       "noPermission": "Brak uprawnień do akcji"
     },
     "filters": {
@@ -933,6 +984,10 @@
       "available": "Dostępne",
       "issued": "Wydane",
       "unknown": "nieznany"
+    },
+    "notify": {
+      "sent": "Powiadomienie o zwrocie wysłane",
+      "error": "Nie udało się wysłać powiadomienia"
     },
     "modal": {
       "editTitle": "Edytuj pozycję BHP",
@@ -1123,6 +1178,14 @@
       "noManagePermission": "Brak uprawnień do zarządzania narzędziami (MANAGE_TOOLS)",
       "deleteFailed": "Wystąpił błąd podczas usuwania narzędzia"
     },
+    "actions": {
+      "notifyReturn": "Powiadom o zwrocie",
+      "add": "Dodaj narzędzie",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "service": "Serwis",
+      "receiveFromService": "Odbierz z serwisu"
+    },
     "confirm": {
       "deleteTool": "Czy na pewno chcesz usunąć to narzędzie?"
     },
@@ -1134,7 +1197,13 @@
       "sendFailed": "Nie udało się wysłać na serwis",
       "receiveNone": "Brak sztuk w serwisie do odebrania",
       "receiveSuccess": "Odebrano z serwisu",
-      "receiveFailed": "Nie udało się odebrać z serwisu"
+      "receiveFailed": "Nie udało się odebrać z serwisu",
+      "modal": { "title": "Wyślij na serwis" },
+      "available": "Dostępne do serwisu",
+      "quantityLabel": "Ilość do serwisu",
+      "orderNumberLabel": "Numer zlecenia serwisowego",
+      "orderNumberPlaceholder": "Np. SER-2025-00123",
+      "sendButton": "Wyślij"
     },
     "labels": {
       "generateError": "Wystąpił błąd podczas generowania etykiety",
@@ -1161,13 +1230,67 @@
       "error": "Wystąpił błąd podczas zapisywania narzędzia"
     },
     "weldInspection": {
-      "title": "Przegląd spawalniczy: ",
+      "title": "Przegląd spawarki: ",
       "in": " za ",
       "days": " dni",
       "lessEqual30": " (<=30 dni)"
     },
+    "notify": {
+      "sent": "Powiadomienie o zwrocie wysłane",
+      "error": "Nie udało się wysłać powiadomienia"
+    },
     "common": {
-      "tool": "narzędzie"
-    }
+      "toolIssued": "Narzędzie"
+    },
+    "header": {
+      "title": "Zarządzanie narzędziami",
+      "subtitle": "Dodawaj, edytuj i śledź narzędzia w systemie"
+    },
+    "search": {
+      "label": "Wyszukaj narzędzie",
+      "placeholder": "Nazwa, SKU, kategoria, numer ewidencyjny..."
+    },
+    "filters": {
+      "category": { "label": "Kategoria" },
+      "status": { "label": "Status" },
+      "allCategories": "Wszystkie kategorie",
+      "allStatuses": "Wszystkie statusy"
+    },
+    "export": {
+      "pdf": "Eksportuj jako PDF",
+      "xlsx": "Eksportuj jako EXCEL"
+    },
+    "loading": {
+      "title": "Ładowanie narzędzi...",
+      "subtitle": "Proszę czekać..."
+    },
+    "empty": {
+      "title": "Brak narzędzi",
+      "descDefault": "Dodaj pierwsze narzędzie, aby rozpocząć zarządzanie.",
+      "descFiltered": "Nie znaleziono narzędzi spełniających kryteria wyszukiwania."
+    },
+    "table": {
+      "headers": {
+        "inventoryNumberShort": "Nr. ew.",
+        "name": "Nazwa",
+        "serialNumber": "Numer fabryczny",
+        "category": "Kategoria",
+        "location": "Lokalizacja",
+        "sku": "SKU",
+        "actions": "Akcje",
+        "status": "Status"
+      },
+      "unreadableSerial": "nieczytelny"
+    },
+    "mobile": {
+      "labels": {
+        "inventoryNumber": "Numer ewidencyjny",
+        "serialNumber": "Numer fabryczny",
+        "category": "Kategoria",
+        "location": "Lokalizacja"
+      }
+    },
+    "qr": { "title": "Kod QR", "generating": "Generowanie kodu QR...", "downloadLabel": "Pobierz etykietę (tylko QR)" },
+    "barcode": { "title": "Kod kreskowy", "generating": "Generowanie kodu kreskowego...", "downloadLabel": "Pobierz etykietę (tylko kod kreskowy)" }
   }
 }

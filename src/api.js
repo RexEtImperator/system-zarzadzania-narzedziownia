@@ -1,11 +1,11 @@
-// Użyj zmiennej środowiskowej dla adresu API w środowisku deweloperskim
-// Jeśli nie ustawiono, korzystaj z relatywnych ścieżek (proxy CRA)
+// Use environment variable for API base URL in development
+// If not set, fall back to relative paths (CRA proxy)
 const API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE_URL) ? process.env.REACT_APP_API_BASE_URL : '';
 
 class ApiClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL;
-    // Preferuj token z localStorage ('token'); fallback do tokenu z obiektu 'user'
+    // Prefer token from localStorage ('token'); fallback to token from 'user' object
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
       this.token = storedToken;
@@ -18,7 +18,7 @@ class ApiClient {
   setToken(token) {
     this.token = token;
     if (token) {
-      // Aktualizuj token w obiekcie user w localStorage
+      // Update token in the user object stored in localStorage
       const user = localStorage.getItem('user');
       if (user) {
         const userData = JSON.parse(user);
@@ -26,7 +26,7 @@ class ApiClient {
         localStorage.setItem('user', JSON.stringify(userData));
       }
     } else {
-      // Usuń cały obiekt user przy wylogowaniu
+      // Remove the entire user object on logout
       localStorage.removeItem('user');
     }
   }
@@ -55,7 +55,7 @@ class ApiClient {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
-    // Sprawdź czy body jest obiektem i nie jest null ani string
+    // If body is a non-null object and not a string, stringify it
     if (config.body && typeof config.body === 'object' && config.body !== null && typeof config.body !== 'string') {
       config.body = JSON.stringify(config.body);
     }
@@ -66,7 +66,7 @@ class ApiClient {
     };
 
     try {
-      // Debug: pokaż szczegóły żądania w konsoli
+      // Debug: log request details to the console
       const method = requestConfig.method || 'GET';
       const authHeader = requestConfig.headers?.Authorization || requestConfig.headers?.authorization;
       const tokenSnippet = this.token ? String(this.token).substring(0, 20) + '...' : null;
@@ -76,29 +76,29 @@ class ApiClient {
       
       if (!response.ok) {
         const errorText = await response.text();
-        // Spróbuj wyciągnąć wiadomość z JSON
+        // Try to extract a message from JSON
         let message = errorText;
         try {
           const parsed = JSON.parse(errorText);
           if (parsed && parsed.message) message = parsed.message;
         } catch (_) {}
 
-        // Jeśli token jest nieprawidłowy lub wygasł, wyczyść go aby wymusić ponowne logowanie
-        // Tylko 401 (Unauthorized) lub jawny komunikat o nieprawidłowym tokenie powinien wymuszać wylogowanie.
-        // 403 (Forbidden) często oznacza brak uprawnień – nie wylogowujemy w takim przypadku.
+        // If the token is invalid or expired, clear it to force re-login
+        // Only 401 (Unauthorized) or an explicit "invalid token" message should force logout.
+        // 403 (Forbidden) usually means insufficient permissions — do not logout in this case.
         if (
           response.status === 401 ||
           (typeof message === 'string' && message.includes('Nieprawidłowy token'))
         ) {
           console.warn('[API] Invalid or expired token detected. Clearing token and requiring re-login.');
-          // Wyczyść token z klienta i localStorage
+          // Clear token from the client and localStorage
           this.setToken(null);
           localStorage.removeItem('token');
 
-          // Powiadom aplikację o błędzie autoryzacji (automatyczny logout)
+          // Notify the app about authorization error (automatic logout)
           try {
             if (typeof window !== 'undefined' && window.dispatchEvent) {
-              const detail = { reason: message || 'Nieprawidłowy lub wygasły token', status: response.status };
+              const detail = { reason: message || 'Invalid or expired token', status: response.status };
               window.dispatchEvent(new CustomEvent('auth:invalid', { detail }));
             }
           } catch (e) {
@@ -107,7 +107,7 @@ class ApiClient {
         }
 
         const err = new Error(message || `HTTP error! status: ${response.status}`);
-        // Dodaj status do błędu dla lepszej obsługi po stronie wywołującej
+        // Attach HTTP status to the error for better handling by callers
         err.status = response.status;
         throw err;
       }
@@ -146,12 +146,12 @@ class ApiClient {
     });
   }
 
-  // Alias dla zgodności ze starym wywołaniem
+  // Alias for backward compatibility
   async del(endpoint) {
     return this.delete(endpoint);
   }
 
-  // Metody specyficzne dla API
+  // API-specific methods
   async getAuditLogs(params = {}) {
     const queryParams = new URLSearchParams();
     
@@ -167,7 +167,7 @@ class ApiClient {
     return this.get(endpoint);
   }
 
-  // Wsparcie dla multipart/form-data (FormData) bez ustawiania Content-Type
+  // Support multipart/form-data (FormData) without setting Content-Type
   async postForm(endpoint, formData) {
     const fullUrl = `${this.baseURL}${endpoint}`;
     const headers = {};

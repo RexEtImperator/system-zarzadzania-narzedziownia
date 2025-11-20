@@ -1,6 +1,6 @@
 {
   "name": "system-zarzadzania-narzedziownia-backend",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Backend dla systemu zarządzania narzędziownią",
   "main": "server.js",
   "scripts": {

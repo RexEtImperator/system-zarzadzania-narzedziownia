@@ -34,7 +34,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       const data = await apiClient.get('/api/departments');
       setDbDepartments(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Błąd podczas pobierania departamentów:', error);
+      console.error('Error fetching departments:', error);
       // Fallback: użyj domyślnych nazw działów z wymagań
       const fallbackNames = [
         'Administracja',
@@ -73,7 +73,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       }));
       setEmployees(normalized);
     } catch (error) {
-      console.error('Błąd podczas pobierania pracowników:', error);
+      console.error('Error fetching employees:', error);
       // Fallback minimalny
       setEmployees([
         { id: 1, name: 'Jan Kowalski', department: '' },
@@ -176,8 +176,9 @@ const DepartmentManagementScreen = ({ apiClient }) => {
         setDepartments(prev => prev.filter(dept => (dept.name || '').trim() !== name));
       }
       toast.success(t('departments.toast.deleted'));
+      try { await fetchDepartments(); } catch (_) {}
     } catch (error) {
-      console.error('Błąd podczas usuwania działu:', error);
+      console.error('Error deleting department:', error);
       toast.error(t('departments.toast.deleteError'));
     } finally {
       setDeleteLoading(false);
@@ -263,7 +264,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       }
       setShowModal(false);
     } catch (error) {
-      console.error('Błąd podczas zapisywania departamentu:', error);
+      console.error('Error saving department:', error);
       const apiMsg = (error && error.message) ? error.message : (error?.response?.data?.error || t('departments.toast.saveError'));
       setErrors(prev => ({ ...prev, submit: apiMsg }));
       toast.error(apiMsg);
@@ -290,17 +291,15 @@ const DepartmentManagementScreen = ({ apiClient }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Zarządzanie działami</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Zarządzaj działami w organizacji
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('departments.header.title')}</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t('departments.header.subtitle')}</p>
         </div>
         <button
           onClick={handleAdd}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <PlusIcon className="w-4 h-4 mr-2" aria-hidden="true" />
-          Dodaj dział
+          {t('departments.actions.add')}
         </button>
       </div>
 
@@ -329,7 +328,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         </div>
                         {department.isMissing && (
                           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                            Brak w bazie
+                            {t('departments.list.missingBadge')}
                           </span>
                         )}
                         <div className="ml-2">
@@ -340,7 +339,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         {department.description}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                        Kierownik: {department.managerName}
+                        {t('departments.list.managerPrefix')}{department.managerName}
                       </div>
                     </div>
                   </div>
@@ -349,13 +348,13 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                       onClick={() => handleEdit(department)}
                       className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
                     >
-                      Edytuj
+                      t('common.edit')
                     </button>
                     <button
                       onClick={() => promptDelete(department)}
                       className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
                     >
-                      Usuń
+                      {t('common.remove')}
                     </button>
                   </div>
                 </div>
@@ -378,12 +377,12 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                 <div className="bg-white dark:bg-slate-800">
                   <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      {editingDepartment ? 'Edytuj dział' : 'Dodaj nowy dział'}
+                      {editingDepartment ? t('departments.modal.titles.edit') : t('departments.modal.titles.add')}
                     </h3>
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
-                      aria-label="Zamknij"
+                      aria-label={t('common.close')}
                       className="inline-flex items-center justify-center rounded-md p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
                     >
                       <XMarkIcon className="w-5 h-5" aria-hidden="true" />
@@ -443,7 +442,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         onChange={(e) => setFormData(prev => ({ ...prev, managerId: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       >
-                        <option value="">Nie przypisano</option>
+                        <option value="">{t('departments.modal.options.unassigned')}</option>
                         {employees.map(emp => (
                           <option key={emp.id} value={emp.id}>{emp.name}</option>
                         ))}
@@ -452,7 +451,7 @@ const DepartmentManagementScreen = ({ apiClient }) => {
 
                     <div>
                       <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Status
+                        {t('departments.modal.labels.status')}
                       </label>
                       <select
                         name="status"
@@ -461,8 +460,8 @@ const DepartmentManagementScreen = ({ apiClient }) => {
                         onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       >
-                        <option value="active">Aktywny</option>
-                        <option value="inactive">Nieaktywny</option>
+                        <option value="active">{t('departments.status.active')}</option>
+                        <option value="inactive">{t('departments.status.inactive')}</option>
                       </select>
                     </div>
                   </div>

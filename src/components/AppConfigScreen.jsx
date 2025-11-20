@@ -4,7 +4,6 @@ import { ArchiveBoxIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/
 import { toast } from 'react-toastify';
 import DepartmentManagementScreen from './DepartmentManagementScreen';
 import PositionManagementScreen from './PositionManagementScreen';
-import UserManagementScreen from './UserManagementScreen';
 import ConfirmationModal from './ConfirmationModal';
 
 const AppConfigScreen = ({ apiClient, user }) => {
@@ -357,7 +356,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderGeneralTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.general.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -512,7 +510,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderSecurityTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.security.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -609,14 +606,13 @@ const AppConfigScreen = ({ apiClient, user }) => {
         }
       }));
     } catch (err) {
-      console.warn('Nie udało się pobrać konfiguracji SMTP:', err?.message || err);
+      console.error('Error loading email config:', err?.message || err);
     }
   };
 
   const renderEmailTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.email.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.email.host')}</label>
@@ -789,7 +785,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.features.title')}</h3>
-        
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -806,7 +801,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
-
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableReports" className="text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -822,7 +816,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
-
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableMobileApp" className="text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -838,7 +831,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
-
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableApiAccess" className="text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -854,7 +846,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
-
           <div className="flex items-center justify-between">
             <div>
               <label htmlFor="enableDataExport" className="text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -870,9 +861,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
             />
           </div>
-
-          {/* Sekcja konfiguracji kodów przeniesiona do zakładki 'Kody qr/kreskowe' */}
-
           {config.features.enableDataExport && (
             <div className="mt-6">
               <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.features.otherSettings')}</h4>
@@ -910,7 +898,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderCodesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.codes.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('appConfig.codes.toolsPrefix')}</label>
@@ -1269,7 +1256,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderBackupTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.backup.title')}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
             <div className="text-sm text-gray-700 dark:text-gray-300">{t('appConfig.backup.lastFromConfig')}</div>
@@ -1312,7 +1298,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       const list = Array.isArray(data) ? data.map(c => ({ id: c.id, name: c.name, tool_count: c.tool_count ?? 0 })) : [];
       setCategories(list);
     } catch (err) {
-      console.error('Nie udało się pobrać kategorii:', err);
+      console.error('Failed to fetch categories:', err);
       // Fallback: puste lub domyślne
       setCategories([
         { id: 1, name: 'Ręczne', tool_count: 0 },
@@ -1327,7 +1313,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   };
 
   useEffect(() => {
-    // Załaduj kategorie przy pierwszym renderze ekranu konfiguracyjnego
     loadCategories();
   }, []);
 
@@ -1393,7 +1378,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const renderCategoriesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">{t('appConfig.categories.title')}</h3>
         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
           <div className="flex items-end gap-2 mb-4">
             <div className="flex-1">
@@ -1473,6 +1457,403 @@ const AppConfigScreen = ({ apiClient, user }) => {
     </div>
   );
 
+  function UserManagementTab({ user, apiClient }) {
+    const [users, setUsers] = useState([]);
+    const { t } = useLanguage();
+    const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [formData, setFormData] = useState({
+      username: '',
+      full_name: '',
+      role: 'employee',
+      password: '',
+      confirmPassword: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    const AUDIT_ACTIONS = {
+      VIEW_USERS: 'VIEW_USERS',
+      ADD_USER: 'ADD_USER',
+      UPDATE_USER: 'UPDATE_USER',
+      DELETE_USER: 'DELETE_USER'
+    };
+
+    const addAuditLog = async (actor, action, details) => {
+      try {
+        await apiClient.post('/api/audit', {
+          user_id: actor.id,
+          username: actor.username,
+          action,
+          details,
+          ip_address: 'localhost'
+        });
+      } catch (error) {
+        console.error('Error adding audit log:', error);
+      }
+    };
+
+    useEffect(() => {
+      fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const data = await apiClient.get('/api/users');
+        setUsers(Array.isArray(data) ? data : []);
+        addAuditLog(user, AUDIT_ACTIONS.VIEW_USERS, 'Przeglądano listę użytkowników');
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast.error(t('common.toastr.users.fetchError'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleAddUser = () => {
+      setEditingUser(null);
+      setFormData({
+        username: '',
+        full_name: '',
+        role: 'employee',
+        password: '',
+        confirmPassword: ''
+      });
+      setShowModal(true);
+    };
+
+    const handleEditUser = (userToEdit) => {
+      setEditingUser(userToEdit);
+      setFormData({
+        username: userToEdit.username,
+        full_name: userToEdit.full_name,
+        role: userToEdit.role,
+        password: '',
+        confirmPassword: ''
+      });
+      setShowModal(true);
+    };
+
+    const handleDeleteUser = async (userId, username) => {
+      if (!window.confirm(`Czy na pewno chcesz usunąć użytkownika "${username}"?`)) {
+        return;
+      }
+
+      try {
+        await apiClient.del(`/api/users/${userId}`);
+        setUsers(users.filter(u => u.id !== userId));
+        addAuditLog(user, AUDIT_ACTIONS.DELETE_USER, `Usunięto użytkownika: ${username}`);
+        toast.success(t('common.toastr.users.deletedSuccess'));
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        toast.error(t('common.toastr.users.deleteError'));
+      }
+    };
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+
+      if (!formData.username || !formData.full_name) {
+        toast.error(t('common.toastr.form.requiredFields'));
+        return;
+      }
+
+      if (!editingUser && (!formData.password || formData.password !== formData.confirmPassword)) {
+        toast.error(t('common.toastr.form.passwordMismatch'));
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const userData = {
+          username: formData.username,
+          full_name: formData.full_name,
+          role: formData.role
+        };
+
+        if (formData.password) {
+          userData.password = formData.password;
+        }
+
+        if (editingUser) {
+          await apiClient.put(`/api/users/${editingUser.id}`, userData);
+          setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...userData } : u));
+          addAuditLog(user, AUDIT_ACTIONS.UPDATE_USER, `Zaktualizowano użytkownika: ${userData.username}`);
+          toast.success(t('common.toastr.users.updatedSuccess'));
+        } else {
+          const newUser = await apiClient.post('/api/users', userData);
+          setUsers([...users, newUser]);
+          addAuditLog(user, AUDIT_ACTIONS.ADD_USER, `Dodano użytkownika: ${userData.username}`);
+          toast.success(t('common.toastr.users.addedSuccess'));
+        }
+
+        setShowModal(false);
+        setFormData({
+          username: '',
+          full_name: '',
+          role: 'employee',
+          password: '',
+          confirmPassword: ''
+        });
+      } catch (error) {
+        console.error('Error saving user:', error);
+        toast.error(t('common.toastr.users.saveError'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const filteredUsers = users.filter(u =>
+      (u.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+      setCurrentPage(1);
+    }, [searchTerm]);
+
+    const totalItems = filteredUsers.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndexExclusive = Math.min(startIndex + pageSize, totalItems);
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndexExclusive);
+
+    useEffect(() => {
+      if (currentPage > totalPages) {
+        setCurrentPage(totalPages);
+      }
+    }, [totalPages, currentPage]);
+
+    return (
+      <>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Zarządzanie użytkownikami</h1>
+          <button
+            onClick={handleAddUser}
+            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+          >
+            Dodaj użytkownika
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Szukaj użytkowników..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+          />
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-slate-50 dark:bg-slate-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  Użytkownik
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  Rola
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                  Akcje
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+              {paginatedUsers.map((u) => (
+                <tr key={u.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{u.full_name}</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-300">@{u.username}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      u.role === 'administrator' ? 'bg-red-100 text-red-800' :
+                      u.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                      u.role === 'employee' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {u.role === 'administrator' ? t('users.roles.administrator') :
+                       u.role === 'manager' ? t('users.roles.manager') :
+                       u.role === 'employee' ? t('users.roles.employee') :
+                       t('users.roles.observer')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleEditUser(u)}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-3"
+                    >
+                      Edytuj
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u.id, u.username)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                    >
+                      Usuń
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between mt-3 px-6 py-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-700 dark:text-slate-200">
+            {totalItems === 0 ? '0–0 / 0' : `${startIndex + 1}–${endIndexExclusive} / ${totalItems}`}
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+              aria-label="Rows per page"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50"
+                aria-label="Previous page"
+              >
+                ‹
+              </button>
+              <span className="text-sm text-slate-700 dark:text-slate-200">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50"
+                aria-label="Next page"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {editingUser ? 'Edytuj użytkownika' : 'Dodaj użytkownika'}
+                </h2>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Nazwa użytkownika
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Imię i nazwisko
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Rola
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  >
+                    <option value="employee">Pracownik</option>
+                    <option value="manager">Menedżer</option>
+                    <option value="administrator">Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {editingUser ? 'Nowe hasło (opcjonalne)' : 'Hasło'}
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                    required={!editingUser}
+                  />
+                </div>
+
+                {!editingUser && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Potwierdź hasło
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 px-4 py-2 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-50 transition-colors"
+                  >
+                    {loading ? 'Zapisywanie...' : (editingUser ? 'Zaktualizuj' : 'Dodaj')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const renderUserManagementTab = () => (
+    <UserManagementTab user={user} apiClient={apiClient} />
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
@@ -1482,7 +1863,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       case 'email':
         return renderEmailTab();
       case 'users':
-        return <UserManagementScreen user={user} />;
+        return renderUserManagementTab();
       case 'features':
         return renderFeaturesTab();
       case 'departments':

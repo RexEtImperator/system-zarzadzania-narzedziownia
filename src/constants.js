@@ -39,6 +39,9 @@ export const PERMISSIONS = {
   MANAGE_BHP: 'manage_bhp',
   // BHP history visibility
   VIEW_BHP_HISTORY: 'view_bhp_history',
+  // Exporty
+  EXPORT_TOOLS: 'export_tools',
+  EXPORT_BHP: 'export_bhp',
   // Dashboard / Quick actions
   VIEW_QUICK_ACTIONS: 'view_quick_actions',
   // Inventory check
@@ -132,27 +135,27 @@ export const API_ENDPOINTS = {
 
 // Error messages
 export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'Network connection error',
-  UNAUTHORIZED: 'You do not have permission to perform this operation',
-  FORBIDDEN: 'Access forbidden',
-  NOT_FOUND: 'Resource not found',
-  VALIDATION_ERROR: 'Data validation error',
-  SERVER_ERROR: 'Server error',
-  UNKNOWN_ERROR: 'An unknown error occurred'
+  NETWORK_ERROR: 'A network connection error has occurred.',
+  UNAUTHORIZED: 'You do not have permission to perform this operation.',
+  FORBIDDEN: 'Access has been denied.',
+  NOT_FOUND: 'The requested resource was not found.',
+  VALIDATION_ERROR: 'A data validation error has occurred.',
+  SERVER_ERROR: 'A server error has occurred.',
+  UNKNOWN_ERROR: 'An unknown error has occurred.'
 };
 
 // Success messages
 export const SUCCESS_MESSAGES = {
-  USER_CREATED: 'User created successfully',
-  USER_UPDATED: 'User updated successfully',
-  USER_DELETED: 'User deleted successfully',
-  DEPARTMENT_CREATED: 'Department created successfully',
-  DEPARTMENT_UPDATED: 'Department updated successfully',
-  DEPARTMENT_DELETED: 'Department deleted successfully',
-  POSITION_CREATED: 'Position created successfully',
-  POSITION_UPDATED: 'Position updated successfully',
-  POSITION_DELETED: 'Position deleted successfully',
-  SETTINGS_SAVED: 'Settings saved'
+  USER_CREATED: 'User has been successfully created.',
+  USER_UPDATED: 'User has been successfully updated.',
+  USER_DELETED: 'User has been successfully deleted.',
+  DEPARTMENT_CREATED: 'The department has been successfully created.',
+  DEPARTMENT_UPDATED: 'The department has been successfully updated.',
+  DEPARTMENT_DELETED: 'The department has been successfully deleted.',
+  POSITION_CREATED: 'The position has been successfully created.',
+  POSITION_UPDATED: 'The position has been successfully updated.',
+  POSITION_DELETED: 'The position has been successfully deleted.',
+  SETTINGS_SAVED: 'The settings have been saved.'
 };
 
 // Theme colors
@@ -209,6 +212,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_TOOL_HISTORY,
       PERMISSIONS.VIEW_LABELS,
       PERMISSIONS.MANAGE_TOOLS,
+      PERMISSIONS.EXPORT_TOOLS,
       PERMISSIONS.VIEW_EMPLOYEES,
       PERMISSIONS.MANAGE_EMPLOYEES,
       PERMISSIONS.MANAGE_DEPARTMENTS,
@@ -216,6 +220,7 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_BHP,
       PERMISSIONS.VIEW_BHP_HISTORY,
       PERMISSIONS.MANAGE_BHP,
+      PERMISSIONS.EXPORT_BHP,
       PERMISSIONS.VIEW_INVENTORY,
       PERMISSIONS.INVENTORY_MANAGE_SESSIONS,
       PERMISSIONS.INVENTORY_SCAN,
@@ -234,6 +239,8 @@ export const hasPermission = (user, permission) => {
       PERMISSIONS.VIEW_ANALYTICS
     ],
     [ROLES.EMPLOYEE]: [
+      PERMISSIONS.VIEW_TOOLS,
+      PERMISSIONS.VIEW_BHP,
       PERMISSIONS.VIEW_TOOL_HISTORY,
       PERMISSIONS.VIEW_BHP_HISTORY
     ],
@@ -249,7 +256,8 @@ export const hasPermission = (user, permission) => {
       normalizedRole === ROLES.EMPLOYEE ? 'employee' : normalizedRole;
 
     const apiRolePerms = dynamicRolePermissions[apiRoleKey] || [];
-    return Array.isArray(apiRolePerms) && apiRolePerms.includes(permission);
+    const normPerms = Array.isArray(apiRolePerms) ? apiRolePerms.map(p => String(p).toLowerCase()) : [];
+    return normPerms.includes(String(permission).toLowerCase());
   }
 
   // Fallback to static maps if dynamic permissions are missing

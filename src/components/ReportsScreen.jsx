@@ -255,7 +255,7 @@ const ReportsScreen = ({ user, employees = [], tools = [] }) => {
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (err) {
-      console.error('Błąd usuwania zgłoszenia:', err);
+      console.error('Error deleting report:', err);
       toast.error(err?.message || t('reports.toast.deleteError'));
     } finally {
       setDeletingId(null);

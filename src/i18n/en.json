@@ -35,9 +35,58 @@
     "close": "Close",
     "remove": "Remove",
     "clearList": "Clear list",
+    "clearInput": "Clear input",
     "saveChanges": "Save changes",
     "saving": "Saving...",
-    "details": "Details"
+    "details": "Details",
+    "toastr": {
+      "users": {
+        "fetchError": "Failed to fetch users",
+        "deletedSuccess": "User has been deleted",
+        "deleteError": "Failed to delete user",
+        "updatedSuccess": "User has been updated",
+        "addedSuccess": "User has been added",
+        "saveError": "Failed to save user"
+      },
+      "form": {
+        "requiredFields": "Fill in all required fields",
+        "passwordMismatch": "Passwords do not match"
+      },
+      "audit": {
+        "deleteNoPermission": "No admin permission to delete logs",
+        "deletedSuccess": "Audit logs have been deleted",
+        "deleteError": "Failed to delete audit logs"
+      },
+      "db": {
+        "tablesFetchError": "Failed to fetch database tables",
+        "tableDataFetchError": "Failed to fetch table data",
+        "noPrimaryKeyWarn": "No primary key — editing unsupported",
+        "rowUpdatedSuccess": "Row has been updated",
+        "rowSaveError": "Failed to save row",
+        "rowAddedSuccess": "Row has been added",
+        "rowAddError": "Failed to add row",
+        "tableCreateInvalid": "Provide a valid name and columns",
+        "tableCreateSuccess": "Table {{table}} has been created",
+        "tableCreateError": "Failed to create table",
+        "noPrimaryKeyDeleteWarn": "No primary key — deletion unsupported",
+        "rowDeletedSuccess": "Row has been deleted",
+        "rowDeleteError": "Failed to delete row",
+        "tableDeletedSuccess": "Table {{table}} has been deleted",
+        "tableDeleteError": "Failed to delete table"
+      },
+      "positions": {
+        "categoryNameRequired": "Provide category name",
+        "categoryAdded": "Category added",
+        "categoryNameEmpty": "Name cannot be empty",
+        "categoryUpdated": "Category updated",
+        "categoryDeleted": "Category deleted",
+        "positionDeleted": "Position has been deleted",
+        "positionDeleteError": "Failed to delete position",
+        "invalidDepartment": "Invalid department",
+        "positionUpdated": "Position updated",
+        "positionCreated": "Position created"
+      }
+    }
   },
   "Theme": {
     "useThemeProvider": "useTheme must be used within ThemeProvider"
@@ -307,6 +356,8 @@
     "overdueInspections": "Overdue inspections (BHP and Tools)",
     "markAllRead": "Mark all as read",
     "noNotifications": "No new notifications",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "type": {
       "bhp": "BHP",
       "tools": "Tools"
@@ -314,6 +365,8 @@
     "overdue": "Overdue",
     "read": "Read",
     "markRead": "Mark as read",
+    "userNotifications": "User notifications",
+    "returnRequest": "Return request",
     "user": "User",
     "role": "Role",
     "settings": "Settings",
@@ -450,7 +503,7 @@
       "subtitle": "Manage system settings and translations"
     },
     "tabs": {
-      "general": "General",
+      "general": "General settings",
       "security": "Security",
       "email": "Email",
       "users": "Users",
@@ -458,7 +511,7 @@
       "departments": "Departments",
       "positions": "Positions",
       "categories": "Categories",
-      "codes": "Codes (QR/Bar)",
+      "codes": "Code prefixes",
       "translations": "Translations",
       "backup": "Backups"
     },
@@ -467,7 +520,6 @@
       "error": "Failed to save configuration"
     },
     "general": {
-      "title": "General settings",
       "appName": "Application name",
       "companyName": "Company name",
       "timezone": "Time zone",
@@ -574,7 +626,6 @@
       }
     },
     "codes": {
-      "title": "Code prefixes",
       "toolsPrefix": "Tools code prefix",
       "toolsPrefixPlaceholder": "e.g. TL",
       "bhpPrefix": "BHP code prefix",
@@ -600,7 +651,6 @@
       "addError": "Failed to add translation"
     },
     "backup": {
-      "title": "Backup",
       "lastFromConfig": "Last from configuration",
       "lastFile": "Last file",
       "running": "Creating backup…",
@@ -867,6 +917,7 @@
       "delete": "Delete",
       "issue": "Issue",
       "return": "Return",
+      "notifyReturn": "Notify return",
       "noPermission": "No permission for actions"
     },
     "filters": {
@@ -924,6 +975,10 @@
       "available": "Available",
       "issued": "Issued",
       "unknown": "unknown"
+    },
+    "notify": {
+      "sent": "Return notification sent",
+      "error": "Failed to send notification"
     },
     "modal": {
       "editTitle": "Edit BHP item",
@@ -1110,6 +1165,14 @@
       "noManagePermission": "No permission to manage tools (MANAGE_TOOLS)",
       "deleteFailed": "An error occurred while deleting the tool"
     },
+    "actions": {
+      "notifyReturn": "Notify return",
+      "add": "Add tool",
+      "edit": "Edit",
+      "delete": "Delete",
+      "service": "Service",
+      "receiveFromService": "Receive from service"
+    },
     "confirm": {
       "deleteTool": "Are you sure you want to delete this tool?"
     },
@@ -1121,7 +1184,13 @@
       "sendFailed": "Failed to send to service",
       "receiveNone": "No items in service to receive",
       "receiveSuccess": "Received from service",
-      "receiveFailed": "Failed to receive from service"
+      "receiveFailed": "Failed to receive from service",
+      "modal": { "title": "Send to service" },
+      "available": "Available for service",
+      "quantityLabel": "Quantity for service",
+      "orderNumberLabel": "Service order number",
+      "orderNumberPlaceholder": "e.g. SER-2025-00123",
+      "sendButton": "Send"
     },
     "labels": {
       "generateError": "Error while generating label",
@@ -1153,8 +1222,56 @@
       "days": " days",
       "lessEqual30": " (<=30 days)"
     },
+    "notify": {
+      "sent": "Return notification sent",
+      "error": "Failed to send notification"
+    },
     "common": {
-      "tool": "tool"
-    }
+      "toolIssued": "Tool"
+    },
+    "header": {
+      "title": "Tools Management",
+      "subtitle": "Add, edit and track tools in the system"
+    },
+    "search": {
+      "label": "Search tool",
+      "placeholder": "Name, SKU, category, inventory number..."
+    },
+    "filters": {
+      "category": { "label": "Category" },
+      "status": { "label": "Status" },
+      "allCategories": "All categories",
+      "allStatuses": "All statuses"
+    },
+    "export": { "pdf": "Export as PDF", "xlsx": "Export as Excel" },
+    "loading": { "title": "Loading tools...", "subtitle": "Please wait..." },
+    "empty": {
+      "title": "No tools",
+      "descDefault": "Add the first tool to start managing.",
+      "descFiltered": "No tools found matching the search criteria."
+    },
+    "table": {
+      "headers": {
+        "inventoryNumberShort": "Inv. no.",
+        "name": "Name",
+        "serialNumber": "Serial number",
+        "category": "Category",
+        "location": "Location",
+        "sku": "SKU",
+        "actions": "Actions",
+        "status": "Status"
+      },
+      "unreadableSerial": "unreadable"
+    },
+    "mobile": {
+      "labels": {
+        "inventoryNumber": "Inventory number",
+        "serialNumber": "Serial number",
+        "category": "Category",
+        "location": "Location"
+      }
+    },
+    "qr": { "title": "QR code", "generating": "Generating QR code...", "downloadLabel": "Download label (QR only)" },
+    "barcode": { "title": "Barcode", "generating": "Generating barcode...", "downloadLabel": "Download label (barcode only)" }
   }
 }

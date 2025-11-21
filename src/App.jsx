@@ -74,8 +74,12 @@ const DEFAULT_POSITIONS = [
   'Zewnętrzny'
 ];
 
-// Funkcja dodawania wpisu do dziennika audytu
+// Function of adding an entry to the audit log
 const addAuditLog = async (user, action, details) => {
+  // If the user is null (e.g. after an invalid token), skip login
+  if (!user || user.id == null) {
+    return;
+  }
   try {
     await api.post('/api/audit', {
       user_id: user.id,
@@ -89,7 +93,7 @@ const addAuditLog = async (user, action, details) => {
   }
 };
 
-// Funkcje pobierania skonfigurowanych działów i stanowisk
+// Function of fetching configured departments and positions
 const getConfiguredDepartments = async () => {
   try {
     const data = await api.get('/api/departments');

@@ -2,12 +2,12 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* Wyłącz przejścia podczas przełączania motywu, aby uniknąć keterowania zmian */
+/* Disable transitions when switching themes to avoid cached changes */
 .notransition *, .notransition *::before, .notransition *::after {
   transition: none !important;
 }
 
-/* Animacja skanowania dla skanera kodów kreskowych */
+/* Scanning animation for barcode scanner */
 @keyframes scan {
   0% {
     top: 0;
@@ -22,7 +22,6 @@
   }
 }
 
-/* Dodatkowe style dla lepszej responsywności */
 @media (max-width: 640px) {
   .barcode-scanner-container {
     padding: 1rem;
@@ -56,4 +55,35 @@
     font-weight: bolder !important;
     letter-spacing: 0.025em !important;
   }
+}
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  --scrollbar-track: #f8fafc;
+  --scrollbar-thumb: #94a3b8;
+}
+
+html.dark {
+  --scrollbar-track: #111827;
+  --scrollbar-thumb: #64748b;
+}
+
+html {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+html::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }

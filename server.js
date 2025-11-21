@@ -6,6 +6,13 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
+const { spawn } = require('child_process');
+let pm2Optional = null;
+try {
+  pm2Optional = require('pm2');
+} catch (_) {
+  pm2Optional = null;
+}
 let nodemailerOptional = null;
 try {
   nodemailerOptional = require('nodemailer');
@@ -22,6 +29,7 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'system-ewidencji-narzedzi-secret-key';
+let SHOULD_RESTART = false;
 
 // Middleware
 const allowedOrigins = [
@@ -126,6 +134,57 @@ function initializeDatabase() {
           if (!columnNames.includes('tool_category_prefixes')) {
             db.run('ALTER TABLE app_config ADD COLUMN tool_category_prefixes TEXT', (err) => {
               if (err) console.error('Error adding tool_category_prefixes column:', err.message);
+            });
+          }
+          // Security configuration columns
+          if (!columnNames.includes('session_timeout_minutes')) {
+            db.run('ALTER TABLE app_config ADD COLUMN session_timeout_minutes INTEGER', (err) => {
+              if (err) console.error('Error adding session_timeout_minutes column:', err.message);
+            });
+          }
+          if (!columnNames.includes('password_min_length')) {
+            db.run('ALTER TABLE app_config ADD COLUMN password_min_length INTEGER', (err) => {
+              if (err) console.error('Error adding password_min_length column:', err.message);
+            });
+          }
+          if (!columnNames.includes('max_login_attempts')) {
+            db.run('ALTER TABLE app_config ADD COLUMN max_login_attempts INTEGER', (err) => {
+              if (err) console.error('Error adding max_login_attempts column:', err.message);
+            });
+          }
+          if (!columnNames.includes('lockout_duration_minutes')) {
+            db.run('ALTER TABLE app_config ADD COLUMN lockout_duration_minutes INTEGER', (err) => {
+              if (err) console.error('Error adding lockout_duration_minutes column:', err.message);
+            });
+          }
+          if (!columnNames.includes('require_special_chars')) {
+            db.run('ALTER TABLE app_config ADD COLUMN require_special_chars INTEGER', (err) => {
+              if (err) console.error('Error adding require_special_chars column:', err.message);
+            });
+          }
+          if (!columnNames.includes('require_numbers')) {
+            db.run('ALTER TABLE app_config ADD COLUMN require_numbers INTEGER', (err) => {
+              if (err) console.error('Error adding require_numbers column:', err.message);
+            });
+          }
+          if (!columnNames.includes('require_uppercase')) {
+            db.run('ALTER TABLE app_config ADD COLUMN require_uppercase INTEGER', (err) => {
+              if (err) console.error('Error adding require_uppercase column:', err.message);
+            });
+          }
+          if (!columnNames.includes('require_lowercase')) {
+            db.run('ALTER TABLE app_config ADD COLUMN require_lowercase INTEGER', (err) => {
+              if (err) console.error('Error adding require_lowercase column:', err.message);
+            });
+          }
+          if (!columnNames.includes('password_history_length')) {
+            db.run('ALTER TABLE app_config ADD COLUMN password_history_length INTEGER', (err) => {
+              if (err) console.error('Error adding password_history_length column:', err.message);
+            });
+          }
+          if (!columnNames.includes('password_blacklist')) {
+            db.run('ALTER TABLE app_config ADD COLUMN password_blacklist TEXT', (err) => {
+              if (err) console.error('Error adding password_blacklist column:', err.message);
             });
           }
           // SMTP configuration columns
@@ -239,6 +298,20 @@ function initializeDatabase() {
                 console.error('Error initializing app_config:', err.message);
               } else {
                 console.log('Initialized default application configuration (app_config)');
+                db.run(
+                  `UPDATE app_config SET 
+                    session_timeout_minutes = COALESCE(session_timeout_minutes, 30),
+                    password_min_length = COALESCE(password_min_length, 8),
+                    max_login_attempts = COALESCE(max_login_attempts, 5),
+                    lockout_duration_minutes = COALESCE(lockout_duration_minutes, 15),
+                    require_special_chars = COALESCE(require_special_chars, 1),
+                    require_numbers = COALESCE(require_numbers, 1),
+                    require_uppercase = COALESCE(require_uppercase, 1),
+                    require_lowercase = COALESCE(require_lowercase, 1),
+                    password_history_length = COALESCE(password_history_length, 3),
+                    password_blacklist = COALESCE(password_blacklist, '["password","123456","qwerty","admin"]')
+                  WHERE id = 1`
+                );
               }
             }
           );
@@ -305,6 +378,16 @@ function initializeDatabase() {
           if (!columnNames.includes('updated_at')) {
             db.run('ALTER TABLE users ADD COLUMN updated_at DATETIME', (err) => {
               if (err) console.error('Error adding updated_at column:', err.message);
+            });
+          }
+          if (!columnNames.includes('failed_login_attempts')) {
+            db.run('ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0', (err) => {
+              if (err) console.error('Error adding failed_login_attempts column:', err.message);
+            });
+          }
+          if (!columnNames.includes('lockout_until')) {
+            db.run('ALTER TABLE users ADD COLUMN lockout_until DATETIME', (err) => {
+              if (err) console.error('Error adding lockout_until column:', err.message);
             });
           }
         }
@@ -525,6 +608,19 @@ function initializeDatabase() {
           console.log('Inserted sample tools with codes');
         }
       });
+    }
+  });
+
+  // Password history table
+  db.run(`CREATE TABLE IF NOT EXISTS user_password_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    password_hash TEXT NOT NULL,
+    changed_at DATETIME DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating user_password_history table:', err.message);
     }
   });
 
@@ -1130,10 +1226,9 @@ function authenticateToken(req, res, next) {
       console.warn('JWT verification failed:', {
         error: err.message,
         name: err.name,
-        authHeader,
-        tokenSnippet: token ? token.substring(0, 20) + '...' : null
+        ip: req.ip
       });
-      return res.status(403).json({ message: 'Invalid token' });
+      return res.status(401).json({ message: 'Invalid token' });
     }
     req.user = user;
     next();
@@ -1181,9 +1276,7 @@ function ensureDepartmentColumns(callback) {
 // Login endpoint
 app.post('/api/login', (req, res) => {
   console.log('=== LOGIN REQUEST ===');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
-  console.log('Body type:', typeof req.body);
+  console.log('Client IP:', req.ip);
   
   const { username, password} = req.body;
   
@@ -1197,33 +1290,52 @@ app.post('/api/login', (req, res) => {
 
   db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
     if (err) {
-      console.log('Database error:', err);
+      console.error('Database error during login:', err?.message || err);
       return res.status(500).json({ message: 'Server error' });
     }
 
     if (!user) {
-      console.log('User not found:', username);
+      console.warn('User not found:', username);
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const passwordIsValid = bcrypt.compareSync(password, user.password);
-    console.log('Password valid:', passwordIsValid);
-
-    if (!passwordIsValid) {
-      return res.status(401).json({ message: 'Invalid username or password' });
-    }
-
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, {
-      expiresIn: 86400 // 24 hours
-    });
-
-    console.log('Login successful for user:', username);
-    res.status(200).json({
-      id: user.id,
-      username: user.username,
-      full_name: user.full_name,
-      role: user.role,
-      token: token
+    db.get('SELECT session_timeout_minutes, max_login_attempts, lockout_duration_minutes FROM app_config WHERE id = 1', [], (cfgErr, cfg) => {
+      if (cfgErr) {
+        console.error('Error loading security config:', cfgErr.message);
+      }
+      const sessionTimeout = Number(cfg?.session_timeout_minutes || 30);
+      const maxAttempts = Number(cfg?.max_login_attempts || 5);
+      const lockoutMinutes = Number(cfg?.lockout_duration_minutes || 15);
+      const now = new Date();
+      const lu = user.lockout_until ? new Date(user.lockout_until) : null;
+      if (lu && !isNaN(lu.getTime()) && lu > now) {
+        const minsLeft = Math.ceil((lu - now) / 60000);
+        return res.status(429).json({ message: `Account locked. Try again in ${minsLeft} minutes` });
+      }
+      const passwordIsValid = bcrypt.compareSync(password, user.password);
+      console.log('Password valid:', passwordIsValid);
+      if (!passwordIsValid) {
+        const nextAttempts = Number(user.failed_login_attempts || 0) + 1;
+        if (nextAttempts >= maxAttempts) {
+          const until = new Date(Date.now() + lockoutMinutes * 60000).toISOString();
+          db.run('UPDATE users SET failed_login_attempts = 0, lockout_until = ?, updated_at = datetime("now") WHERE id = ?', [until, user.id]);
+        } else {
+          db.run('UPDATE users SET failed_login_attempts = ?, updated_at = datetime("now") WHERE id = ?', [nextAttempts, user.id]);
+        }
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+      db.run('UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, updated_at = datetime("now") WHERE id = ?', [user.id]);
+      // Ensure password history has at least the current password on first successful login if missing
+      db.get('SELECT COUNT(*) AS cnt FROM user_password_history WHERE user_id = ?', [user.id], (hErr, hRow) => {
+        if (!hErr && Number(hRow?.cnt || 0) === 0) {
+          try {
+            db.run('INSERT INTO user_password_history (user_id, password_hash) VALUES (?, ?)', [user.id, user.password]);
+          } catch (_) {}
+        }
+      });
+      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: Math.max(60, sessionTimeout * 60) });
+      console.log('Login successful for user:', username);
+      res.status(200).json({ id: user.id, username: user.username, full_name: user.full_name, role: user.role, token: token });
     });
   });
 });
@@ -1544,20 +1656,39 @@ app.post('/api/register', authenticateToken, (req, res) => {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
+  db.get('SELECT password_min_length, require_special_chars, require_numbers FROM app_config WHERE id = 1', [], (cfgErr, cfg) => {
+    if (cfgErr) {
+      console.error('Error loading security config:', cfgErr.message);
+    }
+    const policy = {
+      passwordMinLength: Number(cfg?.password_min_length || 8),
+      requireSpecialChars: !!cfg?.require_special_chars,
+      requireNumbers: !!cfg?.require_numbers,
+      requireUppercase: !!cfg?.require_uppercase,
+      requireLowercase: !!cfg?.require_lowercase,
+      blacklist: (() => { try { return cfg?.password_blacklist ? JSON.parse(cfg.password_blacklist) : []; } catch (_) { return []; } })()
+    };
+    const check = validatePasswordStrength(password, policy);
+    if (!check.ok) {
+      return res.status(400).json({ message: check.message });
+    }
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
-  db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
-    [username, hashedPassword, role], 
-    function(err) {
-      if (err) {
-        if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ message: 'User with this username already exists' });
+    db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
+      [username, hashedPassword, role], 
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint failed')) {
+            return res.status(400).json({ message: 'User with this username already exists' });
+          }
+          return res.status(500).json({ message: 'Server error' });
         }
-        return res.status(500).json({ message: 'Server error' });
-      }
-
-      res.status(201).json({ message: 'User registered successfully', id: this.lastID });
-    });
+        try {
+          db.run('INSERT INTO user_password_history (user_id, password_hash) VALUES (?, ?)', [this.lastID, hashedPassword]);
+        } catch (_) {}
+        res.status(201).json({ message: 'User registered successfully', id: this.lastID });
+      });
+  });
 });
 
 // Endpoint: search tool by barcode/QR
@@ -1603,37 +1734,190 @@ app.get('/api/tools', authenticateToken, requirePermission('VIEW_TOOLS'), (req, 
   const rawRole = String(req.user.role || '').trim().toLowerCase();
   const isEmployeeRole = rawRole === 'employee';
 
-  if (!isEmployeeRole) {
-    return db.all('SELECT * FROM tools ORDER BY inventory_number COLLATE NOCASE', [], (err, tools) => {
-      if (err) {
-        return res.status(500).json({ message: 'Server error' });
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+  const search = (req.query.search || '').trim();
+  const category = (req.query.category || '').trim();
+  const status = (req.query.status || '').trim();
+  const sortByRaw = (req.query.sortBy || '').trim().toLowerCase();
+  const sortDirRaw = (req.query.sortDir || 'asc').trim().toLowerCase();
+  const allowedSort = {
+    name: 't.name',
+    sku: 't.sku',
+    inventory_number: 't.inventory_number',
+    category: 't.category',
+    status: 't.status',
+    location: 't.location',
+    production_year: 't.production_year',
+    inspection_date: 't.inspection_date'
+  };
+  const sortCol = allowedSort[sortByRaw] || 't.inventory_number';
+  const sortDir = sortDirRaw === 'desc' ? 'DESC' : 'ASC';
+  const needsCollate = /t\.name|t\.sku|t\.inventory_number|t\.category|t\.status|t\.location/.test(sortCol);
+  const orderSql = `ORDER BY ${sortCol}${needsCollate ? ' COLLATE NOCASE' : ''} ${sortDir}`;
+
+  const hasQueryParams = Boolean(req.query.page || req.query.limit || req.query.search || req.query.category || req.query.status || req.query.sortBy || req.query.sortDir);
+
+  if (!hasQueryParams) {
+    if (!isEmployeeRole) {
+      return db.all(`SELECT * FROM tools ${orderSql.replace('t.', '')}`, [], (err, tools) => {
+        if (err) {
+          return res.status(500).json({ message: 'Server error' });
+        }
+        res.status(200).json(tools);
+      });
+    }
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+      if (mapErr) {
+        console.error('Error mapping user to employee:', mapErr.message);
+        return res.status(500).json({ message: 'Server error', error: mapErr.message });
       }
-      res.status(200).json(tools);
+      if (!empRow || !empRow.id) {
+        return res.status(200).json([]);
+      }
+      const sql = `
+        SELECT t.*
+        FROM tools t
+        WHERE EXISTS (
+          SELECT 1 FROM tool_issues ti
+          WHERE ti.tool_id = t.id AND ti.status = 'wydane' AND ti.employee_id = ?
+        )
+        ${orderSql}
+      `;
+      db.all(sql, [empRow.id], (err, rows) => {
+        if (err) {
+          return res.status(500).json({ message: 'Server error', error: err.message });
+        }
+        res.status(200).json(rows);
+      });
     });
   }
 
-  db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
-    if (mapErr) {
-      console.error('Error mapping user to employee:', mapErr.message);
-      return res.status(500).json({ message: 'Server error', error: mapErr.message });
-    }
-    if (!empRow || !empRow.id) {
-      return res.status(200).json([]);
-    }
-    const sql = `
-      SELECT t.*
-      FROM tools t
-      WHERE EXISTS (
-        SELECT 1 FROM tool_issues ti
-        WHERE ti.tool_id = t.id AND ti.status = 'wydane' AND ti.employee_id = ?
-      )
-      ORDER BY t.inventory_number COLLATE NOCASE
-    `;
-    db.all(sql, [empRow.id], (err, rows) => {
-      if (err) {
-        return res.status(500).json({ message: 'Server error', error: err.message });
+  const whereClauses = [];
+  const whereParams = [];
+
+  if (search) {
+    whereClauses.push(`(
+      LOWER(t.name) LIKE LOWER(?) OR 
+      LOWER(t.sku) LIKE LOWER(?) OR 
+      LOWER(t.inventory_number) LIKE LOWER(?) OR 
+      LOWER(t.category) LIKE LOWER(?) OR 
+      LOWER(t.location) LIKE LOWER(?)
+    )`);
+    const like = `%${search}%`;
+    whereParams.push(like, like, like, like, like);
+  }
+  if (category) {
+    whereClauses.push('LOWER(t.category) = LOWER(?)');
+    whereParams.push(category);
+  }
+  if (status) {
+    whereClauses.push('LOWER(t.status) = LOWER(?)');
+    whereParams.push(status);
+  }
+
+  const employeeJoinClause = isEmployeeRole ? `EXISTS (
+    SELECT 1 FROM tool_issues ti 
+    WHERE ti.tool_id = t.id AND ti.status = 'wydane' AND ti.employee_id = ?
+  )` : '';
+
+  if (isEmployeeRole) {
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+      if (mapErr) {
+        console.error('Error mapping user to employee:', mapErr.message);
+        return res.status(500).json({ message: 'Server error', error: mapErr.message });
       }
-      res.status(200).json(rows);
+      if (!empRow || !empRow.id) {
+        return res.json({ data: [], pagination: { currentPage: page, totalPages: 0, totalItems: 0, itemsPerPage: limit, hasNextPage: false, hasPreviousPage: false } });
+      }
+      const whereParts = [];
+      if (employeeJoinClause) whereParts.push(employeeJoinClause);
+      if (whereClauses.length) whereParts.push(whereClauses.join(' AND '));
+      const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM tools t
+        ${whereSql}
+      `;
+
+      const dataQuery = `
+        SELECT t.*
+        FROM tools t
+        ${whereSql}
+        ${orderSql}
+        LIMIT ? OFFSET ?
+      `;
+
+      const paramsBase = employeeJoinClause ? [empRow.id, ...whereParams] : whereParams;
+
+      db.get(countQuery, paramsBase, (err, countResult) => {
+        if (err) {
+          console.error('Error counting tools:', err.message);
+          return res.status(500).json({ message: 'Server error', error: err.message });
+        }
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit) || 1;
+        db.all(dataQuery, [...paramsBase, limit, offset], (err2, rows) => {
+          if (err2) {
+            console.error('Error fetching tools:', err2.message);
+            return res.status(500).json({ message: 'Server error', error: err2.message });
+          }
+          return res.json({
+            data: rows,
+            pagination: {
+              currentPage: page,
+              totalPages,
+              totalItems: total,
+              itemsPerPage: limit,
+              hasNextPage: page < totalPages,
+              hasPreviousPage: page > 1
+            }
+          });
+        });
+      });
+    });
+  }
+
+  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM tools t
+    ${whereSql}
+  `;
+  const dataQuery = `
+    SELECT t.*
+    FROM tools t
+    ${whereSql}
+    ${orderSql}
+    LIMIT ? OFFSET ?
+  `;
+
+  db.get(countQuery, whereParams, (err, countResult) => {
+    if (err) {
+      console.error('Error counting tools:', err.message);
+      return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+    const total = countResult.total;
+    const totalPages = Math.ceil(total / limit) || 1;
+    db.all(dataQuery, [...whereParams, limit, offset], (err2, rows) => {
+      if (err2) {
+        console.error('Error fetching tools:', err2.message);
+        return res.status(500).json({ message: 'Server error', error: err2.message });
+      }
+      return res.json({
+        data: rows,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: total,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        }
+      });
     });
   });
 });
@@ -1953,6 +2237,29 @@ app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res)
   const rawRole = String(req.user.role || '').trim().toLowerCase();
   const isEmployeeRole = rawRole === 'employee';
 
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+  const search = (req.query.search || '').trim();
+  const status = (req.query.status || '').trim();
+  const sortByRaw = (req.query.sortBy || '').trim().toLowerCase();
+  const sortDirRaw = (req.query.sortDir || 'asc').trim().toLowerCase();
+  const allowedSort = {
+    inventory_number: 'b.inventory_number',
+    manufacturer: 'b.manufacturer',
+    model: 'b.model',
+    serial_number: 'b.serial_number',
+    production_date: 'b.production_date',
+    inspection_date: 'b.inspection_date',
+    status: 'b.status'
+  };
+  const sortCol = allowedSort[sortByRaw] || 'b.inventory_number';
+  const sortDir = sortDirRaw === 'desc' ? 'DESC' : 'ASC';
+  const needsCollate = /b\.inventory_number|b\.manufacturer|b\.model|b\.serial_number|b\.status/.test(sortCol);
+  const orderSql = `ORDER BY ${sortCol}${needsCollate ? ' COLLATE NOCASE' : ''} ${sortDir}`;
+
+  const hasQueryParams = Boolean(req.query.page || req.query.limit || req.query.search || req.query.status || req.query.sortBy || req.query.sortDir);
+
   const baseSelect = `
     SELECT 
       b.*, 
@@ -1983,30 +2290,148 @@ app.get('/api/bhp', authenticateToken, requirePermission('VIEW_BHP'), (req, res)
     FROM bhp b
   `;
 
-  if (!isEmployeeRole) {
-    const query = `${baseSelect} ORDER BY b.inventory_number`;
-    return db.all(query, [], (err, items) => {
-      if (err) {
-        return res.status(500).json({ message: 'Server error' });
+  if (!hasQueryParams) {
+    if (!isEmployeeRole) {
+      const query = `${baseSelect} ${orderSql}`;
+      return db.all(query, [], (err, items) => {
+        if (err) {
+          return res.status(500).json({ message: 'Server error' });
+        }
+        res.status(200).json(items);
+      });
+    }
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+      if (mapErr) {
+        console.error('Error mapping user to employee (BHP):', mapErr.message);
+        return res.status(500).json({ message: 'Server error', error: mapErr.message });
       }
-      res.status(200).json(items);
+      if (!empRow || !empRow.id) {
+        return res.status(200).json([]);
+      }
+      const query = `${baseSelect} WHERE EXISTS (SELECT 1 FROM bhp_issues bi WHERE bi.bhp_id = b.id AND bi.status = 'wydane' AND bi.employee_id = ?) ${orderSql}`;
+      db.all(query, [empRow.id], (err, items) => {
+        if (err) {
+          return res.status(500).json({ message: 'Server error' });
+        }
+        res.status(200).json(items);
+      });
     });
   }
 
-  db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
-    if (mapErr) {
-      console.error('Error mapping user to employee (BHP):', mapErr.message);
-      return res.status(500).json({ message: 'Server error', error: mapErr.message });
-    }
-    if (!empRow || !empRow.id) {
-      return res.status(200).json([]);
-    }
-    const query = `${baseSelect} WHERE EXISTS (SELECT 1 FROM bhp_issues bi WHERE bi.bhp_id = b.id AND bi.status = 'wydane' AND bi.employee_id = ?) ORDER BY b.inventory_number`;
-    db.all(query, [empRow.id], (err, items) => {
-      if (err) {
-        return res.status(500).json({ message: 'Server error' });
+  const whereClauses = [];
+  const whereParams = [];
+  if (search) {
+    whereClauses.push(`(
+      LOWER(b.inventory_number) LIKE LOWER(?) OR
+      LOWER(b.manufacturer) LIKE LOWER(?) OR
+      LOWER(b.model) LIKE LOWER(?) OR
+      LOWER(b.serial_number) LIKE LOWER(?)
+    )`);
+    const like = `%${search}%`;
+    whereParams.push(like, like, like, like);
+  }
+  if (status) {
+    whereClauses.push('LOWER(b.status) = LOWER(?)');
+    whereParams.push(status);
+  }
+
+  const employeeExistsClause = isEmployeeRole ? `EXISTS (
+    SELECT 1 FROM bhp_issues bi 
+    WHERE bi.bhp_id = b.id AND bi.status = 'wydane' AND bi.employee_id = ?
+  )` : '';
+
+  if (isEmployeeRole) {
+    return db.get('SELECT id FROM employees WHERE login = ?', [req.user.username], (mapErr, empRow) => {
+      if (mapErr) {
+        console.error('Error mapping user to employee (BHP):', mapErr.message);
+        return res.status(500).json({ message: 'Server error', error: mapErr.message });
       }
-      res.status(200).json(items);
+      if (!empRow || !empRow.id) {
+        return res.json({ data: [], pagination: { currentPage: page, totalPages: 0, totalItems: 0, itemsPerPage: limit, hasNextPage: false, hasPreviousPage: false } });
+      }
+      const whereParts = [];
+      if (employeeExistsClause) whereParts.push(employeeExistsClause);
+      if (whereClauses.length) whereParts.push(whereClauses.join(' AND '));
+      const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM bhp b
+        ${whereSql}
+      `;
+      const dataQuery = `
+        ${baseSelect}
+        ${whereSql}
+        ${orderSql}
+        LIMIT ? OFFSET ?
+      `;
+
+      const paramsBase = employeeExistsClause ? [empRow.id, ...whereParams] : whereParams;
+
+      db.get(countQuery, paramsBase, (err, countResult) => {
+        if (err) {
+          console.error('Error counting BHP items:', err.message);
+          return res.status(500).json({ message: 'Server error', error: err.message });
+        }
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit) || 1;
+        db.all(dataQuery, [...paramsBase, limit, offset], (err2, rows) => {
+          if (err2) {
+            console.error('Error fetching BHP items:', err2.message);
+            return res.status(500).json({ message: 'Server error', error: err2.message });
+          }
+          return res.json({
+            data: rows,
+            pagination: {
+              currentPage: page,
+              totalPages,
+              totalItems: total,
+              itemsPerPage: limit,
+              hasNextPage: page < totalPages,
+              hasPreviousPage: page > 1
+            }
+          });
+        });
+      });
+    });
+  }
+
+  const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM bhp b
+    ${whereSql}
+  `;
+  const dataQuery = `
+    ${baseSelect}
+    ${whereSql}
+    ${orderSql}
+    LIMIT ? OFFSET ?
+  `;
+
+  db.get(countQuery, whereParams, (err, countResult) => {
+    if (err) {
+      console.error('Error counting BHP items:', err.message);
+      return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+    const total = countResult.total;
+    const totalPages = Math.ceil(total / limit) || 1;
+    db.all(dataQuery, [...whereParams, limit, offset], (err2, rows) => {
+      if (err2) {
+        console.error('Error fetching BHP items:', err2.message);
+        return res.status(500).json({ message: 'Server error', error: err2.message });
+      }
+      return res.json({
+        data: rows,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: total,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        }
+      });
     });
   });
 });
@@ -2433,17 +2858,17 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
     return res.status(403).json({ message: 'Insufficient permissions' });
   }
 
-  console.log('Rozpoczęcie usuwania wszystkich pracowników...');
+  console.log('Starting deletion of all employees...');
 
   db.run('DELETE FROM employees', function(err) {
     if (err) {
-      console.error('Błąd podczas usuwania pracowników:', err);
+      console.error('Error while deleting employees:', err);
       return res.status(500).json({ message: 'Server error while deleting employees' });
     }
     
-    console.log(`Usunięto ${this.changes} pracowników`);
+    console.log(`Deleted ${this.changes} employees`);
     
-    // Dodaj wpis do dziennika audytu
+    // Add entry to audit log
     const auditQuery = `
       INSERT INTO audit_logs (user_id, username, action, details, timestamp)
       VALUES (?, ?, ?, ?, datetime('now'))
@@ -2456,7 +2881,7 @@ app.delete('/employees/all', authenticateToken, (req, res) => {
       `Usunięto wszystkich pracowników (${this.changes} rekordów)`
     ], (auditErr) => {
       if (auditErr) {
-        console.error('Błąd podczas dodawania wpisu do dziennika audytu:', auditErr);
+        console.error('Error while adding entry to audit log:', auditErr);
       }
     });
     
@@ -3015,8 +3440,24 @@ app.post('/api/users', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'A user with this username already exists' });
     }
 
-// Hash password
-    const hashedPassword = bcrypt.hashSync(password, 10);
+  // Validate password against policy
+    db.get('SELECT password_min_length, require_special_chars, require_numbers, require_uppercase, require_lowercase, password_blacklist FROM app_config WHERE id = 1', [], (cfgErr, cfg) => {
+      if (cfgErr) {
+        console.error('Error loading security config:', cfgErr.message);
+      }
+      const policy = {
+        passwordMinLength: Number(cfg?.password_min_length || 8),
+        requireSpecialChars: !!cfg?.require_special_chars,
+        requireNumbers: !!cfg?.require_numbers,
+        requireUppercase: !!cfg?.require_uppercase,
+        requireLowercase: !!cfg?.require_lowercase,
+        blacklist: (() => { try { return cfg?.password_blacklist ? JSON.parse(cfg.password_blacklist) : []; } catch (_) { return []; } })()
+      };
+      const check = validatePasswordStrength(password, policy);
+      if (!check.ok) {
+        return res.status(400).json({ error: check.message });
+      }
+      const hashedPassword = bcrypt.hashSync(password, 10);
 
 // Insert user
     db.run('INSERT INTO users (username, password, role, full_name, created_at, updated_at) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))', 
@@ -3026,6 +3467,7 @@ app.post('/api/users', authenticateToken, (req, res) => {
           console.error('Error adding user:', err.message);
           res.status(500).json({ error: 'Error adding user' });
         } else {
+          try { db.run('INSERT INTO user_password_history (user_id, password_hash) VALUES (?, ?)', [this.lastID, hashedPassword]); } catch (_) {}
 // Fetch inserted user
           db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [this.lastID], (err, newUser) => {
             if (err) {
@@ -3037,7 +3479,8 @@ app.post('/api/users', authenticateToken, (req, res) => {
           });
         }
       });
-  });
+    });
+});
 });
 
 // Update user
@@ -3065,25 +3508,86 @@ app.put('/api/users/:id', authenticateToken, (req, res) => {
     let params = [role, full_name];
 
 // If new password provided, include it in update
-    if (password && password.trim() !== '') {
-      const hashedPassword = bcrypt.hashSync(password, 10);
-      updateQuery += ', password = ?';
-      params.push(hashedPassword);
-    }
+  if (password && password.trim() !== '') {
+      db.get('SELECT password_min_length, require_special_chars, require_numbers, require_uppercase, require_lowercase, password_blacklist, password_history_length FROM app_config WHERE id = 1', [], (cfgErr, cfg) => {
+        if (cfgErr) {
+          console.error('Error loading security config:', cfgErr.message);
+        }
+        const policy = {
+          passwordMinLength: Number(cfg?.password_min_length || 8),
+          requireSpecialChars: !!cfg?.require_special_chars,
+          requireNumbers: !!cfg?.require_numbers,
+          requireUppercase: !!cfg?.require_uppercase,
+          requireLowercase: !!cfg?.require_lowercase,
+          blacklist: (() => { try { return cfg?.password_blacklist ? JSON.parse(cfg.password_blacklist) : []; } catch (_) { return []; } })()
+        };
+        const check = validatePasswordStrength(password, policy);
+        if (!check.ok) {
+          return res.status(400).json({ error: check.message });
+        }
+        const historyLength = Number(cfg?.password_history_length || 3);
+        checkPasswordNotInHistory(userId, password, historyLength, (histErr, ok) => {
+          if (histErr) {
+            console.error('Error checking password history:', histErr.message);
+          }
+          if (ok === false) {
+            return res.status(400).json({ error: 'Password cannot be the same as recent passwords' });
+          }
+          const hashedPassword = bcrypt.hashSync(password, 10);
+          updateQuery += ', password = ?';
+          params.push(hashedPassword);
+          updateQuery += ' WHERE id = ?';
+          params.push(userId);
+          // Perform update
+          db.run(updateQuery, params, function(err) {
+            if (err) {
+              console.error('Error updating user:', err.message);
+              res.status(500).json({ error: 'Error updating user' });
+            } else {
+              try {
+                db.run('INSERT INTO user_password_history (user_id, password_hash) VALUES (?, ?)', [userId, hashedPassword], function(hErr) {
+                  if (!hErr) {
+                    db.all('SELECT id FROM user_password_history WHERE user_id = ? ORDER BY changed_at DESC', [userId], (listErr, rows) => {
+                      if (!listErr) {
+                        const ids = (rows || []).map(r => r.id);
+                        const keep = ids.slice(0, historyLength);
+                        const drop = ids.slice(historyLength);
+                        if (drop.length) {
+                          const placeholders = drop.map(() => '?').join(',');
+                          db.run(`DELETE FROM user_password_history WHERE id IN (${placeholders})`, drop);
+                        }
+                      }
+                    });
+                  }
+                });
+              } catch (_) {}
+              db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [userId], (err2, updatedUser) => {
+                if (err2) {
+                  console.error('Error fetching updated user:', err2.message);
+                  res.status(500).json({ error: 'Server error' });
+                } else {
+                  res.json(updatedUser);
+                }
+              });
+            }
+          });
+        });
+        return; // early return, update executed above
+      });
+  }
 
+  // No password change path
+  if (!(password && password.trim() !== '')) {
     updateQuery += ' WHERE id = ?';
     params.push(userId);
-
-// Perform update
     db.run(updateQuery, params, function(err) {
       if (err) {
         console.error('Error updating user:', err.message);
         res.status(500).json({ error: 'Error updating user' });
       } else {
-// Fetch updated user
-        db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [userId], (err, updatedUser) => {
-          if (err) {
-            console.error('Error fetching updated user:', err.message);
+        db.get('SELECT id, username, role, full_name, created_at, updated_at FROM users WHERE id = ?', [userId], (err3, updatedUser) => {
+          if (err3) {
+            console.error('Error fetching updated user:', err3.message);
             res.status(500).json({ error: 'Server error' });
           } else {
             res.json(updatedUser);
@@ -3091,6 +3595,7 @@ app.put('/api/users/:id', authenticateToken, (req, res) => {
         });
       }
     });
+  }
   });
 });
 
@@ -3117,6 +3622,30 @@ app.delete('/api/users/:id', authenticateToken, (req, res) => {
       } else {
         res.json({ message: 'User deleted', deletedId: userId });
       }
+    });
+  });
+});
+
+// Unlock user account (admin only)
+app.post('/api/users/:id/unlock', authenticateToken, (req, res) => {
+  const userId = req.params.id;
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
+  db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err) {
+      console.error('Error checking user:', err.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    db.run('UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, updated_at = datetime("now") WHERE id = ?', [userId], function(uErr) {
+      if (uErr) {
+        console.error('Error unlocking user:', uErr.message);
+        return res.status(500).json({ error: 'Server error' });
+      }
+      res.json({ message: 'User unlocked', id: userId });
     });
   });
 });
@@ -3496,7 +4025,7 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   Object.entries(queries).forEach(([key, query]) => {
     db.get(query, [], (err, result) => {
       if (err) {
-        console.error(`Błąd podczas pobierania ${key}:`, err.message);
+        console.error(`Error fetching ${key}:`, err.message);
 stats[key] = 0; // Fallback to 0 in case of error
       } else {
         stats[key] = result.count;
@@ -3558,7 +4087,7 @@ app.get('/api/audit', authenticateToken, (req, res) => {
 
   db.all(query, params, (err, logs) => {
     if (err) {
-      console.error('Błąd podczas pobierania logów audytu:', err.message);
+      console.error('Error fetching audit logs:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
@@ -3594,7 +4123,7 @@ app.get('/api/audit', authenticateToken, (req, res) => {
 
     db.get(countQuery, countParams, (err, countResult) => {
       if (err) {
-        console.error('Błąd podczas liczenia logów audytu:', err.message);
+        console.error('Error counting audit logs:', err.message);
         return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
@@ -3630,7 +4159,7 @@ app.post('/api/audit', authenticateToken, (req, res) => {
 
   db.run(query, [user_id, username, action, details || null, ip_address, user_agent], function(err) {
     if (err) {
-      console.error('Błąd podczas dodawania wpisu audytu:', err.message);
+      console.error('Error adding audit entry:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
@@ -3691,7 +4220,7 @@ app.get('/api/audit/stats', authenticateToken, (req, res) => {
   Object.entries(queries).forEach(([key, query]) => {
     db.all(query, (err, rows) => {
       if (err) {
-        console.error(`Błąd podczas pobierania statystyk ${key}:`, err.message);
+        console.error(`Error fetching stats ${key}:`, err.message);
         results[key] = [];
       } else {
         results[key] = key === 'totalLogs' ? rows[0] : rows;
@@ -3713,7 +4242,7 @@ app.delete('/api/audit', authenticateToken, (req, res) => {
 
   db.run('DELETE FROM audit_logs', function(err) {
     if (err) {
-      console.error('Błąd podczas usuwania logów audytu:', err.message);
+      console.error('Error deleting audit logs:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
@@ -3836,7 +4365,7 @@ if (multer) {
 app.get('/api/config/general', (req, res) => {
   db.get('SELECT app_name, company_name, timezone, language, date_format, backup_frequency, last_backup_at, tools_code_prefix, bhp_code_prefix, tool_category_prefixes FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
-      console.error('Błąd podczas pobierania ustawień ogólnych:', err.message);
+      console.error('Error fetching general settings:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!row) {
@@ -3939,7 +4468,7 @@ app.get('/api/config/email', authenticateToken, (req, res) => {
   }
   db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
-      console.error('Błąd pobierania konfiguracji SMTP:', err.message);
+      console.error('Error fetching SMTP configuration:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!row) {
@@ -4134,7 +4663,7 @@ app.put('/api/config/general', authenticateToken, (req, res) => {
 
   db.run(query, [appName, companyName || null, timezone, language, dateFormat, backupFrequency || null, toolsCodePrefix || null, bhpCodePrefix || null, tcpJson || null], function(err) {
     if (err) {
-      console.error('Błąd podczas aktualizacji ustawień ogólnych:', err.message);
+      console.error('Error updating general settings:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
 
@@ -4184,7 +4713,7 @@ app.put('/api/config/email', authenticateToken, (req, res) => {
   `;
   db.run(query, [host || null, port || null, (secure ? 1 : 0), user || null, pass || null, from || null], function(err) {
     if (err) {
-      console.error('Błąd aktualizacji ustawień SMTP:', err.message);
+      console.error('Error updating SMTP settings:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     db.get('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from FROM app_config WHERE id = 1', [], (err2, row) => {
@@ -4262,7 +4791,7 @@ app.post('/api/config/email/test', authenticateToken, async (req, res) => {
       command: err && err.command,
       response: err && err.response,
     };
-    console.error('Błąd wysyłki testowej wiadomości:', err.message, more);
+    console.error('Error sending test message:', err.message, more);
 // Return extended diagnostic data to the UI (no sensitive data)
     return res.status(500).json({
       message: 'Error sending test message',
@@ -4345,7 +4874,7 @@ app.post('/api/reports', authenticateToken, (req, res) => {
     ];
     db.run(sql, params, function (insErr) {
       if (insErr) {
-        console.error('Błąd dodawania zgłoszenia:', insErr.message);
+        console.error('Error creating report:', insErr.message);
         return res.status(500).json({ message: 'Error creating report' });
       }
       return res.json({ message: 'Report created', id: this.lastID });
@@ -4370,7 +4899,7 @@ app.get('/api/reports', authenticateToken, (req, res) => {
     FROM reports r ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.created_at DESC`;
   db.all(sql, params, (err, rows) => {
     if (err) {
-      console.error('Błąd pobierania zgłoszeń:', err.message);
+      console.error('Error fetching reports:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     const items = (rows || []).map(r => {
@@ -4395,7 +4924,7 @@ app.put('/api/reports/:id/status', authenticateToken, (req, res) => {
   }
   db.run('UPDATE reports SET status = ?, updated_at = datetime(\'now\') WHERE id = ?', [status, id], function (updErr) {
     if (updErr) {
-      console.error('Błąd aktualizacji statusu zgłoszenia:', updErr.message);
+      console.error('Error updating report status:', updErr.message);
       return res.status(500).json({ message: 'Error updating status' });
     }
     if ((this.changes || 0) === 0) {
@@ -4417,7 +4946,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
 
   db.get('SELECT id, type, subject, severity, status, created_at, attachments FROM reports WHERE id = ?', [id], (findErr, row) => {
     if (findErr) {
-      console.error('Błąd wyszukiwania zgłoszenia do usunięcia:', findErr.message);
+      console.error('Error fetching report for deletion:', findErr.message);
       return res.status(500).json({ message: 'Server error', error: findErr.message });
     }
     if (!row) {
@@ -4442,7 +4971,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
               fs.unlinkSync(target);
             }
           } catch (err) {
-            console.warn('Nie udało się usunąć załącznika zgłoszenia:', filename, err && err.message);
+            console.warn('Error deleting attachment:', filename, err && err.message);
           }
         }
       });
@@ -4451,7 +4980,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
 // Delete report record
     db.run('DELETE FROM reports WHERE id = ?', [id], function(delErr) {
       if (delErr) {
-        console.error('Błąd usuwania zgłoszenia:', delErr.message);
+        console.error('Error deleting report:', delErr.message);
         return res.status(500).json({ message: 'Error deleting report', error: delErr.message });
       }
       if ((this.changes || 0) === 0) {
@@ -4464,7 +4993,7 @@ app.delete('/api/reports/:id', authenticateToken, (req, res) => {
         [req.user.id, req.user.username, String(id), details],
         (logErr) => {
           if (logErr) {
-            console.error('Błąd zapisu do audit_logs (usunięcie zgłoszenia):', logErr.message);
+            console.error('Error writing to audit_logs (report delete):', logErr.message);
           }
           return res.json({ message: 'Report deleted', id });
         }
@@ -4595,7 +5124,7 @@ app.delete('/api/inventory/sessions/:id', authenticateToken, (req, res) => {
                 [req.user.id, req.user.username, details],
                 (auditErr) => {
                   if (auditErr) {
-                    console.error('Błąd dodawania logu audytu:', auditErr.message);
+                    console.error('Error adding audit log:', auditErr.message);
                   }
                   return res.json({ 
                     message: 'Session permanently deleted', 
@@ -4850,7 +5379,7 @@ app.delete('/api/inventory/corrections/:id', authenticateToken, (req, res) => {
         "INSERT INTO audit_logs (user_id, username, action, details, timestamp) VALUES (?, ?, 'inventory_correction_delete', ?, datetime('now'))",
         [req.user.id, req.user.username, `correction:${id} session:${corr.session_id} tool:${corr.tool_id} diff:${corr.difference_qty}`],
         (auditErr) => {
-          if (auditErr) console.error('Błąd dodawania logu audytu:', auditErr.message);
+          if (auditErr) console.error('Error adding audit log:', auditErr.message);
           res.json({ message: 'Correction deleted', id: Number(id), deleted: true });
         }
       );
@@ -4858,9 +5387,17 @@ app.delete('/api/inventory/corrections/:id', authenticateToken, (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const START_DELAY_MS = Number(process.env.RESTART_DELAY || 0);
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
+if (START_DELAY_MS > 0) {
+  setTimeout(startServer, START_DELAY_MS);
+} else {
+  startServer();
+}
 
 // Handle application shutdown
 
@@ -4901,7 +5438,7 @@ function performBackup(callback) {
     db.run('UPDATE app_config SET last_backup_at = datetime("now"), updated_at = datetime("now") WHERE id = 1');
     if (callback) callback(null, dest);
   } catch (err) {
-    console.error('Błąd podczas wykonywania kopii zapasowej:', err.message);
+    console.error('Error performing backup:', err.message);
     if (callback) callback(err);
   }
 }
@@ -4928,7 +5465,7 @@ thresholdMs = 24 * 60 * 60 * 1000; // 1 day
 function checkAndRunBackup() {
   db.get('SELECT backup_frequency, last_backup_at FROM app_config WHERE id = 1', [], (err, row) => {
     if (err) {
-      console.error('Błąd odczytu konfiguracji kopii zapasowych:', err.message);
+      console.error('Error reading backup config:', err.message);
       return;
     }
     const freq = row?.backup_frequency || 'daily';
@@ -4966,18 +5503,108 @@ app.get('/api/backup/list', authenticateToken, (req, res) => {
   try {
     const files = fs.readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith('database-') && f.endsWith('.db'))
-      .map(f => ({ file: f }));
+      .map(f => {
+        const full = path.join(BACKUP_DIR, f);
+        let createdAt = null;
+        try {
+          const stat = fs.statSync(full);
+          createdAt = stat.mtime.toISOString();
+        } catch (_) {}
+        return { file: f, createdAt };
+      });
     res.json({ backups: files });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+app.post('/api/server/restart', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Insufficient permissions to restart server' });
+  }
+  res.json({ message: 'Server restarting' });
+  SHOULD_RESTART = true;
+  setTimeout(() => {
+    try {
+      process.kill(process.pid, 'SIGINT');
+    } catch (_) {
+      process.exit(0);
+    }
+  }, 200);
+});
+
+app.post('/api/server/stop', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Insufficient permissions to stop server' });
+  }
+  res.json({ message: 'Server stopping' });
+  SHOULD_RESTART = false;
+  setTimeout(() => {
+    try {
+      process.kill(process.pid, 'SIGINT');
+    } catch (_) {
+      process.exit(0);
+    }
+  }, 200);
+});
+
+// Graceful shutdown + optional restart
 process.on('SIGINT', () => {
   db.close((err) => {
     if (err) {
-      console.error('Błąd podczas zamykania bazy danych:', err.message);
+      console.error('Error closing database:', err.message);
     } else {
-      console.log('Połączenie z bazą danych zostało zamknięte');
+      console.log('The database connection has been closed');
+    }
+    if (SHOULD_RESTART) {
+      const nodePath = process.argv[0];
+      const scriptPath = path.join(__dirname, 'server.js');
+      try {
+        const child = spawn(nodePath, [scriptPath], {
+          stdio: 'inherit',
+          cwd: __dirname,
+          env: { ...process.env, RESTART_DELAY: '800' }
+        });
+      } catch (_) {}
+    }
+    process.exit(0);
+  });
+});
+
+// Przywracanie kopii zapasowej (administrator)
+app.post('/api/backup/restore', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Insufficient permissions to restore backup' });
+  }
+  const { file } = req.body || {};
+  if (!file || typeof file !== 'string') {
+    return res.status(400).json({ message: 'Backup file name is required' });
+  }
+  const base = path.basename(file);
+  if (!base.startsWith('database-') || !base.endsWith('.db')) {
+    return res.status(400).json({ message: 'Invalid backup file name' });
+  }
+  ensureBackupDir();
+  const src = path.join(BACKUP_DIR, base);
+  const dest = path.join(__dirname, 'database.db');
+  try {
+    if (!fs.existsSync(src)) {
+      return res.status(404).json({ message: 'Backup file not found' });
+    }
+    fs.copyFileSync(src, dest);
+    console.log('Przywrócono bazę danych z kopii:', src);
+    return res.json({ message: 'Database restored from backup', file: base });
+  } catch (err) {
+    console.error('Error restoring backup:', err.message);
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+process.on('SIGINT', () => {
+  db.close((err) => {
+    if (err) {
+      console.error('Error closing database:', err.message);
+    } else {
+      console.log('The database connection has been closed');
     }
     process.exit(0);
   });
@@ -5113,7 +5740,7 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
         [issue.quantity - returnQuantity, issue_id],
         function(err) {
           if (err) {
-            return res.status(500).json({ message: 'Błąd serwera' });
+            return res.status(500).json({ message: 'Server error' });
           }
 
 // Create a return entry
@@ -5122,7 +5749,7 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
             [toolId, issue.employee_id, issue.issued_by_user_id, returnQuantity],
             function(err) {
               if (err) {
-                return res.status(500).json({ message: 'Błąd serwera' });
+                return res.status(500).json({ message: 'Server error' });
               }
               
               updateToolStatus(toolId, res, returnQuantity);
@@ -5137,12 +5764,12 @@ app.post('/api/tools/:id/return', authenticateToken, (req, res) => {
 // Check the current issue status for the tool
     db.get('SELECT COALESCE(SUM(quantity), 0) as issued_quantity FROM tool_issues WHERE tool_id = ? AND status = "wydane"', [toolId], (err, result) => {
       if (err) {
-        return res.status(500).json({ message: 'Błąd serwera' });
+        return res.status(500).json({ message: 'Server error' });
       }
 
       db.get('SELECT quantity FROM tools WHERE id = ?', [toolId], (err, tool) => {
         if (err) {
-          return res.status(500).json({ message: 'Błąd serwera' });
+          return res.status(500).json({ message: 'Server error' });
         }
 
         let newStatus;
@@ -5192,11 +5819,11 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
 
   db.get(query, [toolId], (err, tool) => {
     if (err) {
-      console.error(`Błąd bazy danych przy pobieraniu narzędzia ID ${toolId}:`, err);
+      console.error(`Error fetching tool ID ${toolId} from database:`, err);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     if (!tool) {
-      console.log(`Narzędzie o ID ${toolId} nie zostało znalezione`);
+      console.log(`Tool ID ${toolId} not found`);
       return res.status(404).json({ message: 'Tool not found' });
     }
 
@@ -5217,7 +5844,7 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
 
   db.all(issuesQuery, [toolId], (err, issues) => {
       if (err) {
-        console.error(`Błąd przy pobieraniu wydań narzędzia ID ${toolId}:`, err);
+        console.error(`Error fetching issues for tool ID ${toolId} from database:`, err);
         return res.status(500).json({ message: 'Server error', error: err.message });
       }
 
@@ -5227,7 +5854,7 @@ app.get('/api/tools/:id/details', authenticateToken, (req, res) => {
         issues: issues
       };
 
-      console.log(`Znaleziono narzędzie:`, tool.name);
+      console.log(`Tool ID ${toolId} details found:`, tool.name);
       res.json(result);
     });
   });
@@ -5275,7 +5902,7 @@ app.get('/api/notifications', authenticateToken, (req, res) => {
   db.all(query, [userId], (err, rows) => {
     if (err) {
       console.error('Error fetching notifications:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     const result = (rows || []).map(r => ({
       id: r.id,
@@ -5303,12 +5930,12 @@ app.post('/api/notifications/:id/read', authenticateToken, (req, res) => {
   db.run(sql, [notifId, req.user.id], function(err) {
     if (err) {
       console.error('Error marking notification as read:', err.message);
-      return res.status(500).json({ message: 'Błąd serwera' });
+      return res.status(500).json({ message: 'Server error' });
     }
     if (this.changes === 0) {
-      return res.status(404).json({ message: 'Powiadomienie nie zostało znalezione' });
+      return res.status(404).json({ message: 'Notification not found' });
     }
-    res.json({ message: 'Powiadomienie oznaczone jako przeczytane' });
+    res.json({ message: 'Notification marked as read' });
   });
 });
 
@@ -5323,8 +5950,8 @@ app.post('/api/bhp/:id/notify-return', authenticateToken, requirePermission('MAN
   }
 
   db.get('SELECT id FROM bhp WHERE id = ?', [bhpId], (err, item) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!item) return res.status(404).json({ message: 'Pozycja BHP nie została znaleziona' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!item) return res.status(404).json({ message: 'BHP item not found' });
 
     const resolveEmployeeId = (cb) => {
       if (target_employee_id) return cb(null, target_employee_id);
@@ -5342,16 +5969,16 @@ app.post('/api/bhp/:id/notify-return', authenticateToken, requirePermission('MAN
     };
 
     resolveEmployeeId((mapErr, employeeId) => {
-      if (mapErr) return res.status(500).json({ message: 'Błąd serwera' });
+      if (mapErr) return res.status(500).json({ message: 'Server error' });
       db.run(
         'INSERT INTO notifications (user_id, type, item_type, item_id, employee_id, message) VALUES (?, ?, ?, ?, ?, ?)',
         [userId, 'return_request', 'bhp', bhpId, employeeId, message || null],
         function(err3) {
           if (err3) {
             console.error('Error creating notification (bhp):', err3.message);
-            return res.status(500).json({ message: 'Błąd serwera' });
+            return res.status(500).json({ message: 'Server error' });
           }
-          res.status(201).json({ message: 'Powiadomienie o zwrocie utworzone', id: this.lastID, employee_id: employeeId });
+          res.status(201).json({ message: 'Return request notification created', id: this.lastID, employee_id: employeeId });
         }
       );
     });
@@ -5365,12 +5992,12 @@ app.post('/api/tools/:id/notify-return', authenticateToken, requirePermission('M
   const userId = req.user.id;
 
   if (!toolId) {
-    return res.status(400).json({ message: 'Nieprawidłowe ID narzędzia' });
+    return res.status(400).json({ message: 'Invalid tool ID' });
   }
 
   db.get('SELECT id FROM tools WHERE id = ?', [toolId], (err, tool) => {
-    if (err) return res.status(500).json({ message: 'Błąd serwera' });
-    if (!tool) return res.status(404).json({ message: 'Narzędzie nie zostało znalezione' });
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!tool) return res.status(404).json({ message: 'Tool not found' });
 
     const resolveEmployeeId = (cb) => {
       if (target_employee_id) return cb(null, target_employee_id);
@@ -5388,16 +6015,16 @@ app.post('/api/tools/:id/notify-return', authenticateToken, requirePermission('M
     };
 
     resolveEmployeeId((mapErr, employeeId) => {
-      if (mapErr) return res.status(500).json({ message: 'Błąd serwera' });
+      if (mapErr) return res.status(500).json({ message: 'Server error' });
       db.run(
         'INSERT INTO notifications (user_id, type, item_type, item_id, employee_id, message) VALUES (?, ?, ?, ?, ?, ?)',
         [userId, 'return_request', 'tool', toolId, employeeId, message || null],
         function(err3) {
           if (err3) {
             console.error('Error creating notification (tool):', err3.message);
-            return res.status(500).json({ message: 'Błąd serwera' });
+            return res.status(500).json({ message: 'Server error' });
           }
-          res.status(201).json({ message: 'Powiadomienie o zwrocie utworzone', id: this.lastID, employee_id: employeeId });
+          res.status(201).json({ message: 'Return request notification created', id: this.lastID, employee_id: employeeId });
         }
       );
     });
@@ -5419,7 +6046,7 @@ app.get('/api/role-permissions', authenticateToken, (req, res) => {
     `;
     return db.all(query, [], (err, rows) => {
       if (err) {
-        console.error('Błąd podczas pobierania uprawnień ról:', err.message);
+        console.error('Error fetching role permissions:', err.message);
         return res.status(500).json({ message: 'Server error', error: err.message });
       }
       const rolePermissions = {};
@@ -5439,7 +6066,7 @@ app.get('/api/role-permissions', authenticateToken, (req, res) => {
   `;
   db.all(query, [apiRole], (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania uprawnień roli:', err.message);
+      console.error('Error fetching role permissions:', err.message);
       return res.status(500).json({ message: 'Server error', error: err.message });
     }
     const out = {};
@@ -5469,19 +6096,19 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
 // Remove all existing permissions for this role
     db.run('DELETE FROM role_permissions WHERE role = ?', [role], (err) => {
         if (err) {
-          console.error(`Błąd podczas usuwania uprawnień dla roli ${role}:`, err.message);
+          console.error(`Error deleting role permissions for role ${role}:`, err.message);
           db.run('ROLLBACK');
           return res.status(500).json({ message: 'Server error', error: err.message });
         }
 
-      // Dodaj nowe uprawnienia
+      // Add new permissions
       const stmt = db.prepare('INSERT INTO role_permissions (role, permission) VALUES (?, ?)');
       let errorOccurred = false;
 
       permissions.forEach(permission => {
         stmt.run([role, permission], (err) => {
           if (err && !errorOccurred) {
-            console.error(`Błąd podczas dodawania uprawnienia ${permission} dla roli ${role}:`, err.message);
+            console.error(`Error adding permission ${permission} for role ${role}:`, err.message);
             errorOccurred = true;
             db.run('ROLLBACK');
             return res.status(500).json({ message: 'Server error', error: err.message });
@@ -5492,14 +6119,14 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
       stmt.finalize((err) => {
         if (err || errorOccurred) {
           if (!errorOccurred) {
-            console.error('Błąd podczas finalizacji statement:', err.message);
+            console.error(`Error finalizing statement for role ${role}:`, err.message);
             db.run('ROLLBACK');
             return res.status(500).json({ message: 'Server error', error: err.message });
           }
         } else {
           db.run('COMMIT', (err) => {
             if (err) {
-              console.error('Błąd podczas zatwierdzania transakcji:', err.message);
+              console.error('Error committing transaction:', err.message);
               return res.status(500).json({ message: 'Server error', error: err.message });
             }
 
@@ -5521,12 +6148,12 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
               [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
               (err) => {
                 if (err) {
-                  console.error('Błąd podczas zapisywania do audit log:', err.message);
+                  console.error('Error writing to audit log:', err.message);
                 }
               }
             );
 
-            console.log(`Uprawnienia dla roli ${role} zostały zaktualizowane`);
+            console.log(`Role permissions for ${role} updated successfully`);
             res.json({ 
               message: 'Role permissions updated successfully',
               role: role,
@@ -5543,7 +6170,7 @@ app.put('/api/role-permissions/:role', authenticateToken, (req, res) => {
 app.get('/api/permissions', authenticateToken, (req, res) => {
 // Check whether the user has administrator permissions
   if (req.user.role !== 'administrator') {
-    return res.status(403).json({ message: 'Brak uprawnień do zarządzania rolami' });
+    return res.status(403).json({ message: 'Insufficient permissions to manage roles' });
   }
 
   const availablePermissions = [
@@ -5592,7 +6219,7 @@ app.get('/api/db/tables', authenticateToken, requirePermission('VIEW_DATABASE'),
   const sql = `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`;
   db.all(sql, [], (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania listy tabel:', err.message);
+      console.error('Error fetching table list:', err.message);
       return res.status(500).json({ message: 'Error fetching table list' });
     }
     const tables = rows.map(r => r.name);
@@ -5606,11 +6233,11 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
   const limit = Math.max(1, Math.min(500, parseInt(req.query.limit, 10) || 50));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
 
-  // Walidacja nazwy tabeli przeciwko SQL injection – dopuszczamy tylko istniejące nazwy z sqlite_master
+  // Table name validation against SQL injection – only existing names from sqlite_master are allowed
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
-      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      console.error('Error validating table name:', err.message);
       return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
@@ -5620,7 +6247,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
     // Pobierz schemat (kolumny)
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
-        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        console.error('Error fetching table schema:', errCols.message);
         return res.status(500).json({ message: 'Error fetching table schema' });
       }
 
@@ -5631,7 +6258,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
       const dataSql = `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`;
       db.all(dataSql, [limit, offset], (errData, rows) => {
         if (errData) {
-          console.error('Błąd pobierania danych tabeli:', errData.message);
+          console.error('Error fetching table data:', errData.message);
           return res.status(500).json({ message: 'Error fetching table data' });
         }
 
@@ -5639,7 +6266,7 @@ app.get('/api/db/table/:name', authenticateToken, requirePermission('VIEW_DATABA
         const countSql = `SELECT COUNT(*) as count FROM ${tableName}`;
         db.get(countSql, [], (errCount, countRow) => {
           if (errCount) {
-            console.error('Błąd liczenia rekordów tabeli:', errCount.message);
+            console.error('Error counting table records:', errCount.message);
             return res.status(500).json({ message: 'Error counting table records' });
           }
 
@@ -5685,7 +6312,7 @@ app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_D
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
-      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      console.error('Error validating table name:', err.message);
       return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
@@ -5694,11 +6321,11 @@ app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_D
 
     db.run(`DROP TABLE IF EXISTS ${tableName}`, (dropErr) => {
       if (dropErr) {
-        console.error('Błąd usuwania tabeli:', dropErr.message);
+        console.error('Error deleting table:', dropErr.message);
         return res.status(500).json({ message: 'Error deleting table' });
       }
 
-      // Opcjonalnie: zapis do audit_logs
+      // Optional: write to audit_logs
       const auditData = {
         user_id: req.user.id || null,
         action: 'delete',
@@ -5711,7 +6338,7 @@ app.delete('/api/db/table/:name', authenticateToken, requirePermission('MANAGE_D
         [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
         (logErr) => {
           if (logErr) {
-            console.error('Błąd podczas zapisywania do audit log:', logErr.message);
+            console.error('Error writing to audit logs:', logErr.message);
           }
           return res.json({ message: `Table ${tableName} deleted` });
         }
@@ -5744,7 +6371,7 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
-      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      console.error('Error validating table name:', err.message);
       return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
@@ -5754,7 +6381,7 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
     // Pobierz schemat, zweryfikuj kolumny i klucz główny
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
-        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        console.error('Error fetching table schema:', errCols.message);
         return res.status(500).json({ message: 'Error fetching table schema' });
       }
       const columnNames = (cols || []).map(c => c.name);
@@ -5809,7 +6436,7 @@ app.put('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE_
 
       db.run(sql, values, function(updateErr) {
         if (updateErr) {
-          console.error('Błąd aktualizacji wiersza:', updateErr.message);
+          console.error('Error updating row:', updateErr.message);
           return res.status(500).json({ message: 'Error updating row' });
         }
         if (this.changes === 0) {
@@ -5828,39 +6455,39 @@ app.delete('/api/db/table/:name/row', authenticateToken, requirePermission('MANA
   const pkValue = req.query?.id ?? req.query?.pkValue;
 
   if (!/^[A-Za-z0-9_]+$/.test(tableName)) {
-    return res.status(400).json({ message: 'Nieprawidłowa nazwa tabeli' });
+    return res.status(400).json({ message: 'Invalid table name' });
   }
   if (!pkName) {
-    return res.status(400).json({ message: 'Brak nazwy klucza głównego' });
+    return res.status(400).json({ message: 'Missing primary key name' });
   }
   if (pkValue === undefined) {
-    return res.status(400).json({ message: 'Brak wartości klucza głównego' });
+    return res.status(400).json({ message: 'Missing primary key value' });
   }
 
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
-      console.error('Błąd walidacji nazwy tabeli:', err.message);
-      return res.status(500).json({ message: 'Błąd walidacji nazwy tabeli' });
+      console.error('Error validating table name:', err.message);
+      return res.status(500).json({ message: 'Error validating table name' });
     }
     if (!row) {
-      return res.status(404).json({ message: 'Tabela nie istnieje' });
+      return res.status(404).json({ message: 'Table does not exist' });
     }
 
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
-        console.error('Błąd pobierania schematu tabeli:', errCols.message);
-        return res.status(500).json({ message: 'Błąd pobierania schematu tabeli' });
+        console.error('Error fetching table schema:', errCols.message);
+        return res.status(500).json({ message: 'Error fetching table schema' });
       }
       const pkColumns = (cols || []).filter(c => c.pk).map(c => c.name);
       if (!pkColumns.includes(pkName)) {
-        return res.status(400).json({ message: 'Nieprawidłowy klucz główny dla tej tabeli' });
+        return res.status(400).json({ message: 'Invalid primary key for this table' });
       }
 
       const sql = `DELETE FROM ${tableName} WHERE ${pkName} = ?`;
       db.run(sql, [pkValue], function(delErr) {
         if (delErr) {
-          console.error('Błąd usuwania wiersza:', delErr.message);
+          console.error('Error deleting row:', delErr.message);
           return res.status(500).json({ message: 'Error deleting row' });
         }
         if (this.changes === 0) {
@@ -5887,7 +6514,7 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
   const validateSql = `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`;
   db.get(validateSql, [tableName], (err, row) => {
     if (err) {
-      console.error('Błąd walidacji nazwy tabeli:', err.message);
+      console.error('Table name validation error:', err.message);
       return res.status(500).json({ message: 'Table name validation error' });
     }
     if (!row) {
@@ -5896,7 +6523,7 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
 
     db.all(`PRAGMA table_info(${tableName})`, [], (errCols, cols) => {
       if (errCols) {
-        console.error('Błąd pobierania schematu tabeli:', errCols.message);
+        console.error('Error fetching table schema:', errCols.message);
         return res.status(500).json({ message: 'Error fetching table schema' });
       }
       const availableColumns = (cols || []).map(c => c.name);
@@ -5938,7 +6565,7 @@ app.post('/api/db/table/:name/row', authenticateToken, requirePermission('MANAGE
 
       db.run(sql, params, function(insErr) {
         if (insErr) {
-          console.error('Błąd dodawania wiersza:', insErr.message);
+          console.error('Error adding row:', insErr.message);
           return res.status(500).json({ message: 'Error adding row' });
         }
         return res.json({ message: 'Row added', id: this.lastID });
@@ -5970,7 +6597,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
     return res.status(400).json({ message: 'Table is protected and cannot be created' });
   }
 
-  // Walidacja kolumn
+  // Column validation
   const colNamesSet = new Set();
   const colDefs = [];
   for (const col of columns) {
@@ -6003,7 +6630,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
   const sql = `CREATE TABLE ${name} (${colDefs.join(', ')}${pkClause})`;
   db.run(sql, [], (err) => {
     if (err) {
-      console.error('Błąd tworzenia tabeli:', err.message);
+      console.error('Error creating table:', err.message);
       return res.status(500).json({ message: 'Error creating table' });
     }
 
@@ -6020,7 +6647,7 @@ app.post('/api/db/table', authenticateToken, requirePermission('MANAGE_DATABASE'
       [auditData.user_id, req.user.username, auditData.action, auditData.target_type, auditData.target_id, auditData.details],
       (logErr) => {
         if (logErr) {
-          console.error('Błąd podczas zapisywania do audit log:', logErr.message);
+          console.error('Error while writing to audit log:', logErr.message);
         }
         return res.json({ message: `Table ${name} created` });
       }
@@ -6041,7 +6668,7 @@ function requirePermission(permission) {
       [req.user.role, permission],
       (err, row) => {
         if (err) {
-          console.error('Błąd podczas sprawdzania uprawnień:', err.message);
+          console.error('Error while checking permissions:', err.message);
           return res.status(500).json({ message: 'Server error' });
         }
         if (row && row.ok) {
@@ -6058,8 +6685,9 @@ function requirePermission(permission) {
 app.get('/api/categories', authenticateToken, (req, res) => {
   db.all('SELECT id, name FROM tool_categories ORDER BY name', (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania kategorii:', err.message);
-      return res.status(500).json({ error: 'Server error' });
+      console.error('Error while loading categories:', err.message);
+      const fallback = ['Ręczne', 'Elektronarzędzia', 'Spawalnicze', 'Pneumatyczne', 'Akumulatorowe'];
+      return res.json(fallback.map((name) => ({ id: null, name })));
     }
     res.json(rows);
   });
@@ -6079,7 +6707,7 @@ app.get('/api/categories/stats', authenticateToken, (req, res) => {
   `;
   db.all(sql, [], (err, rows) => {
     if (err) {
-      console.error('Błąd podczas pobierania statystyk kategorii:', err.message);
+      console.error('Error while loading category stats:', err.message);
       return res.status(500).json({ error: 'Server error' });
     }
     res.json(rows);
@@ -6101,7 +6729,7 @@ app.post('/api/categories', authenticateToken, (req, res) => {
       if (err.message.includes('UNIQUE constraint failed')) {
         return res.status(400).json({ error: 'A category with this name already exists' });
       }
-      console.error('Błąd podczas dodawania kategorii:', err.message);
+      console.error('Error adding category:', err.message);
       return res.status(500).json({ error: 'Server error' });
     }
     db.get('SELECT id, name FROM tool_categories WHERE id = ?', [this.lastID], (getErr, row) => {
@@ -6129,7 +6757,7 @@ app.put('/api/categories/:id', authenticateToken, (req, res) => {
       if (err.message.includes('UNIQUE constraint failed')) {
         return res.status(400).json({ error: 'A category with this name already exists' });
       }
-      console.error('Błąd podczas aktualizacji kategorii:', err.message);
+      console.error('Error updating category:', err.message);
       return res.status(500).json({ error: 'Server error' });
     }
     if (this.changes === 0) {
@@ -6152,7 +6780,7 @@ app.delete('/api/categories/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   db.run('DELETE FROM tool_categories WHERE id = ?', [id], function(err) {
     if (err) {
-      console.error('Błąd podczas usuwania kategorii:', err.message);
+      console.error('Error deleting category:', err.message);
       return res.status(500).json({ error: 'Server error' });
     }
     if (this.changes === 0) {
@@ -6174,7 +6802,7 @@ app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
   }
   db.get('SELECT id FROM tool_categories WHERE LOWER(name) = LOWER(?)', [normalized], (findErr, cat) => {
     if (findErr) {
-      console.error('Błąd wyszukiwania kategorii po nazwie:', findErr.message);
+      console.error('Error while searching category by name:', findErr.message);
       return res.status(500).json({ error: 'Server error' });
     }
     if (!cat) {
@@ -6182,7 +6810,7 @@ app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
     }
     db.run('DELETE FROM tool_categories WHERE id = ?', [cat.id], function(deleteErr) {
       if (deleteErr) {
-        console.error('Błąd usuwania kategorii po nazwie:', deleteErr.message);
+        console.error('Error while deleting category by name:', deleteErr.message);
         return res.status(500).json({ error: 'Server error' });
       }
       res.json({ message: 'Category deleted (by-name)', deleted: true });
@@ -6190,7 +6818,7 @@ app.delete('/api/categories/by-name/:name', authenticateToken, (req, res) => {
   });
 });
 
-// Print API: wysyłanie zadań do drukarek sieciowych (IPP lub Zebra RAW 9100)
+// Print API: Sending jobs to network printers (IPP or Zebra RAW 9100)
 app.post('/api/print', authenticateToken, async (req, res) => {
   try {
     const { protocol = 'ipp', printerUrl, contentType = 'image/png', dataBase64, zpl, copies = 1, jobName = 'SZN Label' } = req.body || {};
@@ -6361,16 +6989,16 @@ function sendCredentialsEmail(email, username, password, fullName, callback) {
 
     transporter.sendMail(mailOptions, (sendErr, info) => {
       if (sendErr) {
-        console.error('Błąd wysyłki e-maila z danymi logowania:', sendErr.message);
+        console.error('Error sending email with login credentials:', sendErr.message);
         return callback && callback(sendErr);
       }
-      console.log('Wysłano e-mail z danymi logowania:', info && info.response);
+      console.log('Sent email with login credentials:', info && info.response);
       callback && callback(null);
     });
   });
 }
 
-// Prosta funkcja ucieczki HTML do bezpiecznego renderowania
+// Simple HTML escaping function for safe rendering
 function escapeHtml(str) {
   if (typeof str !== 'string') return String(str || '');
   return str
@@ -6379,4 +7007,244 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+function pm2NameFor(target) {
+  if (target === 'backend') return 'backend';
+  if (target === 'frontend') return 'frontend';
+  return null;
+}
+
+function pm2StartConfig(target) {
+  if (target === 'backend') {
+    return {
+      name: 'backend',
+      script: path.join(__dirname, 'server.js'),
+      watch: false,
+      env: { ...process.env, PORT: process.env.PORT || 3000 }
+    };
+  }
+  if (target === 'frontend') {
+    if (process.platform === 'win32') {
+      return {
+        name: 'frontend',
+        script: 'cmd',
+        args: ['/c', 'npm', 'start'],
+        cwd: __dirname,
+        interpreter: 'none',
+        env: { ...process.env, PORT: process.env.FRONTEND_PORT || 3001 }
+      };
+    }
+    return {
+      name: 'frontend',
+      script: 'npm',
+      args: ['run', 'start'],
+      cwd: __dirname,
+      interpreter: 'none',
+      env: { ...process.env, PORT: process.env.FRONTEND_PORT || 3001 }
+    };
+  }
+  return null;
+}
+
+function withPm2(action, onError) {
+  if (!pm2Optional) {
+    return onError && onError(new Error('PM2 not installed'));
+  }
+  pm2Optional.connect((err) => {
+    if (err) return onError && onError(err);
+    action(pm2Optional, () => pm2Optional.disconnect());
+  });
+}
+
+app.post('/api/process/:target/:action', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Insufficient permissions' });
+  }
+  const { target, action } = req.params;
+  const name = pm2NameFor(target);
+  if (!name) return res.status(400).json({ message: 'Invalid target' });
+  if (!pm2Optional) return res.status(501).json({ message: 'PM2 not installed' });
+
+  const handleError = (err) => res.status(500).json({ message: err?.message || 'PM2 error' });
+
+  switch (action) {
+    case 'start':
+      withPm2((pm2, done) => {
+        const cfg = pm2StartConfig(target);
+        if (!cfg) { done(); return handleError(new Error('Invalid start config')); }
+        pm2.start(cfg, (err) => { done(); return err ? handleError(err) : res.json({ message: 'started', target }); });
+      }, handleError);
+      break;
+    case 'stop':
+      withPm2((pm2, done) => {
+        pm2.stop(name, (err) => { done(); return err ? handleError(err) : res.json({ message: 'stopped', target }); });
+      }, handleError);
+      break;
+    case 'restart':
+      withPm2((pm2, done) => {
+        pm2.restart(name, (err) => { done(); return err ? handleError(err) : res.json({ message: 'restarted', target }); });
+      }, handleError);
+      break;
+    case 'status':
+      withPm2((pm2, done) => {
+        pm2.describe(name, (err, desc) => {
+          done();
+          if (err) return handleError(err);
+          const d = Array.isArray(desc) ? desc[0] : desc;
+          const status = d?.pm2_env?.status || 'unknown';
+          const pmUptime = d?.pm2_env?.pm_uptime || null;
+          const uptimeSec = pmUptime ? Math.floor((Date.now() - pmUptime) / 1000) : null;
+          return res.json({ target, status, uptime: uptimeSec, timestamp: new Date().toISOString() });
+        });
+      }, handleError);
+      break;
+    default:
+      return res.status(400).json({ message: 'Invalid action' });
+  }
+});
+
+// Fetch security settings (public)
+app.get('/api/config/security', (req, res) => {
+  db.get(
+    'SELECT session_timeout_minutes, password_min_length, max_login_attempts, lockout_duration_minutes, require_special_chars, require_numbers, require_uppercase, require_lowercase, password_history_length, password_blacklist FROM app_config WHERE id = 1',
+    [],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+      }
+      if (!row) {
+        return res.status(404).json({ message: 'Settings not found' });
+      }
+      let blacklist = [];
+      try {
+        blacklist = row.password_blacklist ? JSON.parse(row.password_blacklist) : [];
+      } catch (_) {
+        blacklist = [];
+      }
+      res.json({
+        sessionTimeout: Number(row.session_timeout_minutes || 30),
+        passwordMinLength: Number(row.password_min_length || 8),
+        maxLoginAttempts: Number(row.max_login_attempts || 5),
+        lockoutDuration: Number(row.lockout_duration_minutes || 15),
+        requireSpecialChars: !!row.require_special_chars,
+        requireNumbers: !!row.require_numbers,
+        requireUppercase: !!row.require_uppercase,
+        requireLowercase: !!row.require_lowercase,
+        historyLength: Number(row.password_history_length || 3),
+        blacklist
+      });
+    }
+  );
+});
+
+// Update security settings (admin only)
+app.put('/api/config/security', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ message: 'Insufficient permissions to update security settings' });
+  }
+  const {
+    sessionTimeout,
+    passwordMinLength,
+    maxLoginAttempts,
+    lockoutDuration,
+    requireSpecialChars,
+    requireNumbers,
+    requireUppercase,
+    requireLowercase,
+    historyLength,
+    blacklist
+  } = req.body || {};
+
+  const query = `
+    UPDATE app_config
+    SET 
+      session_timeout_minutes = COALESCE(?, session_timeout_minutes),
+      password_min_length = COALESCE(?, password_min_length),
+      max_login_attempts = COALESCE(?, max_login_attempts),
+      lockout_duration_minutes = COALESCE(?, lockout_duration_minutes),
+      require_special_chars = COALESCE(?, require_special_chars),
+      require_numbers = COALESCE(?, require_numbers),
+      require_uppercase = COALESCE(?, require_uppercase),
+      require_lowercase = COALESCE(?, require_lowercase),
+      password_history_length = COALESCE(?, password_history_length),
+      password_blacklist = COALESCE(?, password_blacklist),
+      updated_at = datetime('now')
+    WHERE id = 1
+  `;
+  db.run(
+    query,
+    [
+      Number(sessionTimeout) || null,
+      Number(passwordMinLength) || null,
+      Number(maxLoginAttempts) || null,
+      Number(lockoutDuration) || null,
+      requireSpecialChars ? 1 : 0,
+      requireNumbers ? 1 : 0,
+      requireUppercase ? 1 : 0,
+      requireLowercase ? 1 : 0,
+      Number(historyLength) || null,
+      (() => { try { return JSON.stringify(Array.isArray(blacklist) ? blacklist : []); } catch (_) { return null; } })()
+    ],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+      }
+      db.get(
+        'SELECT session_timeout_minutes, password_min_length, max_login_attempts, lockout_duration_minutes, require_special_chars, require_numbers, require_uppercase, require_lowercase, password_history_length, password_blacklist FROM app_config WHERE id = 1',
+        [],
+        (err2, row) => {
+          if (err2) {
+            return res.status(500).json({ message: 'Server error', error: err2.message });
+          }
+          let bl = [];
+          try { bl = row.password_blacklist ? JSON.parse(row.password_blacklist) : []; } catch (_) { bl = []; }
+          res.json({
+            sessionTimeout: Number(row.session_timeout_minutes || 30),
+            passwordMinLength: Number(row.password_min_length || 8),
+            maxLoginAttempts: Number(row.max_login_attempts || 5),
+            lockoutDuration: Number(row.lockout_duration_minutes || 15),
+            requireSpecialChars: !!row.require_special_chars,
+            requireNumbers: !!row.require_numbers,
+            requireUppercase: !!row.require_uppercase,
+            requireLowercase: !!row.require_lowercase,
+            historyLength: Number(row.password_history_length || 3),
+            blacklist: bl
+          });
+        }
+      );
+    }
+  );
+});
+
+function validatePasswordStrength(pass, policy) {
+  try {
+    const minLen = Number(policy.passwordMinLength || 8);
+    const requireSpecial = !!policy.requireSpecialChars;
+    const requireNum = !!policy.requireNumbers;
+    const requireUpper = !!policy.requireUppercase;
+    const requireLower = !!policy.requireLowercase;
+    const blacklist = Array.isArray(policy.blacklist) ? policy.blacklist.map(s => String(s).toLowerCase()) : [];
+    const s = String(pass || '');
+    if (s.length < minLen) return { ok: false, message: `Password must be at least ${minLen} characters long` };
+    if (requireSpecial && !/[!@#$%^&*(),.?":{}|<>\-_=+\[\];'`~]/.test(s)) return { ok: false, message: 'Password must contain a special character' };
+    if (requireNum && !/[0-9]/.test(s)) return { ok: false, message: 'Password must contain a number' };
+    if (requireUpper && !/[A-Z]/.test(s)) return { ok: false, message: 'Password must contain an uppercase letter' };
+    if (requireLower && !/[a-z]/.test(s)) return { ok: false, message: 'Password must contain a lowercase letter' };
+    if (blacklist.includes(s.toLowerCase())) return { ok: false, message: 'Password is not allowed' };
+    return { ok: true };
+  } catch (_) {
+    return { ok: true };
+  }
+}
+
+function checkPasswordNotInHistory(userId, plainPassword, historyLength, cb) {
+  const n = Math.max(1, Number(historyLength || 0));
+  if (n <= 0) return cb && cb(null, true);
+  db.all('SELECT password_hash FROM user_password_history WHERE user_id = ? ORDER BY changed_at DESC LIMIT ?', [userId, n], (err, rows) => {
+    if (err) return cb && cb(err);
+    const reused = (rows || []).some(r => {
+      try { return bcrypt.compareSync(plainPassword, r.password_hash); } catch (_) { return false; }
+    });
+    cb && cb(null, !reused);
+  });
 }

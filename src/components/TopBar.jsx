@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { WrenchIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, SunIcon, MoonIcon, BellIcon, ShieldExclamationIcon, ClockIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { WrenchIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, SunIcon, MoonIcon, BellIcon, CircleStackIcon, ShieldExclamationIcon, ClockIcon, CheckIcon, CheckCircleIcon, ArrowLeftStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import api from '../api';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { hasPermission, PERMISSIONS } from '../constants';
 
-const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarCollapsed, onToggleSidebarCollapse, appName, onNavigate }) => {
+const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarCollapsed, onToggleSidebarCollapse, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { isDarkMode, toggleTheme } = useTheme();
@@ -142,8 +142,8 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
         let overdueNotifs = [];
         if (canSeeOverdue) {
           const [bhpItems, tools] = await Promise.all([
-            api.get('/api/bhp').catch(() => []),
-            api.get('/api/tools').catch(() => [])
+            api.get('/api/bhp?sortBy=inspection_date&sortDir=asc').catch(() => []),
+            api.get('/api/tools?sortBy=inventory_number&sortDir=asc').catch(() => [])
           ]);
           const today = new Date();
           const parseDateFlexible = (val) => {
@@ -168,8 +168,10 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
             return !!d && d < today;
           });
 
-          const overdueBhp = onlyOverdue(bhpItems, x => x.inspection_date);
-          const overdueTools = onlyOverdue(tools, x => x.inspection_date);
+          const bhpList = Array.isArray(bhpItems) ? bhpItems : (Array.isArray(bhpItems?.data) ? bhpItems.data : []);
+          const overdueBhp = onlyOverdue(bhpList, x => x.inspection_date);
+          const toolsList = Array.isArray(tools) ? tools : (Array.isArray(tools?.data) ? tools.data : []);
+          const overdueTools = onlyOverdue(toolsList, x => x.inspection_date);
 
           const ackBhpRaw = localStorage.getItem('bhp_overdue_ack_v2') || '{}';
           const ackToolsRaw = localStorage.getItem('tools_overdue_ack_v2') || '{}';
@@ -507,7 +509,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
                   onClick={handleOpenSettings}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center space-x-2 transition-colors duration-200"
                 >
-                  <WrenchIcon className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true" />
+                  <WrenchIcon className="w-5 h-5" aria-hidden="true" />
                   <span>{t('topbar.settings')}</span>
                 </button>
                 {user?.role === 'administrator' && (
@@ -515,7 +517,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
                     onClick={() => { setIsDropdownOpen(false); onNavigate && onNavigate('db-viewer'); }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white flex items-center space-x-2 transition-colors duration-200"
                   >
-                    <span className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden="true">📄</span>
+                    <CircleStackIcon className="w-5 h-5" aria-hidden="true" />
                     <span>{t('topbar.dbViewer')}</span>
                   </button>
                 )}
@@ -525,9 +527,9 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
                 >
                   <div className="flex items-center space-x-2">
                     {isDarkMode ? (
-                      <SunIcon className="w-4 h-4" aria-hidden="true" />
+                      <SunIcon className="w-5 h-5" aria-hidden="true" />
                     ) : (
-                      <MoonIcon className="w-4 h-4" aria-hidden="true" />
+                      <MoonIcon className="w-5 h-5" aria-hidden="true" />
                     )}
                     <span>{isDarkMode ? t('topbar.themeLight') : t('topbar.themeDark')}</span>
                   </div>
@@ -540,11 +542,7 @@ const TopBar = ({ user, onLogout, onToggleSidebar, isSidebarOpen, isSidebarColla
                   onClick={handleLogoutClick}
                   className="w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-900 flex items-center space-x-2 transition-colors duration-200"
                 >
-                  {isDropdownOpen ? (
-                    <ChevronUpIcon className="w-4 h-4" aria-hidden="true" />
-                  ) : (
-                    <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
-                  )}
+                  <ArrowLeftStartOnRectangleIcon className="w-5 h-5" aria-hidden="true" />
                   <span>{t('topbar.logout')}</span>
                 </button>
               </div>

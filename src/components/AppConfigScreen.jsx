@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ArchiveBoxIcon, CheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { notifyError } from '../utils/notify';
 import DepartmentManagementScreen from './DepartmentManagementScreen';
 import PositionManagementScreen from './PositionManagementScreen';
 import ConfirmationModal from './ConfirmationModal';
@@ -29,7 +30,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
       requireSpecialChars: true,
       requireNumbers: true,
       maxLoginAttempts: 5,
-      lockoutDuration: 15
+      lockoutDuration: 15,
+      requireUppercase: true,
+      requireLowercase: true,
+      historyLength: 3,
+      blacklist: []
     },
     email: {
       host: '',
@@ -68,6 +73,12 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [logoTs, setLogoTs] = useState(Date.now());
   const [logoHistory, setLogoHistory] = useState([]);
   const [backupLoading, setBackupLoading] = useState(false);
+  const [showRestartModal, setShowRestartModal] = useState(false);
+  const [backendActionLoading, setBackendActionLoading] = useState(false);
+  const [backendHealth, setBackendHealth] = useState(null);
+  const [backendHealthLoading, setBackendHealthLoading] = useState(false);
+  const [frontendActionLoading, setFrontendActionLoading] = useState(false);
+  const [frontendHealth, setFrontendHealth] = useState(null);
   const [backups, setBackups] = useState([]);
   const [lastBackupFile, setLastBackupFile] = useState(null);
   const [lastBackupAt, setLastBackupAt] = useState(null);
@@ -83,7 +94,6 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [logoDeleteLoading, setLogoDeleteLoading] = useState(false);
 
   const notifySuccess = (message) => toast.success(message, { autoClose: 2500, hideProgressBar: true });
-  const notifyError = (message) => toast.error(message, { autoClose: 2500, hideProgressBar: true });
 
   useEffect(() => {
     loadConfig();
@@ -95,7 +105,10 @@ const AppConfigScreen = ({ apiClient, user }) => {
     try {
       setLoading(true);
 
-      const general = await apiClient.get('/api/config/general');
+      const [general, security] = await Promise.all([
+        apiClient.get('/api/config/general'),
+        apiClient.get('/api/config/security').catch(() => null)
+      ]);
       setConfig(prev => ({
         ...prev,
         general: {
@@ -108,6 +121,18 @@ const AppConfigScreen = ({ apiClient, user }) => {
           bhpCodePrefix: general.bhpCodePrefix ?? prev.general.bhpCodePrefix,
           toolCategoryPrefixes: general.toolCategoryPrefixes || {}
         },
+        security: security ? {
+          sessionTimeout: Number(security.sessionTimeout ?? prev.security.sessionTimeout),
+          passwordMinLength: Number(security.passwordMinLength ?? prev.security.passwordMinLength),
+          requireSpecialChars: !!security.requireSpecialChars,
+          requireNumbers: !!security.requireNumbers,
+          maxLoginAttempts: Number(security.maxLoginAttempts ?? prev.security.maxLoginAttempts),
+          lockoutDuration: Number(security.lockoutDuration ?? prev.security.lockoutDuration),
+          requireUppercase: !!security.requireUppercase,
+          requireLowercase: !!security.requireLowercase,
+          historyLength: Number(security.historyLength ?? prev.security.historyLength),
+          blacklist: Array.isArray(security.blacklist) ? security.blacklist : prev.security.blacklist
+        } : prev.security,
         notifications: {
           ...prev.notifications,
           backupFrequency: general.backupFrequency || prev.notifications.backupFrequency
@@ -145,6 +170,28 @@ const AppConfigScreen = ({ apiClient, user }) => {
         bhpCodePrefix: config.general.bhpCodePrefix,
         toolCategoryPrefixes: config.general.toolCategoryPrefixes
       });
+      // Zapisz ustawienia bezpieczeństwa (jeśli admin)
+      try {
+        await apiClient.put('/api/config/security', {
+          sessionTimeout: config.security.sessionTimeout,
+          passwordMinLength: config.security.passwordMinLength,
+          maxLoginAttempts: config.security.maxLoginAttempts,
+          lockoutDuration: config.security.lockoutDuration,
+          requireSpecialChars: !!config.security.requireSpecialChars,
+          requireNumbers: !!config.security.requireNumbers,
+          requireUppercase: !!config.security.requireUppercase,
+          requireLowercase: !!config.security.requireLowercase,
+          historyLength: config.security.historyLength,
+          blacklist: Array.isArray(config.security.blacklist)
+            ? config.security.blacklist
+            : String(config.security.blacklist || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
+        });
+      } catch (e) {
+        console.warn('Failed to save security configuration:', e?.message || e);
+      }
       // Zapisz konfigurację SMTP (jeśli admin)
       const validCfg = validateEmailConfig(config.email);
       setEmailErrors(validCfg.errors);
@@ -233,7 +280,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
     { id: 'categories', name: t('appConfig.tabs.categories'), icon: '🏷️' },
     { id: 'codes', name: t('appConfig.tabs.codes'), icon: '🔖' },
     { id: 'translations', name: t('appConfig.tabs.translations'), icon: '🈶' },
-    { id: 'backup', name: t('appConfig.tabs.backup'), icon: '💾' }
+    { id: 'backup', name: t('appConfig.tabs.backup'), icon: '💾' },
+    ...(user?.role === 'administrator' ? [{ id: 'server', name: t('appConfig.tabs.server'), icon: '🖥️' }] : [])
   ];
 
   const handleLogoChange = (e) => {
@@ -585,6 +633,69 @@ const AppConfigScreen = ({ apiClient, user }) => {
             <label htmlFor="requireNumbers" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
               {t('appConfig.security.requireNumbers')}
             </label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              id="requireUppercase"
+              type="checkbox"
+              checked={config.security.requireUppercase}
+              onChange={(e) => updateConfig('security', 'requireUppercase', e.target.checked)}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
+            />
+            <label htmlFor="requireUppercase" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
+              {t('appConfig.security.requireUppercase')}
+            </label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              id="requireLowercase"
+              type="checkbox"
+              checked={config.security.requireLowercase}
+              onChange={(e) => updateConfig('security', 'requireLowercase', e.target.checked)}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
+            />
+            <label htmlFor="requireLowercase" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
+              {t('appConfig.security.requireLowercase')}
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('appConfig.security.historyLength')}
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={config.security.historyLength}
+              onChange={(e) => {
+                const v = Math.max(0, parseInt(e.target.value) || 0);
+                updateConfig('security', 'historyLength', v);
+              }}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('appConfig.security.blacklist')}
+            </label>
+            <textarea
+              rows={3}
+              value={Array.isArray(config.security.blacklist) ? config.security.blacklist.join(', ') : String(config.security.blacklist || '')}
+              onChange={(e) => {
+                const arr = String(e.target.value)
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(Boolean);
+                const dedup = Array.from(new Set(arr));
+                updateConfig('security', 'blacklist', dedup);
+              }}
+              placeholder={t('appConfig.security.blacklist.placeholder')}
+              className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.security.blacklist.hint')}</p>
           </div>
         </div>
       </div>
@@ -976,6 +1087,37 @@ const AppConfigScreen = ({ apiClient, user }) => {
   const [newEN, setNewEN] = useState('');
   const [newDE, setNewDE] = useState('');
   const [adding, setAdding] = useState(false);
+  const addModalRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) setShowAddModal(false);
+      }
+      if (e.key === 'Tab') {
+        const el = addModalRef.current;
+        if (!el) return;
+        const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    if (showAddModal) {
+      document.addEventListener('keydown', handler);
+      setTimeout(() => {
+        const el = addModalRef.current;
+        if (!el) return;
+        const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+        if (focusables[0]) focusables[0].focus();
+      }, 0);
+    }
+    return () => document.removeEventListener('keydown', handler);
+  }, [showAddModal]);
 
   const loadTranslations = async () => {
     try {
@@ -996,7 +1138,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       setTranslations(merged);
       setChangedPairs(new Set());
     } catch (err) {
-      notifyError('Nie udało się pobrać tłumaczeń');
+      notifyError(t('appConfig.translations.loadError'));
     } finally {
       setTranslationsLoading(false);
     }
@@ -1046,7 +1188,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center gap-3">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('appConfig.translations.title')}</h3>
             <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-md p-1">
               {['pl','en','de'].map((lng) => (
@@ -1123,10 +1265,13 @@ const AppConfigScreen = ({ apiClient, user }) => {
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => !adding && setShowAddModal(false)} />
-            <div className="relative z-10 w-full max-w-2xl rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
+            <div ref={addModalRef} role="dialog" aria-modal="true" aria-labelledby="add-translation-title" aria-describedby="add-translation-desc" className="relative z-10 w-full max-w-2xl rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('appConfig.translations.addTranslation')}</h4>
-                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">✖</button>
+                <h4 id="add-translation-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('appConfig.translations.addTranslation')}</h4>
+                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">✖</button>
+              </div>
+              <div id="add-translation-desc" className="text-sm text-slate-700 dark:text-slate-300 mb-4">
+                {t('appConfig.translations.addDescription')}
               </div>
               <div className="space-y-4">
                 <div>
@@ -1134,7 +1279,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                   {(() => {
                     const trimmedKey = newKey.trim();
                     const keyExists = !!trimmedKey && Object.prototype.hasOwnProperty.call(translations, trimmedKey);
-                    const base = "w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 ";
+                    const base = "w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ";
                     const border = keyExists ? "border-red-400 dark:border-red-500" : "border-slate-300 dark:border-slate-600";
                     return (
                       <>
@@ -1155,20 +1300,20 @@ const AppConfigScreen = ({ apiClient, user }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PL</label>
-                    <textarea rows={3} value={newPL} onChange={(e) => setNewPL(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                    <textarea rows={3} value={newPL} onChange={(e) => setNewPL(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">EN</label>
-                    <textarea rows={3} value={newEN} onChange={(e) => setNewEN(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                    <textarea rows={3} value={newEN} onChange={(e) => setNewEN(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">DE</label>
-                    <textarea rows={3} value={newDE} onChange={(e) => setNewDE(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+                    <textarea rows={3} value={newDE} onChange={(e) => setNewDE(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" />
                   </div>
                 </div>
               </div>
               <div className="mt-6 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">{t('common.cancel')}</button>
+                <button type="button" onClick={() => !adding && setShowAddModal(false)} className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400">{t('common.cancel')}</button>
                 <button
                   type="button"
                   disabled={!newKey.trim() || adding || Object.prototype.hasOwnProperty.call(translations, newKey.trim())}
@@ -1192,7 +1337,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
                       setAdding(false);
                     }
                   }}
-                  className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:opacity-60"
+                  className="px-4 py-2 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
                   {t('common.saveChanges')}
                 </button>
@@ -1215,18 +1360,38 @@ const AppConfigScreen = ({ apiClient, user }) => {
     }
   };
 
+  const formatUptime = (s) => {
+    if (typeof s === 'undefined' || s === null) return '-';
+    const total = Math.floor(Number(s) || 0);
+    const d = Math.floor(total / 86400);
+    const h = Math.floor((total % 86400) / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const sec = Math.floor(total % 60);
+    const dd = String(d).padStart(2, '0');
+    const hh = String(h).padStart(2, '0');
+    const mm = String(m).padStart(2, '0');
+    const ss = String(sec).padStart(2, '0');
+    return `${dd}:${hh}:${mm}:${ss}`;
+  };
+
   const loadBackups = async () => {
     try {
       setBackupLoading(true);
       const resp = await apiClient.get('/api/backup/list');
-      const files = Array.isArray(resp?.backups) ? resp.backups.map(b => b.file) : [];
-      setBackups(files);
-      // Posortuj nazwy plików malejąco (database-YYYYMMDD-HHMMSS.db)
-      const sorted = files.slice().sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-      setLastBackupFile(sorted[0] || null);
+      const list = Array.isArray(resp?.backups) ? resp.backups : [];
+      // Sortuj malejąco po nazwie (zwykle zawiera timestamp) lub createdAt
+      const sorted = list.slice().sort((a, b) => {
+        const an = a.file || '';
+        const bn = b.file || '';
+        if (an < bn) return 1;
+        if (an > bn) return -1;
+        return 0;
+      });
+      setBackups(sorted);
+      setLastBackupFile((sorted[0] && sorted[0].file) || null);
     } catch (err) {
       // Brak uprawnień (403) lub inny błąd – pokaż tylko lastBackupAt z configu
-      console.warn('Nie udało się pobrać listy backupów:', err?.message || err);
+      console.warn(t('appConfig.backup.listError'), err?.message || err);
     } finally {
       setBackupLoading(false);
     }
@@ -1246,10 +1411,123 @@ const AppConfigScreen = ({ apiClient, user }) => {
       await loadConfig();
       await loadBackups();
     } catch (err) {
-      const msg = err?.message || 'Nie udało się wykonać kopii zapasowej';
+      const msg = err?.message || t('appConfig.backup.runError');
       notifyError(msg);
     } finally {
       setBackupLoading(false);
+    }
+  };
+
+  const parseBackupDate = (file) => {
+    try {
+      // oczekiwany format: database-YYYYMMDD-HHMMSS.db
+      const m = String(file).match(/^database-(\d{8})-(\d{6})\.db$/);
+      if (!m) return '-';
+      const [_, ymd, hms] = m;
+      const yyyy = ymd.slice(0, 4);
+      const mm = ymd.slice(4, 6);
+      const dd = ymd.slice(6, 8);
+      const hh = hms.slice(0, 2);
+      const mi = hms.slice(2, 4);
+      const ss = hms.slice(4, 6);
+      const iso = `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}.000Z`;
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '-';
+      return d.toLocaleString('pl-PL');
+    } catch { return '-'; }
+  };
+
+  const restoreBackup = async (file) => {
+    if (!file) return;
+    try {
+      setBackupLoading(true);
+      await apiClient.post('/api/backup/restore', { file });
+      notifySuccess(t('appConfig.backup.restored'));
+      setShowRestartModal(true);
+    } catch (err) {
+      const msg = err?.message || t('appConfig.backup.restoreError');
+      notifyError(msg);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const restartBackend = async () => {
+    try {
+      setBackendActionLoading(true);
+      await apiClient.post('/api/process/backend/restart', {});
+      notifySuccess(t('appConfig.server.backend.restartStarted'));
+      setShowRestartModal(false);
+    } catch (err) {
+      const msg = err?.message || t('appConfig.server.backend.restartError');
+      notifyError(msg);
+    } finally {
+      setBackendActionLoading(false);
+    }
+  };
+
+  const stopBackend = async () => {
+    try {
+      setBackendActionLoading(true);
+      await apiClient.post('/api/process/backend/stop', {});
+      notifySuccess(t('appConfig.server.backend.stopStarted'));
+    } catch (err) {
+      const msg = err?.message || t('appConfig.server.backend.stopError');
+      notifyError(msg);
+    } finally {
+      setBackendActionLoading(false);
+    }
+  };
+
+  const checkBackendHealth = async () => {
+    try {
+      setBackendHealthLoading(true);
+      const resp = await apiClient.post('/api/process/backend/status');
+      setBackendHealth(resp || null);
+      notifySuccess(t('appConfig.server.backend.healthOk'));
+    } catch (err) {
+      notifyError(t('appConfig.server.backend.healthError'));
+    } finally {
+      setBackendHealthLoading(false);
+    }
+  };
+
+  const restartFrontend = async () => {
+    try {
+      setFrontendActionLoading(true);
+      await apiClient.post('/api/process/frontend/restart');
+      notifySuccess(t('appConfig.server.frontend.restartStarted'));
+    } catch (err) {
+      const msg = err?.message || t('appConfig.server.frontend.restartError');
+      notifyError(msg);
+    } finally {
+      setFrontendActionLoading(false);
+    }
+  };
+
+  const stopFrontend = async () => {
+    try {
+      setFrontendActionLoading(true);
+      await apiClient.post('/api/process/frontend/stop');
+      notifySuccess(t('appConfig.server.frontend.stopStarted'));
+    } catch (err) {
+      const msg = err?.message || t('appConfig.server.frontend.stopError');
+      notifyError(msg);
+    } finally {
+      setFrontendActionLoading(false);
+    }
+  };
+
+  const checkFrontendHealth = async () => {
+    try {
+      setFrontendActionLoading(true);
+      const payload = await apiClient.post('/api/process/frontend/status');
+      setFrontendHealth(payload || null);
+      notifySuccess(t('appConfig.server.frontend.healthOk'));
+    } catch (err) {
+      notifyError(t('appConfig.server.frontend.healthError'));
+    } finally {
+      setFrontendActionLoading(false);
     }
   };
 
@@ -1285,6 +1563,139 @@ const AppConfigScreen = ({ apiClient, user }) => {
             )}
           </button>
           <span className="text-xs text-gray-500 dark:text-gray-400">{t('appConfig.backup.adminRequired')}</span>
+        </div>
+      </div>
+
+      <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+        <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.backup.listTitle')}</h4>
+        {backupLoading ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
+        ) : (backups || []).length === 0 ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.noData')}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{t('appConfig.backup.headers.file')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{t('appConfig.backup.headers.createdAt')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{t('appConfig.backup.headers.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {(backups || []).map((b) => (
+                  <tr key={b.file}>
+                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-white font-mono">{b.file}</td>
+                    <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">{b.createdAt ? new Date(b.createdAt).toLocaleString('pl-PL') : parseBackupDate(b.file)}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => restoreBackup(b.file)}
+                        disabled={backupLoading}
+                        className="px-3 py-1.5 rounded-md bg-emerald-600 dark:bg-emerald-700 text-white hover:bg-emerald-700 dark:hover:bg-emerald-800 text-xs"
+                      >
+                        {t('appConfig.backup.restore')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {showRestartModal && (
+        <ConfirmationModal
+          isOpen={showRestartModal}
+          onClose={() => !backendActionLoading && setShowRestartModal(false)}
+          onConfirm={restartBackend}
+          title={t('appConfig.server.backend.restartTitle')}
+          message={t('appConfig.server.backend.restartMessage')}
+          confirmText={t('appConfig.server.backend.restartNow')}
+          cancelText={t('common.cancel')}
+          type="danger"
+          loading={backendActionLoading}
+        />
+      )}
+    </div>
+  );
+
+  const renderServerTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.server.frontend.title')}</h4>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={restartFrontend}
+              disabled={frontendActionLoading || user?.role !== 'administrator'}
+              className="px-4 py-2 rounded-md bg-amber-600 dark:bg-amber-700 text-white hover:bg-amber-700 dark:hover:bg-amber-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.frontend.restart')}
+            </button>
+            <button
+              type="button"
+              onClick={stopFrontend}
+              disabled={frontendActionLoading || user?.role !== 'administrator'}
+              className="px-4 py-2 rounded-md bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.frontend.stop')}
+            </button>
+            <button
+              type="button"
+              onClick={checkFrontendHealth}
+              disabled={frontendActionLoading}
+              className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.frontend.check')}
+            </button>
+          </div>
+          {user?.role !== 'administrator' && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.backup.adminRequired')}</p>
+          )}
+          <div className="mt-4 text-sm text-gray-700 dark:text-gray-300">
+            <div>{t('appConfig.server.status')} {frontendHealth ? frontendHealth.status : '-'}</div>
+            <div>{t('appConfig.server.uptime')} {frontendHealth && typeof frontendHealth.uptime !== 'undefined' ? formatUptime(frontendHealth.uptime) : '-'}</div>
+            <div>{t('appConfig.server.generatedAt')} {frontendHealth && frontendHealth.timestamp ? new Date(frontendHealth.timestamp).toLocaleString('pl-PL') : '-'}</div>
+          </div>
+        </div>
+        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-200 mb-3">{t('appConfig.server.backend.title')}</h4>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+            onClick={restartBackend}
+            disabled={backendActionLoading || user?.role !== 'administrator'}
+              className="px-4 py-2 rounded-md bg-amber-600 dark:bg-amber-700 text-white hover:bg-amber-700 dark:hover:bg-amber-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.backend.restart')}
+            </button>
+            <button
+              type="button"
+            onClick={stopBackend}
+            disabled={backendActionLoading || user?.role !== 'administrator'}
+              className="px-4 py-2 rounded-md bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.backend.stop')}
+            </button>
+            <button
+              type="button"
+            onClick={checkBackendHealth}
+            disabled={backendHealthLoading}
+              className="px-4 py-2 rounded-md bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-50"
+            >
+              {t('appConfig.server.backend.check')}
+            </button>
+          </div>
+          {user?.role !== 'administrator' && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('appConfig.backup.adminRequired')}</p>
+          )}
+          <div className="mt-4 text-sm text-gray-700 dark:text-gray-300">
+            <div>{t('appConfig.server.status')} {backendHealth ? backendHealth.status : '-'}</div>
+            <div>{t('appConfig.server.uptime')} {backendHealth && typeof backendHealth.uptime !== 'undefined' ? formatUptime(backendHealth.uptime) : '-'}</div>
+            <div>{t('appConfig.server.generatedAt')} {backendHealth && backendHealth.timestamp ? new Date(backendHealth.timestamp).toLocaleString('pl-PL') : '-'}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1328,7 +1739,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       setCatNewName('');
       notifySuccess('Dodano kategorię');
     } catch (err) {
-      const msg = err?.message || 'Nie udało się dodać kategorii';
+      const msg = err?.message || t('appConfig.toolsCategories.addError');
       notifyError(msg);
     }
   };
@@ -1357,7 +1768,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       cancelEditCategory();
       notifySuccess('Zaktualizowano kategorię');
     } catch (err) {
-      const msg = err?.message || 'Nie udało się zaktualizować kategorii';
+      const msg = err?.message || t('appConfig.toolsCategories.updateError');
       notifyError(msg);
     }
   };
@@ -1370,7 +1781,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
       setCategories(prev => prev.filter(c => c.id !== cat.id));
       notifySuccess('Usunięto kategorię');
     } catch (err) {
-      const msg = err?.message || 'Nie udało się usunąć kategorii';
+      const msg = err?.message || t('appConfig.toolsCategories.deleteError');
       notifyError(msg);
     }
   };
@@ -1461,6 +1872,7 @@ const AppConfigScreen = ({ apiClient, user }) => {
     const [users, setUsers] = useState([]);
     const { t } = useLanguage();
     const [showModal, setShowModal] = useState(false);
+    const userModalRef = useRef(null);
     const [editingUser, setEditingUser] = useState(null);
     const [formData, setFormData] = useState({
       username: '',
@@ -1498,6 +1910,36 @@ const AppConfigScreen = ({ apiClient, user }) => {
     useEffect(() => {
       fetchUsers();
     }, []);
+
+    useEffect(() => {
+      const handler = (e) => {
+        if (e.key === 'Escape') {
+          if (showModal) setShowModal(false);
+        }
+        if (e.key === 'Tab') {
+          const el = userModalRef.current;
+          if (!el) return;
+          const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+          const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+          if (focusables.length === 0) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      };
+      if (showModal) {
+        document.addEventListener('keydown', handler);
+        setTimeout(() => {
+          const el = userModalRef.current;
+          if (!el) return;
+          const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+          const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+          if (focusables[0]) focusables[0].focus();
+        }, 0);
+      }
+      return () => document.removeEventListener('keydown', handler);
+    }, [showModal]);
 
     const fetchUsers = async () => {
       try {
@@ -1708,7 +2150,11 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
         <div className="flex items-center justify-between mt-3 px-6 py-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-700 dark:text-slate-200">
-            {totalItems === 0 ? '0–0 / 0' : `${startIndex + 1}–${endIndexExclusive} / ${totalItems}`}
+            {t('common.pagination.range', {
+              start: totalItems === 0 ? 0 : (startIndex + 1),
+              end: totalItems === 0 ? 0 : endIndexExclusive,
+              total: totalItems
+            })}
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -1749,11 +2195,14 @@ const AppConfigScreen = ({ apiClient, user }) => {
 
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
+            <div ref={userModalRef} role="dialog" aria-modal="true" aria-labelledby="user-modal-title" aria-describedby="user-modal-desc" className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
               <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                <h2 id="user-modal-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   {editingUser ? 'Edytuj użytkownika' : 'Dodaj użytkownika'}
                 </h2>
+              </div>
+              <div id="user-modal-desc" className="px-6 py-2 text-sm text-slate-700 dark:text-slate-300">
+                {t('appConfig.users.modalDescription')}
               </div>
               
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -1878,6 +2327,8 @@ const AppConfigScreen = ({ apiClient, user }) => {
         return renderTranslationsTab();
       case 'backup':
         return renderBackupTab();
+      case 'server':
+        return renderServerTab();
       default:
         return renderGeneralTab();
     }
@@ -1917,9 +2368,9 @@ const AppConfigScreen = ({ apiClient, user }) => {
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-200">
         <div className="grid grid-cols-1 md:grid-cols-12">
           {/* Left navigation panel */}
-          <aside className="md:col-span-3 md:sticky md:top-0 md:self-start md:max-h-[80vh] md:overflow-y-auto border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 p-3 md:p-4">
+          <aside className="md:col-span-3 md:sticky md:top-0 md:self-start md:max-h-min md:overflow-y-auto border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 p-3 md:p-4">
             <nav
-              className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible"
+              className="flex md:flex-col gap-2 overflow-x-auto md:overflow-hidden"
               aria-label="Tabs"
             >
               {tabs.map((tab) => {

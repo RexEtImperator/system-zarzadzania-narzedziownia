@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { initFlowbite } from 'flowbite';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
 import { Bars3Icon, HomeIcon, WrenchScrewdriverIcon, ShieldCheckIcon, ArchiveBoxIcon, UsersIcon, TagIcon, ChartBarIcon, Cog6ToothIcon, FlagIcon } from '@heroicons/react/24/solid';
@@ -653,7 +654,7 @@ function AdminPanel({ user, onNavigate }) {
 }
 
 // Main App Component
-function App() {
+function AppImpl() {
   const [user, setUser] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [tools, setTools] = useState([]);
@@ -679,6 +680,8 @@ function App() {
   const [appName, setAppName] = useState('SZN - System Zarządzania Narzędziownią');
   const [initialSearchTerm, setInitialSearchTerm] = useState({ tools: '', bhp: '' });
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -694,6 +697,9 @@ function App() {
         
         if (savedScreen) {
           setCurrentScreen(savedScreen);
+          navigate(`/${savedScreen}`, { replace: true });
+        } else {
+          navigate(`/${currentScreen}`, { replace: true });
         }
       } catch (error) {
         console.error('Error parsing user data:', error);
@@ -703,6 +709,28 @@ function App() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const path = String(location.pathname || '/').replace(/^\/+/, '');
+    const allowed = ['dashboard','tools','bhp','inventory','labels','analytics','audit','admin','report','user-management','config','app-config','user-settings','db-viewer'];
+    const next = allowed.includes(path) ? path : 'dashboard';
+    const requiredPermission = {
+      tools: PERMISSIONS.VIEW_TOOLS,
+      bhp: PERMISSIONS.VIEW_BHP,
+      inventory: PERMISSIONS.VIEW_INVENTORY,
+      employees: PERMISSIONS.VIEW_EMPLOYEES,
+      labels: PERMISSIONS.VIEW_LABELS,
+      analytics: PERMISSIONS.VIEW_ANALYTICS,
+      admin: PERMISSIONS.VIEW_ADMIN
+    }[next];
+    if (requiredPermission && !hasPermission(user, requiredPermission)) {
+      navigate('/dashboard', { replace: true });
+      if (currentScreen !== 'dashboard') setCurrentScreen('dashboard');
+      localStorage.setItem('currentScreen', 'dashboard');
+    } else if (next !== currentScreen) {
+      setCurrentScreen(next);
+    }
+  }, [location.pathname]);
 
   // Save sidebar collapse preference on each change
   useEffect(() => {
@@ -795,11 +823,28 @@ function App() {
   };
 
   const handleNavigation = (screen) => {
+    const allowed = ['dashboard','tools','bhp','inventory','labels','analytics','audit','admin','report','user-management','config','app-config','user-settings','db-viewer'];
+    const requiredPermission = {
+      tools: PERMISSIONS.VIEW_TOOLS,
+      bhp: PERMISSIONS.VIEW_BHP,
+      inventory: PERMISSIONS.VIEW_INVENTORY,
+      employees: PERMISSIONS.VIEW_EMPLOYEES,
+      labels: PERMISSIONS.VIEW_LABELS,
+      analytics: PERMISSIONS.VIEW_ANALYTICS,
+      admin: PERMISSIONS.VIEW_ADMIN
+    }[screen];
+    if (requiredPermission && !hasPermission(user, requiredPermission)) {
+      toast.error(t('common.noPermission'));
+      navigate('/dashboard');
+      setCurrentScreen('dashboard');
+      localStorage.setItem('currentScreen', 'dashboard');
+      return;
+    }
     setCurrentScreen(screen);
     setIsMobileMenuOpen(false);
     
-    // Zapisz aktualny ekran w localStorage
     localStorage.setItem('currentScreen', screen);
+    navigate(`/${screen}`);
     
     // Dodaj wpis audytu dla nawigacji do ważnych sekcji
     const screenLabels = {
@@ -911,30 +956,25 @@ function App() {
 
           <Suspense fallback={<Preloader fullscreen label="Ładowanie…" /> }>
             <div className="flex-1 overflow-auto">
-              {currentScreen === 'dashboard' && <DashboardScreen tools={tools} employees={employees} user={user} />}
-              {currentScreen === 'tools' && <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} />}
-              {currentScreen === 'bhp' && <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} />}
-              {currentScreen === 'inventory' && <InventoryScreen tools={tools} user={user} />}
-              {currentScreen === 'labels' && <LabelsManager user={user} />}
-              {currentScreen === 'employees' && <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} />}
-              {currentScreen === 'analytics' && <AnalyticsScreen tools={tools} employees={employees} user={user} />}
-              {currentScreen === 'audit' && <AuditLogScreen user={user} />}
-              {currentScreen === 'admin' && <AdminPanel user={user} onNavigate={handleNavigation} />}
-              {currentScreen === 'report' && <ReportsScreen user={user} employees={employees} tools={tools} />}
-              {currentScreen === 'user-management' && <UserManagementScreen user={user} />}
-              {currentScreen === 'config' && <AppConfigScreen user={user} apiClient={api} />}
-              {currentScreen === 'app-config' && <AppConfigScreen user={user} apiClient={api} />}
-              {currentScreen === 'user-settings' && <UserSettingsScreen user={user} />}
-              {currentScreen === 'db-viewer' && (
-                user?.role === 'administrator' ? (
-                  <DbViewerScreen user={user} />
-                ) : (
-                  <div className="p-6">
-                    <h2 className="text-sm font-medium text-gray-900 dark:text-white">Brak uprawnień</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Panel podglądu bazy danych jest dostępny tylko dla administratora.</p>
-                  </div>
-                )
-              )}
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardScreen tools={tools} employees={employees} user={user} />} />
+                <Route path="/tools" element={hasPermission(user, PERMISSIONS.VIEW_TOOLS) ? <ToolsScreen tools={tools} setTools={setTools} employees={employees} user={user} initialSearchTerm={initialSearchTerm.tools} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/bhp" element={hasPermission(user, PERMISSIONS.VIEW_BHP) ? <BhpScreen employees={employees} user={user} initialSearchTerm={initialSearchTerm.bhp} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/inventory" element={hasPermission(user, PERMISSIONS.VIEW_INVENTORY) ? <InventoryScreen tools={tools} user={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/labels" element={hasPermission(user, PERMISSIONS.VIEW_LABELS) ? <LabelsManager user={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/employees" element={hasPermission(user, PERMISSIONS.VIEW_EMPLOYEES) ? <EmployeesScreen employees={employees} setEmployees={setEmployees} user={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/analytics" element={hasPermission(user, PERMISSIONS.VIEW_ANALYTICS) ? <AnalyticsScreen tools={tools} employees={employees} user={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/audit" element={<AuditLogScreen user={user} />} />
+                <Route path="/admin" element={hasPermission(user, PERMISSIONS.VIEW_ADMIN) ? <AdminPanel user={user} onNavigate={handleNavigation} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/report" element={<ReportsScreen user={user} employees={employees} tools={tools} />} />
+                
+                <Route path="/config" element={hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) ? <AppConfigScreen user={user} apiClient={api} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/app-config" element={hasPermission(user, PERMISSIONS.SYSTEM_SETTINGS) ? <AppConfigScreen user={user} apiClient={api} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/user-settings" element={<UserSettingsScreen user={user} />} />
+                <Route path="/db-viewer" element={user?.role === 'administrator' ? <DbViewerScreen user={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
             </div>
           </Suspense>
         </div>
@@ -957,4 +997,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppImpl />
+    </BrowserRouter>
+  );
+}

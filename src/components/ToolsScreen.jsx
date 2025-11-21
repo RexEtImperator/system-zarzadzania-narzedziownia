@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon, WrenchIcon, EnvelopeIcon, ArrowDownOnSquareIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import { toast } from 'react-toastify';
+ 
+import { notifyError, notifySuccess, notifyInfo, notifyWarn } from '../utils/notify';
 import api from '../api';
 import BarcodeScanner from './BarcodeScanner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
-import { PERMISSIONS, hasPermission } from '../constants';
+import { PERMISSIONS, hasPermission, PAGINATION } from '../constants';
 import SkeletonList from './SkeletonList';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getToolStatusInfo } from '../utils/statusUtils';
@@ -35,6 +36,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const MIN_SEARCH_LEN = 2;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGINATION.DEFAULT_PAGE_SIZE);
+  const [serverPagination, setServerPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: PAGINATION.DEFAULT_PAGE_SIZE });
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -48,6 +54,42 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const [notifySending, setNotifySending] = useState(false);
   // Prefix for tool codes
   const [toolsCodePrefix, setToolsCodePrefix] = useState('');
+  const [softLoading, setSoftLoading] = useState(false);
+  const serviceModalRef = useRef(null);
+  const notifyModalRef = useRef(null);
+  const editModalRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        if (showServiceModal) handleCloseServiceModal();
+        if (notifyModal) setNotifyModal(false);
+        if (showModal) handleCloseModal();
+      }
+      if (e.key === 'Tab') {
+        const el = serviceModalRef.current || notifyModalRef.current || editModalRef.current;
+        if (!el) return;
+        const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    if (showServiceModal || notifyModal || showModal) {
+      document.addEventListener('keydown', handler);
+      setTimeout(() => {
+        const el = serviceModalRef.current || notifyModalRef.current || editModalRef.current;
+        if (!el) return;
+        const nodes = el.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(nodes).filter(n => !n.hasAttribute('disabled'));
+        if (focusables[0]) focusables[0].focus();
+      }, 0);
+    }
+    return () => document.removeEventListener('keydown', handler);
+  }, [showServiceModal, notifyModal, showModal]);
 
   // Backend suggestions for Power Tools; fallback to front-end data
   const [elektronarzedziaSuggestions, setElektronarzedziaSuggestions] = useState({ manufacturer: [], model: [], production_year: [] });
@@ -147,9 +189,9 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const extra = d <= 7 ? '' : t('tools.weldInspection.lessEqual30');
       const message = `${title}${label}${inTxt}${d}${daysTxt}${extra}`;
       if (d <= 7) {
-        toast.warn(message);
+        notifyWarn(message);
       } else {
-        toast.info(message);
+        notifyInfo(message);
       }
     });
   };
@@ -160,20 +202,25 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   // Kategorie z backendu do formularza dodawania/edycji
   const [availableCategories, setAvailableCategories] = useState([]);
 
-  // Filter tools based on search and filters
-  const filteredTools = (tools || []).filter(Boolean).filter(tool => {
-    const matchesSearch = !searchTerm || 
-      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.inventory_number?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = !selectedCategory || tool.category === selectedCategory;
-    const computedStatus = (tool.quantity === 1 && (tool.service_quantity || 0) > 0) ? 'serwis' : (tool.status || 'dostępne');
-    const matchesStatus = !selectedStatus || computedStatus === selectedStatus;
-    
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Filter tools based on search and filters (fallback client-side)
+  const filteredTools = useMemo(() => {
+    const term = String(searchTerm || '').trim().toLowerCase();
+    const cat = String(selectedCategory || '').trim().toLowerCase();
+    const stat = String(selectedStatus || '').trim().toLowerCase();
+    return (tools || []).filter(t => {
+      const tCat = String(t?.category || '').trim().toLowerCase();
+      const tStat = String(t?.status || '').trim().toLowerCase();
+      if (cat && tCat !== cat) return false;
+      if (stat && tStat !== stat) return false;
+      if (!term) return true;
+      const name = String(t?.name || '').toLowerCase();
+      const sku = String(t?.sku || '').toLowerCase();
+      const inv = String(t?.inventory_number || '').toLowerCase();
+      const serial = String(t?.serial_number || '').toLowerCase();
+      const loc = String(t?.location || '').toLowerCase();
+      return name.includes(term) || sku.includes(term) || inv.includes(term) || serial.includes(term) || loc.includes(term);
+    });
+  }, [tools, searchTerm, selectedCategory, selectedStatus]);
 
   // Sort tools by inventory number ascending (empty values last)
   const sortedTools = useMemo(() => {
@@ -190,6 +237,16 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     });
   }, [filteredTools]);
 
+  // Widokowe stronicowanie po stronie klienta, gdy backend nie stosuje limitu
+  const visibleSortedTools = useMemo(() => {
+    const totalLen = (tools || []).length;
+    const serverPaginated = (serverPagination.totalPages > 1) || (serverPagination.totalItems !== totalLen);
+    if (serverPaginated) return sortedTools;
+    const start = (currentPage - 1) * pageSize;
+    const end = Math.min(start + pageSize, sortedTools.length);
+    return sortedTools.slice(start, end);
+  }, [sortedTools, tools, serverPagination, currentPage, pageSize]);
+
   const canViewTools = hasPermission(user, PERMISSIONS.VIEW_TOOLS);
   const canManageTools = hasPermission(user, PERMISSIONS.MANAGE_TOOLS);
   const canExportTools = hasPermission(user, PERMISSIONS.EXPORT_TOOLS);
@@ -202,7 +259,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const confirmNotify = async () => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     if (!notifyTool) return;
@@ -226,11 +283,11 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
         target_employee_id: targetEmployeeId || undefined,
         target_brand_number: targetBrandNumber || undefined
       });
-      toast.success(t('tools.notify.sent'));
+      notifySuccess(t('tools.notify.sent'));
       setNotifyModal(false);
       setNotifyTool(null);
     } catch (err) {
-      toast.error(t('tools.notify.error'));
+      notifyError(t('tools.notify.error'));
     } finally {
       setNotifySending(false);
     }
@@ -242,10 +299,28 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       setTools([]);
       return;
     }
-    fetchTools();
+    fetchTools({ soft: false });
   }, [canViewTools]);
 
-  // Po załadowaniu narzędzi, raz wyświetl toasty nadchodzących przeglądów dla kategorii Spawalnicze
+  useEffect(() => {
+    if (!canViewTools) return;
+    fetchTools({ soft: true });
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    if (!canViewTools) return;
+    if (debouncedSearch && debouncedSearch.length < MIN_SEARCH_LEN) return;
+    setCurrentPage(1);
+    fetchTools({ soft: true });
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (!canViewTools) return;
+    setCurrentPage(1);
+    fetchTools({ soft: false });
+  }, [selectedCategory, selectedStatus]);
+
+  // Once the tools are loaded, display the upcoming review toasts for the Welding category once
   useEffect(() => {
     if (!didNotifyUpcomingRef.current && (tools || []).length > 0) {
       try {
@@ -281,8 +356,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
         setAvailableCategories(names);
       } catch (err) {
         console.warn('Nie udało się pobrać kategorii:', err?.message || err);
-        // Fallback na stałe kategorie, jeśli backend niedostępny
-        setAvailableCategories(['Ręczne', 'Elektronarzędzia', 'Spawalnicze', 'Pneumatyczne', 'Akumulatorowe']);
+        setAvailableCategories([]);
       }
     };
     fetchCategories();
@@ -368,21 +442,46 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
     };
   }, [formData.sku, editingTool, tools]);
 
-  const fetchTools = async () => {
+  const fetchTools = async ({ soft = false } = {}) => {
     try {
-      setLoading(true);
-      const response = await api.get('/api/tools');
+      if (soft) setSoftLoading(true); else setLoading(true);
+      const params = new URLSearchParams();
+      params.append('page', String(currentPage));
+      params.append('limit', String(pageSize));
+      if (debouncedSearch && debouncedSearch.length >= MIN_SEARCH_LEN) params.append('search', debouncedSearch);
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (selectedStatus) params.append('status', selectedStatus);
+      const response = await api.get(`/api/tools?${params.toString()}`);
       const list = Array.isArray(response)
         ? response
         : (Array.isArray(response?.data) ? response.data : []);
       setTools(list);
+      const p = response?.pagination;
+      if (p && typeof p === 'object') {
+        setServerPagination({
+          currentPage: Number(p.currentPage) || currentPage,
+          totalPages: Number(p.totalPages) || 1,
+          totalItems: Number(p.totalItems) || list.length,
+          itemsPerPage: Number(p.itemsPerPage) || pageSize
+        });
+      } else {
+        setServerPagination({ currentPage, totalPages: 1, totalItems: list.length, itemsPerPage: pageSize });
+      }
     } catch (error) {
       console.error('Error fetching tools:', error);
       setTools([]);
+      setServerPagination({ currentPage, totalPages: 0, totalItems: 0, itemsPerPage: pageSize });
     } finally {
-      setLoading(false);
+      if (soft) setSoftLoading(false); else setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -470,7 +569,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     
@@ -533,7 +632,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
             tool.id === editingTool.id ? { ...tool, ...dataToSubmit } : tool
           )
         );
-        toast.success(t('tools.save.updateSuccess'));
+        notifySuccess(t('tools.save.updateSuccess'));
       } else {
         const response = await api.post('/api/tools', dataToSubmit);
         // API client zwraca bezpośrednio obiekt narzędzia, nie { data }
@@ -551,16 +650,16 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       if (normalized.includes('sku') || normalized.includes('unique constraint')) {
         const msg = t('tools.validation.skuExists');
         setErrors(prev => ({ ...prev, sku: msg }));
-        toast.error(msg);
+        notifyError(msg);
       } else if (normalized.includes('numerze ewidencyjnym') || normalized.includes('inventory')) {
         setErrors(prev => ({ ...prev, inventory_number: apiMsg }));
-        toast.error(apiMsg);
+        notifyError(apiMsg);
       } else if (normalized.includes('fabryczny') || normalized.includes('serial')) {
         setErrors(prev => ({ ...prev, serial_number: apiMsg }));
-        toast.error(apiMsg);
+        notifyError(apiMsg);
       } else {
         setErrors(prev => ({ ...prev, submit: apiMsg }));
-        if (apiMsg) toast.error(apiMsg);
+        if (apiMsg) notifyError(apiMsg);
       }
     } finally {
       setIsLoading(false);
@@ -569,7 +668,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleOpenModal = (tool = null) => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     setEditingTool(tool);
@@ -639,7 +738,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleDelete = async (toolId) => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     if (!window.confirm(t('tools.confirm.deleteTool'))) {
@@ -669,7 +768,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleOpenServiceModal = (tool) => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     setServiceTool(tool);
@@ -687,13 +786,13 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
   const handleConfirmService = async () => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     if (!serviceTool) return;
     const maxQty = (serviceTool.quantity || 0) - (serviceTool.service_quantity || 0);
     if (serviceQuantity < 1 || serviceQuantity > maxQty) {
-      toast.error(`${t('tools.service.chooseQty')} ${maxQty}`);
+      notifyError(`${t('tools.service.chooseQty')} ${maxQty}`);
       return;
     }
     try {
@@ -703,23 +802,23 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       if (selectedTool?.id === updated.id) {
         setSelectedTool(prev => ({ ...prev, ...updated }));
       }
-      toast.success(resp?.message || t('tools.service.sendSuccess'));
+      notifySuccess(resp?.message || t('tools.service.sendSuccess'));
       handleCloseServiceModal();
     } catch (err) {
       const msg = err?.response?.data?.message || t('tools.service.sendFailed');
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
   const handleServiceReceive = async () => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     if (!selectedTool) return;
     const current = selectedTool.service_quantity || 0;
     if (current <= 0) {
-      toast.info(t('tools.service.receiveNone'));
+      notifyInfo(t('tools.service.receiveNone'));
       return;
     }
     try {
@@ -727,22 +826,22 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       const updated = resp?.tool || resp;
       setTools(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
       setSelectedTool(prev => ({ ...prev, ...updated }));
-      toast.success(resp?.message || t('tools.service.receiveSuccess'));
+      notifySuccess(resp?.message || t('tools.service.receiveSuccess'));
     } catch (err) {
       const msg = err?.response?.data?.message || t('tools.service.receiveFailed');
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
   const handleServiceReceiveFor = async (tool) => {
     if (!canManageTools) {
-      toast.error(t('tools.errors.noManagePermission'));
+      notifyError(t('tools.errors.noManagePermission'));
       return;
     }
     if (!tool) return;
     const current = tool.service_quantity || 0;
     if (current <= 0) {
-      toast.info(t('tools.service.receiveNone'));
+      notifyInfo(t('tools.service.receiveNone'));
       return;
     }
     try {
@@ -752,10 +851,10 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       if (selectedTool?.id === updated.id) {
         setSelectedTool(prev => ({ ...prev, ...updated }));
       }
-      toast.success(resp?.message || t('tools.service.receiveSuccess'));
+      notifySuccess(resp?.message || t('tools.service.receiveSuccess'));
     } catch (err) {
       const msg = err?.response?.data?.message || t('tools.service.receiveFailed');
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
@@ -1382,6 +1481,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 placeholder={t('tools.search.placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setSearchTerm(''); } }}
                 className="w-full pr-12 px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sharp-text"
               />
               {searchTerm && (
@@ -1462,7 +1562,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
       </div>
 
       {/* Tools List */}
-      {loading ? (
+      {loading && !softLoading ? (
         <div className="p-8 text-center">
           <div className="text-slate-400 dark:text-slate-500 text-6xl mb-4">🔧</div>
           <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 sharp-text">{t('tools.loading.title')}</h3>
@@ -1495,7 +1595,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
-                {sortedTools.map((tool) => {
+                {visibleSortedTools.map((tool) => {
                   const { statusBorderColor } = getToolStatusInfo(tool);
                   
                   return (
@@ -1578,7 +1678,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
 
           {/* Mobile Card View */}
           <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-600">
-            {sortedTools.map((tool) => {
+            {visibleSortedTools.map((tool) => {
               const { statusBorderColor } = getToolStatusInfo(tool);
               return (
               <div 
@@ -1666,23 +1766,81 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           </div>
         </>
       )}
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-3 px-6 py-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="text-sm text-slate-700 dark:text-slate-200">
+          {t('common.pagination.range', {
+            start: ((serverPagination.totalPages > 1 || serverPagination.totalItems !== (tools || []).length) ? serverPagination.totalItems : filteredTools.length) === 0
+              ? 0
+              : ((serverPagination.currentPage - 1) * pageSize + 1),
+            end: ((serverPagination.totalPages > 1 || serverPagination.totalItems !== (tools || []).length) ? serverPagination.totalItems : filteredTools.length) === 0
+              ? 0
+              : Math.min(
+                  serverPagination.currentPage * pageSize,
+                  (serverPagination.totalPages > 1 || serverPagination.totalItems !== (tools || []).length)
+                    ? serverPagination.totalItems
+                    : filteredTools.length
+                ),
+            total: (serverPagination.totalPages > 1 || serverPagination.totalItems !== (tools || []).length)
+              ? serverPagination.totalItems
+              : filteredTools.length
+          })}
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={pageSize}
+            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            aria-label="Rows per page"
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={serverPagination.currentPage === 1}
+              className="px-2 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50"
+              aria-label={t('common.pagination.prev')}
+            >
+              ‹
+            </button>
+            <span className="text-sm text-slate-700 dark:text-slate-200">
+              {serverPagination.currentPage} / {serverPagination.totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(serverPagination.totalPages, p + 1))}
+              disabled={serverPagination.currentPage === serverPagination.totalPages}
+              className="px-2 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50"
+              aria-label={t('common.pagination.next')}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      </div>
       {/* Service Modal */}
       {showServiceModal && serviceTool && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseServiceModal(); }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+          <div ref={serviceModalRef} role="dialog" aria-modal="true" aria-labelledby="service-title" aria-describedby="service-desc" className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.service.modal.title')}</h2>
+                <h2 id="service-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.service.modal.title')}</h2>
                 <button
                   onClick={handleCloseServiceModal}
-                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
                 >
                   <span className="text-2xl">×</span>
                 </button>
               </div>
+              <div id="service-desc" className="text-sm text-slate-600 dark:text-slate-300 mb-3 sharp-text">{t('tools.service.modalDescription')}</div>
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.common.toolIssued')}: <span className="font-medium">{serviceTool.name}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.service.available')}: <span className="font-medium">{(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}</span> szt.</p>
@@ -1694,7 +1852,7 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   max={(serviceTool.quantity || 0) - (serviceTool.service_quantity || 0)}
                   value={serviceQuantity}
                   onChange={(e) => setServiceQuantity(parseInt(e.target.value || '1', 10))}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
                 />
                 <label htmlFor="service-order-number" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 sharp-text">{t('tools.service.orderNumberLabel')}</label>
                 <input
@@ -1703,19 +1861,19 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
                   value={serviceOrderNumber}
                   onChange={(e) => setServiceOrderNumber(e.target.value)}
                   placeholder={t('tools.service.orderNumberPlaceholder')}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sharp-text"
                 />
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   onClick={handleCloseServiceModal}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleConfirmService}
-                  className="px-3 py-1.5 bg-rose-600 dark:bg-rose-700 text-white rounded-lg text-sm hover:bg-rose-700 dark:hover:bg-rose-800 sharp-text"
+                  className="px-3 py-1.5 bg-rose-600 dark:bg-rose-700 text-white rounded-lg text-sm hover:bg-rose-700 dark:hover:bg-rose-800 sharp-text focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
                 >
                   {t('tools.service.sendButton')}
                 </button>
@@ -1731,17 +1889,18 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={(e) => { if (e.target === e.currentTarget) setNotifyModal(false); }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+          <div ref={notifyModalRef} role="dialog" aria-modal="true" aria-labelledby="notify-title" aria-describedby="notify-desc" className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.actions.notifyReturn')}</h2>
+                <h2 id="notify-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 sharp-text">{t('tools.actions.notifyReturn')}</h2>
                 <button
                   onClick={() => setNotifyModal(false)}
-                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   <span className="text-2xl">×</span>
                 </button>
               </div>
+              <div id="notify-desc" className="text-sm text-slate-600 dark:text-slate-300 mb-3 sharp-text">{t('tools.notify.modalDescription')}</div>
               <div className="space-y-2">
                 <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.labels.sku')}: <span className="font-mono">{notifyTool.sku || '-'}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-300 sharp-text">{t('tools.common.toolIssued')}: <span className="font-medium">{notifyTool.name}</span></p>
@@ -1750,14 +1909,14 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   onClick={() => setNotifyModal(false)}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 sharp-text focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={confirmNotify}
                   disabled={notifySending}
-                  className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-lg text-sm hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-50 sharp-text"
+                  className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-lg text-sm hover:bg-indigo-700 dark:hover:bg-indigo-800 disabled:opacity-50 sharp-text focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   {t('confirmation.confirm')}
                 </button>
@@ -1781,19 +1940,20 @@ function ToolsScreen({ initialSearchTerm = '', user }) {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal(); }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div ref={editModalRef} role="dialog" aria-modal="true" aria-labelledby="edit-title" aria-describedby="edit-desc" className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 sharp-text">
+                <h2 id="edit-title" className="text-xl font-bold text-slate-900 dark:text-slate-100 sharp-text">
                   {editingTool ? 'Edytuj narzędzie' : 'Dodaj narzędzie'}
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   <span className="text-2xl">×</span>
                 </button>
               </div>
+              <div id="edit-desc" className="text-sm text-slate-600 dark:text-slate-300 mb-3 sharp-text">{t('tools.edit.modalDescription')}</div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* First row - Name and SKU */}

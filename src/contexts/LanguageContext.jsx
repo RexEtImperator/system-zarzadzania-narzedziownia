@@ -11,11 +11,21 @@ function escapeRegExp(string) {
 }
 
 function interpolate(template, params) {
-  if (!template || typeof template !== 'string' || !params) return template;
+  if (!template || typeof template !== 'string') return template;
   let result = template;
-  for (const [key, value] of Object.entries(params)) {
-    const re = new RegExp(`\\{${escapeRegExp(key)}\\}`, 'g');
-    result = result.replace(re, String(value));
+  if (params && typeof params === 'object') {
+    for (const [key, value] of Object.entries(params)) {
+      const re = new RegExp(`\\{${escapeRegExp(key)}\\}`, 'g');
+      result = result.replace(re, String(value));
+    }
+  }
+  const unmatched = Array.from(String(result).matchAll(/\{([^}]+)\}/g)).map((m) => m[1]);
+  if (unmatched.length) {
+    if (params && typeof params === 'object') {
+      console.warn('Missing interpolation params', { missing: unmatched, template });
+    } else {
+      console.debug('Interpolation called without params for template containing placeholders', { placeholders: unmatched, template });
+    }
   }
   return result;
 }
@@ -126,3 +136,5 @@ export function LanguageProvider({ children }) {
 export function useLanguage() {
   return useContext(LanguageContext);
 }
+
+export { interpolate };

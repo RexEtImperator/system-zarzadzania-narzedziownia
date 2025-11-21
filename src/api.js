@@ -88,6 +88,7 @@ class ApiClient {
         // 403 (Forbidden) usually means insufficient permissions — do not logout in this case.
         if (
           response.status === 401 ||
+          (response.status === 403 && typeof message === 'string' && message.toLowerCase().includes('invalid token')) ||
           (typeof message === 'string' && message.includes('Nieprawidłowy token'))
         ) {
           console.warn('[API] Invalid or expired token detected. Clearing token and requiring re-login.');
@@ -192,6 +193,7 @@ class ApiClient {
         } catch (_) {}
         if (
           response.status === 401 ||
+          (response.status === 403 && typeof message === 'string' && message.toLowerCase().includes('invalid token')) ||
           (typeof message === 'string' && message.includes('Nieprawidłowy token'))
         ) {
           console.warn('[API] Invalid or expired token detected (multipart). Clearing token and requiring re-login.');

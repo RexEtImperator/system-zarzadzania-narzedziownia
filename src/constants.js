@@ -57,7 +57,7 @@ export const PERMISSIONS = {
 
 // User roles
 export const ROLES = {
-  ADMIN: 'admin',
+  ADMIN: 'administrator',
   MANAGER: 'manager',
   HR: 'hr',
   USER: 'user',
@@ -102,8 +102,8 @@ export const API_CONFIG = {
 
 // Endpoints API
 export const API_ENDPOINTS = {
-  // auth
-  LOGIN: '/api/auth/login',
+  // Auth
+  LOGIN: '/api/login',
   LOGOUT: '/api/auth/logout',
   REFRESH_TOKEN: '/api/auth/refresh',
   

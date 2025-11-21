@@ -1,6 +1,3 @@
-// Sync missing i18n keys from src/i18n/*.json into SQLite 'translate' table
-// Inserts only missing pairs (lang,key); existing DB values are preserved
-
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
@@ -28,19 +25,9 @@ function readJsonSafe(jsonPath) {
   }
 }
 
-async function getExistingKeys(db, lang) {
-  return new Promise((resolve, reject) => {
-    db.all('SELECT key FROM translate WHERE lang = ?', [lang], (err, rows) => {
-      if (err) return reject(err);
-      resolve(new Set((rows || []).map(r => r.key)));
-    });
-  });
-}
-
 async function main() {
   const dbPath = path.join(__dirname, '..', 'database.db');
   const db = new sqlite3.Database(dbPath);
-
   const i18nDir = path.join(__dirname, '..', 'src', 'i18n');
   const files = {
     pl: path.join(i18nDir, 'pl.json'),
@@ -54,29 +41,33 @@ async function main() {
     de: flattenObject(readJsonSafe(files.de)),
   };
 
-  try {
-    const langs = ['pl', 'en', 'de'];
-    const insertedCounts = { pl: 0, en: 0, de: 0 };
+  const stmtSql = `INSERT INTO translate(lang, key, value, updated_at) VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(lang, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`;
+  const stmt = db.prepare(stmtSql);
+  let updates = 0;
 
-    for (const lang of langs) {
-      const existing = await getExistingKeys(db, lang);
-      const stmt = db.prepare('INSERT OR IGNORE INTO translate (lang, key, value, updated_at) VALUES (?, ?, ?, datetime("now"))');
-      for (const [key, value] of Object.entries(dicts[lang])) {
-        if (!existing.has(key)) {
-          stmt.run(lang, key, value);
-          insertedCounts[lang]++;
+  try {
+    db.serialize(() => {
+      for (const lang of Object.keys(dicts)) {
+        for (const [k, v] of Object.entries(dicts[lang])) {
+          stmt.run(lang, k, v, function(err) {
+            if (!err) updates++;
+          });
         }
       }
-      await new Promise((resolve, reject) => {
-        stmt.finalize(err => (err ? reject(err) : resolve()));
+      stmt.finalize((err) => {
+        if (err) {
+          console.error('Error finalizing sync statement:', err.message);
+          process.exitCode = 1;
+        } else {
+          console.log(`Synced translations from files into DB. Upserts executed: ${updates}`);
+        }
+        db.close();
       });
-    }
-
-    console.log('Translation synchronization completed. Missing keys inserted:', insertedCounts);
+    });
   } catch (e) {
-    console.error('Failed to synchronize translations:', e.message);
+    console.error('Failed to sync translations:', e.message);
     process.exitCode = 1;
-  } finally {
     db.close();
   }
 }

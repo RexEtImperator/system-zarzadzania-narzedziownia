@@ -39,6 +39,7 @@
     "saveChanges": "Zapisz zmiany",
     "saving": "Zapisywanie...",
     "details": "Szczegóły",
+    "edit": "Edytuj",
     "toastr": {
       "users": {
         "fetchError": "Błąd podczas pobierania użytkowników",
@@ -46,7 +47,8 @@
         "deleteError": "Błąd podczas usuwania użytkownika",
         "updatedSuccess": "Użytkownik został zaktualizowany",
         "addedSuccess": "Użytkownik został dodany",
-        "saveError": "Błąd podczas zapisywania użytkownika"
+        "saveError": "Błąd podczas zapisywania użytkownika",
+        "modalDescription": "Fill in user details. Password must comply with the configured security policy."
       },
       "form": {
         "requiredFields": "Wypełnij wszystkie wymagane pola",
@@ -86,6 +88,14 @@
         "positionUpdated": "Stanowisko zostało zaktualizowane",
         "positionCreated": "Stanowisko zostało utworzone"
       }
+    },
+    "pagination": {
+      "prev": "Poprzednia",
+      "page": "Strona",
+      "of": "z",
+      "next": "Następna",
+      "total": "Łącznie: {count}",
+      "range": "{start}–{end} / {total}"
     }
   },
   "Theme": {
@@ -462,8 +472,18 @@
     "status": { "active": "Aktywny", "inactive": "Nieaktywny", "suspended": "Zawieszony" }
   },
   "departments": {
+    "status": { "active": "Aktywny", "inactive": "Nieaktywny" },
+    "list": { "managerPrefix": "Kierownik: " },
+    "header": {
+      "title": "Zarządzanie działami",
+      "subtitle": "Dodawaj, edytuj i porządkuj działy"
+    },
+    "actions": {
+      "add": "Dodaj dział"
+    },
     "modal": {
       "title": { "add": "Dodaj dział", "edit": "Edytuj dział" },
+      "titles": { "add": "Dodaj dział", "edit": "Edytuj dział" },
       "labels": {
         "name": "Nazwa *",
         "description": "Opis",
@@ -478,6 +498,12 @@
     }
   },
   "positions": {
+    "header": {
+      "title": "Zarządzanie stanowiskami",
+      "subtitle": "Dodawaj, edytuj i porządkuj stanowiska"
+    },
+    "actions": { "add": "Dodaj stanowisko" },
+    "status": { "active": "Aktywne", "inactive": "Nieaktywne" },
     "list": {
       "statusMissing": "Brak w bazie",
       "departmentPrefix": "Dział: "
@@ -489,11 +515,12 @@
     },
     "modal": {
       "title": { "add": "Dodaj stanowisko", "edit": "Edytuj stanowisko" },
-      "labels": { "department": "Departament", "description": "Opis" },
+      "titles": { "add": "Dodaj stanowisko", "edit": "Edytuj stanowisko" },
+      "labels": { "name": "Nazwa *", "department": "Departament", "description": "Opis", "requirements": "Wymagania", "status": "Status" },
       "select": { "department": "Wybierz departament" },
-      "placeholders": { "description": "Krótki opis stanowiska" },
+      "placeholders": { "name": "np. Magazynier", "description": "Krótki opis stanowiska", "requirements": "Np. uprawnienia SEP, UDT…" },
       "buttons": { "save": "Zapisz", "cancel": "Anuluj" },
-      "errors": { "departmentRequired": "Departament jest wymagany" }
+      "errors": { "nameRequired": "Nazwa jest wymagana", "departmentRequired": "Departament jest wymagany" }
     }
   },
   "auth": { "invalid": "Nieprawidłowe zdarzenie uwierzytelniania: {reason}" },
@@ -513,7 +540,8 @@
       "categories": "Kategorie",
       "codes": "Prefiksy kodów",
       "translations": "Tłumaczenia",
-      "backup": "Kopie zapasowe"
+      "backup": "Kopie zapasowe",
+      "server": "Serwer"
     },
     "save": {
       "success": "Konfiguracja zapisana",
@@ -566,7 +594,15 @@
       "maxLoginAttempts": "Maks. liczba prób logowania",
       "lockoutDuration": "Czas blokady (minuty)",
       "requireSpecialChars": "Wymagaj znaków specjalnych",
-      "requireNumbers": "Wymagaj cyfr"
+      "requireNumbers": "Wymagaj cyfr",
+      "requireUppercase": "Wymagaj wielkich liter",
+      "requireLowercase": "Wymagaj małych liter",
+      "historyLength": "Długość historii haseł",
+      "blacklist": {
+        "title": "Blacklist haseł",
+        "placeholder": "np. admin, password, 123456",
+        "hint": "Wpisz hasła rozdzielone przecinkami; duplikaty będą pomijane"
+      }
     },
     "email": {
       "title": "E-mail",
@@ -647,6 +683,8 @@
       "keyExists": "Taki klucz już istnieje",
       "saved": "Tłumaczenia zapisane",
       "saveError": "Nie udało się zapisać tłumaczeń",
+      "loadError": "Nie udało się pobrać tłumaczeń",
+      "addDescription": "Wpisz klucz i wartości tłumaczeń dla wybranych języków.",
       "added": "Tłumaczenie dodane",
       "addError": "Nie udało się dodać tłumaczenia"
     },
@@ -655,7 +693,50 @@
       "lastFile": "Ostatni plik",
       "running": "Tworzenie kopii…",
       "run": "Utwórz kopię",
-      "adminRequired": "Wymagane uprawnienia administratora"
+      "adminRequired": "Wymagane uprawnienia administratora",
+      "listTitle": "Wszystkie kopie zapasowe",
+      "listError": "Nie udało się pobrać listy backupów",
+      "runError": "Nie udało się wykonać kopii zapasowej",
+      "headers": {
+        "file": "Plik",
+        "createdAt": "Utworzono",
+        "actions": "Akcje"
+      },
+      "restore": "Przywróć",
+      "restored": "Baza danych została przywrócona z kopii",
+      "restoreError": "Nie udało się przywrócić kopii zapasowej"
+    },
+    "server": {
+      "frontend": {
+        "title": "Frontend",
+        "restart": "Restart",
+        "stop": "Wyłącz",
+        "check": "Sprawdź status",
+        "restartStarted": "Restart frontend został rozpoczęty",
+        "restartError": "Nie udało się zrestartować frontend",
+        "stopStarted": "Wyłączanie frontend został rozpoczęte",
+        "stopError": "Nie udało się wyłączyć frontend",
+        "healthOk": "Frontend działa",
+        "healthError": "Frontend niedostępny"
+      },
+      "backend": {
+        "title": "Backend",
+        "restart": "Restart",
+        "stop": "Wyłącz",
+        "check": "Sprawdź status",
+        "restartStarted": "Restart backend został rozpoczęty",
+        "restartError": "Nie udało się zrestartować backend",
+        "stopStarted": "Wyłączanie backend został rozpoczęte",
+        "stopError": "Nie udało się wyłączyć backend",
+        "healthOk": "Backend działa",
+        "healthError": "Backend niedostępny"
+      },
+      "status": "Status:",
+      "uptime": "Uptime:",
+      "generatedAt": "Znacznik czasu:",
+      "restartTitle": "Restart backendu",
+      "restartMessage": "Po przywróceniu kopii wymagany jest restart backendu. Kontynuować?",
+      "restartNow": "Restartuj teraz"
     },
     "categories": {
       "title": "Kategorie narzędzi",
@@ -813,7 +894,9 @@
       "INVENTORY_ACCEPT_CORRECTION": "Inwentaryzacja - zatwierdzanie korekt",
       "INVENTORY_DELETE_CORRECTION": "Inwentaryzacja - usuwanie korekt",
       "INVENTORY_EXPORT_CSV": "Inwentaryzacja - eksport CSV",
-      "VIEW_LABELS": "Etykiety - przeglądanie"
+      "VIEW_LABELS": "Etykiety - przeglądanie",
+      "EXPORT_TOOLS": "Narzędzia - eksport narzędzi",
+      "EXPORT_BHP": "BHP - eksport BHP"
     }
   },
   "admin": {
@@ -1088,14 +1171,8 @@
       "daysOverdue": "{count} dni po terminie",
       "inDays": "za {count} dni"
     },
-    "pagination": {
-      "prev": "Poprzednia",
-      "page": "Strona",
-      "of": "z",
-      "next": "Następna"
-    },
     "serviceHistory": {
-      "title": "Historia serwisowani",
+      "title": "Historia serwisowania",
       "inService": "Aktualnie w serwisie",
       "recentEvents": "Ostatnie zdarzenia",
       "generatedAt": "Wygenerowano",
@@ -1199,6 +1276,7 @@
       "receiveSuccess": "Odebrano z serwisu",
       "receiveFailed": "Nie udało się odebrać z serwisu",
       "modal": { "title": "Wyślij na serwis" },
+      "modalDescription": "Wyślij narzędzie na serwis: wybierz ilość i podaj numer zlecenia.",
       "available": "Dostępne do serwisu",
       "quantityLabel": "Ilość do serwisu",
       "orderNumberLabel": "Numer zlecenia serwisowego",
@@ -1237,7 +1315,11 @@
     },
     "notify": {
       "sent": "Powiadomienie o zwrocie wysłane",
-      "error": "Nie udało się wysłać powiadomienia"
+      "error": "Nie udało się wysłać powiadomienia",
+      "modalDescription": "Wyślij przypomnienie o zwrocie dla wybranego narzędzia."
+    },
+    "edit": {
+      "modalDescription": "Uzupełnij dane narzędzia; pola wymagane są oznaczone."
     },
     "common": {
       "toolIssued": "Narzędzie"

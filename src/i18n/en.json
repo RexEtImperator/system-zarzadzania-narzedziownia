@@ -39,6 +39,7 @@
     "saveChanges": "Save changes",
     "saving": "Saving...",
     "details": "Details",
+    "edit": "Edit",
     "toastr": {
       "users": {
         "fetchError": "Failed to fetch users",
@@ -46,7 +47,8 @@
         "deleteError": "Failed to delete user",
         "updatedSuccess": "User has been updated",
         "addedSuccess": "User has been added",
-        "saveError": "Failed to save user"
+        "saveError": "Failed to save user",
+        "modalDescription": "Fill in user details. Password must comply with the configured security policy."
       },
       "form": {
         "requiredFields": "Fill in all required fields",
@@ -86,6 +88,14 @@
         "positionUpdated": "Position updated",
         "positionCreated": "Position created"
       }
+    },
+    "pagination": {
+      "prev": "Previous",
+      "page": "Page",
+      "of": "of",
+      "next": "Next",
+      "total": "Total: {count}",
+      "range": "{start}–{end} / {total}"
     }
   },
   "Theme": {
@@ -462,8 +472,18 @@
     "status": { "active": "Active", "inactive": "Inactive", "suspended": "Suspended" }
   },
   "departments": {
+    "status": { "active": "Active", "inactive": "Inactive" },
+    "list": { "managerPrefix": "Manager: " },
+    "header": {
+      "title": "Departments Management",
+      "subtitle": "Add, edit and organize departments"
+    },
+    "actions": {
+      "add": "Add department"
+    },
     "modal": {
       "title": { "add": "Add Department", "edit": "Edit Department" },
+      "titles": { "add": "Add Department", "edit": "Edit Department" },
       "labels": {
         "name": "Name *",
         "description": "Description",
@@ -478,6 +498,12 @@
     }
   },
   "positions": {
+    "header": {
+      "title": "Positions Management",
+      "subtitle": "Add, edit and organize positions"
+    },
+    "actions": { "add": "Add position" },
+    "status": { "active": "Active", "inactive": "Inactive" },
     "list": {
       "statusMissing": "Missing in database",
       "departmentPrefix": "Department: "
@@ -489,11 +515,12 @@
     },
     "modal": {
       "title": { "add": "Add Position", "edit": "Edit Position" },
-      "labels": { "department": "Department", "description": "Description" },
+      "titles": { "add": "Add Position", "edit": "Edit Position" },
+      "labels": { "name": "Name *", "department": "Department", "description": "Description", "requirements": "Requirements", "status": "Status" },
       "select": { "department": "Select department" },
-      "placeholders": { "description": "Short position description" },
+      "placeholders": { "name": "e.g. Warehouse worker", "description": "Short position description", "requirements": "e.g., SEP, UDT certifications…" },
       "buttons": { "save": "Save", "cancel": "Cancel" },
-      "errors": { "departmentRequired": "Department is required" }
+      "errors": { "nameRequired": "Name is required", "departmentRequired": "Department is required" }
     }
   },
   "auth": { "invalid": "Invalid authentication event: {reason}" },
@@ -513,7 +540,8 @@
       "categories": "Categories",
       "codes": "Code prefixes",
       "translations": "Translations",
-      "backup": "Backups"
+      "backup": "Backups",
+      "server": "Server"
     },
     "save": {
       "success": "Configuration saved",
@@ -566,7 +594,15 @@
       "maxLoginAttempts": "Max login attempts",
       "lockoutDuration": "Lockout duration (minutes)",
       "requireSpecialChars": "Require special characters",
-      "requireNumbers": "Require digits"
+      "requireNumbers": "Require digits",
+      "requireUppercase": "Require uppercase letters",
+      "requireLowercase": "Require lowercase letters",
+      "historyLength": "Password history length",
+      "blacklist": {
+        "title": "Password blacklist",
+        "placeholder": "e.g. admin, password, 123456",
+        "hint": "Enter comma-separated passwords; duplicates will be removed"
+      }
     },
     "email": {
       "title": "Email",
@@ -647,6 +683,8 @@
       "keyExists": "Such key already exists",
       "saved": "Translations saved",
       "saveError": "Failed to save translations",
+      "loadError": "Failed to load translations",
+      "addDescription": "Enter the translation key and values for selected languages.",
       "added": "Translation added",
       "addError": "Failed to add translation"
     },
@@ -655,7 +693,50 @@
       "lastFile": "Last file",
       "running": "Creating backup…",
       "run": "Create backup",
-      "adminRequired": "Administrator permissions required"
+      "adminRequired": "Administrator permissions required",
+      "listTitle": "All backups",
+      "listError": "Failed to load backups list",
+      "runError": "Failed to create backup",
+      "headers": {
+        "file": "File",
+        "createdAt": "Created at",
+        "actions": "Actions"
+      },
+      "restore": "Restore",
+      "restored": "Database has been restored from backup",
+      "restoreError": "Failed to restore backup"
+    },
+    "server": {
+      "frontend": {
+        "title": "Frontend",
+        "restart": "Restart",
+        "stop": "Stop",
+        "check": "Check status",
+        "restartStarted": "Frontend restart initiated",
+        "restartError": "Failed to restart frontend",
+        "stopStarted": "Frontend stop initiated",
+        "stopError": "Failed to stop frontend",
+        "healthOk": "Frontend is running",
+        "healthError": "Frontend unavailable"
+      },
+     "backend": {
+        "title": "Backend",
+        "restart": "Restart",
+        "stop": "Turn off",
+        "check": "Check status",
+        "restartStarted": "Backend restart has been started",
+        "restartError": "Failed to restart backend",
+        "stopStarted": "Backend stop initiated",
+        "stopError": "Failed to stop backend",
+        "healthOk": "Backend is running",
+        "healthError": "Backend unavailable"
+      },
+      "status": "Status:",
+      "uptime": "Uptime:",
+      "generatedAt": "Timestamp:",
+      "restartTitle": "Backend restart",
+      "restartMessage": "After restore, backend restart is required. Proceed?",
+      "restartNow": "Restart now"
     },
     "categories": {
       "title": "Tool categories",
@@ -1077,12 +1158,6 @@
       "daysOverdue": "{count} days overdue",
       "inDays": "in {count} days"
     },
-    "pagination": {
-      "prev": "Previous",
-      "page": "Page",
-      "of": "of",
-      "next": "Next"
-    },
     "serviceHistory": {
       "title": "Service history",
       "inService": "Currently in service",
@@ -1186,6 +1261,7 @@
       "receiveSuccess": "Received from service",
       "receiveFailed": "Failed to receive from service",
       "modal": { "title": "Send to service" },
+      "modalDescription": "Send the tool to service: choose quantity and enter the order number.",
       "available": "Available for service",
       "quantityLabel": "Quantity for service",
       "orderNumberLabel": "Service order number",
@@ -1224,7 +1300,11 @@
     },
     "notify": {
       "sent": "Return notification sent",
-      "error": "Failed to send notification"
+      "error": "Failed to send notification",
+      "modalDescription": "Send a return reminder for the selected tool."
+    },
+    "edit": {
+      "modalDescription": "Fill in tool details; required fields are marked."
     },
     "common": {
       "toolIssued": "Tool"

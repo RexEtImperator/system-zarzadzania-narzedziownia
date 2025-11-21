@@ -5,27 +5,20 @@ import { formatDateOnly } from '../utils/dateUtils';
 import { PERMISSIONS, hasPermission } from '../constants';
 import { useLanguage } from '../contexts/LanguageContext';
 
-function AnalyticsScreen({ tools, employees, user }) {
+function AnalyticsScreen({ tools, user }) {
   const { t, language } = useLanguage();
   const localeMap = { pl: 'pl-PL', en: 'en-GB', de: 'de-DE' };
-  const totalTools = tools?.length || 0;
-  const availableTools = tools?.filter(tool => tool.status === 'dostępne').length || 0;
-  const issuedTools = tools?.filter(tool => tool.status === 'wydane').length || 0;
-  const totalEmployees = employees?.length || 0;
-
   const canViewAnalytics = hasPermission(user, PERMISSIONS.VIEW_ANALYTICS);
-  
   const [bhpItems, setBhpItems] = useState([]);
   const [bhpLoading, setBhpLoading] = useState(false);
   const [bhpPermissionDenied, setBhpPermissionDenied] = useState(false);
-
   const [serviceSummary, setServiceSummary] = useState({ in_service: [], recent_events: [] });
   const [serviceLoading, setServiceLoading] = useState(false);
   const [svcPage, setSvcPage] = useState(1);
   const [eventsPage, setEventsPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Upewnij się, że numer strony jest w zakresie po zmianie danych lub rozmiaru strony
+  // Ensure the page number is within range after data change or page size change
   useEffect(() => {
     const svcTotal = Math.max(1, Math.ceil((serviceSummary.in_service?.length || 0) / pageSize));
     const evTotal = Math.max(1, Math.ceil((serviceSummary.recent_events?.length || 0) / pageSize));
@@ -151,7 +144,7 @@ function AnalyticsScreen({ tools, employees, user }) {
     let mounted = true;
     const fetchBhp = async () => {
       try {
-        // Jeśli brak uprawnień do BHP, nie wywołuj API i pokaż informację
+        // If the user does not have permission to view BHP, do not call the API and show information
         if (!canViewAnalytics || !hasPermission(user, PERMISSIONS.VIEW_BHP)) {
           if (mounted) {
             setBhpPermissionDenied(true);
@@ -160,14 +153,15 @@ function AnalyticsScreen({ tools, employees, user }) {
           return;
         }
         setBhpLoading(true);
-        const res = await api.get('/api/bhp');
+        const res = await api.get('/api/bhp?sortBy=inventory_number&sortDir=asc');
         if (mounted) {
-          setBhpItems(Array.isArray(res) ? res : []);
+          const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+          setBhpItems(list);
         }
       } catch (err) {
         if (mounted) {
           setBhpItems([]);
-          // Jeśli serwer zwróci forbid, pokaż informację zamiast wylogowania
+          // If the server returns a forbid, show information instead of logging out
           if (err?.status === 403) {
             setBhpPermissionDenied(true);
           }
@@ -210,7 +204,7 @@ function AnalyticsScreen({ tools, employees, user }) {
     return () => { mounted = false; };
   }, [canViewAnalytics]);
 
-  // Bramka uprawnień: jeśli brak VIEW_ANALYTICS, pokaż komunikat i nie renderuj reszty UI
+  // Permission gateway: if VIEW_ANALYTICS is missing, show a message and don't render the rest of the UI
   if (!canViewAnalytics) {
     return (
       <div className="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
@@ -225,12 +219,12 @@ function AnalyticsScreen({ tools, employees, user }) {
   const parseDateFlexible = (val) => {
     if (!val) return null;
     const str = String(val).trim();
-    // ISO lub z czasem: 2024-10-05 lub 2024-10-05 12:00:00
+    // ISO or time: 2024-10-05 or 2024-10-05 12:00:00
     if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
       const d = new Date(str);
       return isNaN(d.getTime()) ? null : d;
     }
-    // Format europejski: dd.mm.yyyy lub dd/mm/yyyy lub dd-mm-yyyy
+    // European format: dd.mm.yyyy lub dd/mm/yyyy lub dd-mm-yyyy
     const m = str.match(/^(\d{2})[.\/-](\d{2})[.\/-](\d{4})/);
     if (m) {
       const [, dd, mm, yyyy] = m;
@@ -278,7 +272,7 @@ function AnalyticsScreen({ tools, employees, user }) {
     .filter(x => x.daysTo !== null && x.daysTo < 0)
     .sort((a, b) => a.daysTo - b.daysTo);
 
-  // Rozdziel przeterminowane na osobne sekcje dla Narzędzi i BHP
+  // Separate overdue inspections into separate sections for Tools and BHP
   const overdueTools = overdueInspections.filter(x => x.source === 'tools');
   const overdueBhp = overdueInspections.filter(x => x.source === 'bhp');
 
@@ -288,7 +282,6 @@ function AnalyticsScreen({ tools, employees, user }) {
        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.title')}</h1>
        <p className="text-slate-600 dark:text-slate-400">{t('analytics.subtitle')}</p>
      </div>
-
      <div className="mt-8">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
@@ -304,13 +297,11 @@ function AnalyticsScreen({ tools, employees, user }) {
               </div>
             </div>
           </div>
-
           {bhpPermissionDenied && (
             <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/40 text-slate-700 dark:text-slate-300">
               {t('analytics.bhpPermissionDenied')}
             </div>
           )}
-
           {bhpLoading ? (
             <div className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.loadingInspections')}</div>
           ) : (
@@ -350,7 +341,6 @@ function AnalyticsScreen({ tools, employees, user }) {
                     ))}
                   </ul>
                 )}
-
                 <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-2">{t('analytics.overdueBhp')}</h4>
                 {overdueBhp.length === 0 ? (
                   <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.noOverdueBhp')}</p>
@@ -386,7 +376,6 @@ function AnalyticsScreen({ tools, employees, user }) {
                   </ul>
                 )}
               </div>
-
               <div>
                 <h4 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('analytics.upcoming')}</h4>
                 {upcomingInspections.length === 0 ? (
@@ -425,11 +414,8 @@ function AnalyticsScreen({ tools, employees, user }) {
               </div>
             </div>
           )}
-
         </div>
       </div>
-
-      {/* Osobny kafelek: Historia serwisowania */}
       <div className="mt-8">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
@@ -451,7 +437,6 @@ function AnalyticsScreen({ tools, employees, user }) {
               </button>
             </div>
           </div>
-
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-slate-600 dark:text-slate-400">
               {t('analytics.serviceHistory.rowsCount')}:
@@ -469,7 +454,6 @@ function AnalyticsScreen({ tools, employees, user }) {
               {t('analytics.serviceHistory.total', { count: (serviceSummary.in_service?.length || 0) + (serviceSummary.recent_events?.length || 0) })}
             </div>
           </div>
-
           {serviceLoading ? (
             <p className="text-sm text-slate-600 dark:text-slate-400">{t('analytics.loadingService')}</p>
           ) : (

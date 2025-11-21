@@ -34,6 +34,7 @@
     "cancel": "Abbrechen",
     "close": "Schließen",
     "remove": "Entfernen",
+    "edit": "Bearbeiten",
     "clearList": "Liste leeren",
     "clearInput": "Eingabe löschen",
     "toastr": {
@@ -43,7 +44,8 @@
         "deleteError": "Benutzer konnte nicht gelöscht werden",
         "updatedSuccess": "Benutzer wurde aktualisiert",
         "addedSuccess": "Benutzer wurde hinzugefügt",
-        "saveError": "Benutzer konnte nicht gespeichert werden"
+        "saveError": "Benutzer konnte nicht gespeichert werden",
+        "modalDescription": "Füllen Sie die Benutzerdaten aus. Das Passwort muss der konfigurierten Sicherheitsrichtlinie entsprechen."
       },
       "form": {
         "requiredFields": "Bitte füllen Sie alle Pflichtfelder aus",
@@ -83,6 +85,14 @@
         "positionUpdated": "Position aktualisiert",
         "positionCreated": "Position erstellt"
       }
+    },
+    "pagination": {
+      "prev": "Zurück",
+      "page": "Seite",
+      "of": "von",
+      "next": "Weiter",
+      "total": "Gesamt: {count}",
+      "range": "{start}–{end} / {total}"
     }
   },
   "Theme": {
@@ -459,8 +469,18 @@
     "status": { "active": "Aktiv", "inactive": "Inaktiv", "suspended": "Suspendiert" }
   },
   "departments": {
+    "status": { "active": "Aktiv", "inactive": "Inaktiv" },
+    "list": { "managerPrefix": "Abteilungsleiter: " },
+    "header": {
+      "title": "Abteilungsverwaltung",
+      "subtitle": "Abteilungen hinzufügen, bearbeiten und organisieren"
+    },
+    "actions": {
+      "add": "Abteilung hinzufügen"
+    },
     "modal": {
       "title": { "add": "Abteilung hinzufügen", "edit": "Abteilung bearbeiten" },
+      "titles": { "add": "Abteilung hinzufügen", "edit": "Abteilung bearbeiten" },
       "labels": {
         "name": "Name *",
         "description": "Beschreibung",
@@ -475,6 +495,12 @@
     }
   },
   "positions": {
+    "header": {
+      "title": "Positionsverwaltung",
+      "subtitle": "Positionen hinzufügen, bearbeiten und organisieren"
+    },
+    "actions": { "add": "Position hinzufügen" },
+    "status": { "active": "Aktiv", "inactive": "Inaktiv" },
     "list": {
       "statusMissing": "Fehlt in der Datenbank",
       "departmentPrefix": "Abteilung: "
@@ -486,11 +512,12 @@
     },
     "modal": {
       "title": { "add": "Position hinzufügen", "edit": "Position bearbeiten" },
-      "labels": { "department": "Abteilung", "description": "Beschreibung" },
+      "titles": { "add": "Position hinzufügen", "edit": "Position bearbeiten" },
+      "labels": { "name": "Name *", "department": "Abteilung", "description": "Beschreibung", "requirements": "Anforderungen", "status": "Status" },
       "select": { "department": "Abteilung wählen" },
-      "placeholders": { "description": "Kurze Positionsbeschreibung" },
+      "placeholders": { "name": "z. B. Lagerarbeiter", "description": "Kurze Positionsbeschreibung", "requirements": "z. B. SEP-, UDT-Zertifikate…" },
       "buttons": { "save": "Speichern", "cancel": "Abbrechen" },
-      "errors": { "departmentRequired": "Abteilung ist erforderlich" }
+      "errors": { "nameRequired": "Name ist erforderlich", "departmentRequired": "Abteilung ist erforderlich" }
     }
   },
   "auth": { "invalid": "Ungültiges Authentifizierungsereignis: {reason}" },
@@ -510,7 +537,8 @@
       "categories": "Kategorien",
       "codes": "Code-Präfixe",
       "translations": "Übersetzungen",
-      "backup": "Backups"
+      "backup": "Backups",
+      "server": "Server"
     },
     "save": {
       "success": "Konfiguration gespeichert",
@@ -563,7 +591,15 @@
       "maxLoginAttempts": "Max. Anmeldeversuche",
       "lockoutDuration": "Sperrdauer (Minuten)",
       "requireSpecialChars": "Sonderzeichen erforderlich",
-      "requireNumbers": "Ziffern erforderlich"
+      "requireNumbers": "Ziffern erforderlich",
+      "requireUppercase": "Großbuchstaben erforderlich",
+      "requireLowercase": "Kleinbuchstaben erforderlich",
+      "historyLength": "Länge der Passwort-Historie",
+      "blacklist": {
+        "title": "Passwort-Blacklist",
+        "placeholder": "z. B. admin, password, 123456",
+        "hint": "Kommagetrennte Passwörter eingeben; Duplikate werden entfernt"
+      }
     },
     "email": {
       "title": "E-Mail",
@@ -644,6 +680,8 @@
       "keyExists": "Ein solcher Schlüssel existiert bereits",
       "saved": "Übersetzungen gespeichert",
       "saveError": "Speichern der Übersetzungen fehlgeschlagen",
+      "loadError": "Laden der Übersetzungen fehlgeschlagen",
+      "addDescription": "Geben Sie den Übersetzungsschlüssel und die Werte für ausgewählte Sprachen ein.",
       "added": "Übersetzung hinzugefügt",
       "addError": "Hinzufügen der Übersetzung fehlgeschlagen"
     },
@@ -652,7 +690,50 @@
       "lastFile": "Letzte Datei",
       "running": "Backup wird erstellt…",
       "run": "Backup erstellen",
-      "adminRequired": "Administratorberechtigungen erforderlich"
+      "adminRequired": "Administratorberechtigungen erforderlich",
+      "listTitle": "Alle Backups",
+      "listError": "Laden der Backupliste fehlgeschlagen",
+      "runError": "Backup-Erstellung fehlgeschlagen",
+      "headers": {
+        "file": "Datei",
+        "createdAt": "Erstellt am",
+        "actions": "Aktionen"
+      },
+      "restore": "Wiederherstellen",
+      "restored": "Datenbank wurde aus Backup wiederhergestellt",
+      "restoreError": "Backup-Wiederherstellung fehlgeschlagen"
+    },
+    "server": {
+      "frontend": {
+        "title": "Frontend",
+        "restart": "Neu starten",
+        "stop": "Stoppen",
+        "check": "Status prüfen",
+        "restartStarted": "Frontend-Neustart gestartet",
+        "restartError": "Frontend-Neustart fehlgeschlagen",
+        "stopStarted": "Frontend-Stop gestartet",
+        "stopError": "Frontend-Stop fehlgeschlagen",
+        "healthOk": "Frontend läuft",
+        "healthError": "Frontend nicht verfügbar"
+      },
+     "backend": {
+        "title": "Backend",
+        "restart": "Neustart",
+        "stop": "Ausschalten",
+        "check": "Status prüfen",
+        "restartStarted": "Der Neustart des Backends wurde gestartet.",
+        "restartError": "Backend-Neustart fehlgeschlagen",
+        "stopStarted": "Backend-Stop gestartet",
+        "stopError": "Backend-Stop fehlgeschlagen",
+        "healthOk": "Backend läuft",
+        "healthError": "Backend nicht verfügbar"
+      },
+      "status": "Status:",
+      "uptime": "Laufzeit:",
+      "generatedAt": "Zeitstempel:",
+      "restartTitle": "Backend-Neustart",
+      "restartMessage": "Nach der Wiederherstellung ist ein Backend-Neustart erforderlich. Fortfahren?",
+      "restartNow": "Jetzt neu starten"
     },
     "categories": {
       "title": "Werkzeugkategorien",
@@ -1076,12 +1157,6 @@
       "daysOverdue": "{count} Tage überfällig",
       "inDays": "in {count} Tagen"
     },
-    "pagination": {
-      "prev": "Zurück",
-      "page": "Seite",
-      "of": "von",
-      "next": "Weiter"
-    },
     "serviceHistory": {
       "title": "Servicehistorie",
       "inService": "Derzeit im Service",
@@ -1185,6 +1260,7 @@
       "receiveSuccess": "Vom Service erhalten",
       "receiveFailed": "Empfang vom Service fehlgeschlagen",
       "modal": { "title": "Zum Service senden" },
+      "modalDescription": "Werkzeug zum Service senden: Menge wählen und Auftragsnummer eingeben.",
       "available": "Für den Service verfügbar",
       "quantityLabel": "Menge für den Service",
       "orderNumberLabel": "Service‑Auftragsnummer",
@@ -1223,7 +1299,11 @@
     },
     "notify": {
       "sent": "Rückgabe‑Benachrichtigung gesendet",
-      "error": "Benachrichtigung konnte nicht gesendet werden"
+      "error": "Benachrichtigung konnte nicht gesendet werden",
+      "modalDescription": "Rückgabe‑Erinnerung für das ausgewählte Werkzeug senden."
+    },
+    "edit": {
+      "modalDescription": "Werkzeugdaten ausfüllen; Pflichtfelder sind gekennzeichnet."
     },
     "common": {
       "toolIssued": "Werkzeug"

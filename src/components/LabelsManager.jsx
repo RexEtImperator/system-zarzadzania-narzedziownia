@@ -213,7 +213,7 @@ function LabelsManager({ tools = [], user }) {
     }
     const fetchTools = async () => {
       try {
-        const resp = await api.get('/api/tools');
+        const resp = await api.get('/api/tools?sortBy=inventory_number&sortDir=asc');
         const list = Array.isArray(resp) ? resp : (resp?.data || []);
         setToolsData(list);
       } catch (err) {

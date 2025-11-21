@@ -161,8 +161,9 @@ function InventoryScreen({ tools = [], user }) {
     const loadTools = async () => {
       try {
         setToolsLoading(true);
-        const data = await api.get('/api/tools');
-        if (!cancelled) setLocalTools(Array.isArray(data) ? data : []);
+        const data = await api.get('/api/tools?sortBy=inventory_number&sortDir=asc');
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        if (!cancelled) setLocalTools(list);
       } catch (err) {
         console.error('Error fetching tools (inventory):', err);
         if (!cancelled) setLocalTools([]);

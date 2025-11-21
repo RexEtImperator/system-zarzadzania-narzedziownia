@@ -4,7 +4,21 @@ Wszystkie istotne zmiany w projekcie będą dokumentowane w tym pliku.
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/2.1.0...HEAD
+[Unreleased]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/compare/2.2.0...HEAD
+
+## [2.2.0] - 2025-11-21
+
+### Dodane / Zmienione
+- i18n: uzupełniono brakujące klucze dla ekranów „Działy” i „Stanowiska” (nagłówki, akcje, statusy, pola i przyciski w modalach; `common.edit`).
+- ToolsScreen: zmiana liczby pozycji w paginacji odświeża tylko tabelę (soft loading), bez przeładowania całego widoku.
+- Autoryzacja: ujednolicono obsługę nieprawidłowego tokena JWT — backend zwraca `401`, frontend rozpoznaje `401/403` i komunikat „Invalid token/Nieprawidłowy token”.
+- Bezpieczeństwo: usunięto nadmierne logowanie w endpointzie logowania (bez nagłówków i treści żądań).
+- Stałe: ujednolicono endpoint logowania na `POST /api/login` w stałych frontendu.
+
+### Dokumentacja
+- README: zaktualizowano badge i sekcję wersji na `2.2.0`.
+
+[2.2.0]: https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.2.0
 
 ## [2.1.0] - 2025-11-20
 

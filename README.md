@@ -1,6 +1,6 @@
 # System Zarządzania Narzędziownią
 
-[![Wersja](https://img.shields.io/badge/version-2.1.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.1.0)
+[![Wersja](https://img.shields.io/badge/version-2.2.0-blue)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.2.0)
 [![Latest](https://img.shields.io/github/v/release/RexEtImperator/system-zarzadzania-narzedziownia?label=latest&sort=semver)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/latest)
 [![Build](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/actions/workflows/ci.yml)
 
@@ -307,6 +307,7 @@ flowchart LR
 - Kontekst języka: `src/contexts/LanguageContext.jsx` z metodą `t(key, params)` i wyborem języka.
 - Słowniki: `src/i18n/pl.json`, `src/i18n/en.json`, `src/i18n/de.json` — dodawaj nowe klucze według konwencji kropkowej.
 - Integracja m.in. w ekranach: Analityka, Skaner kodów, Ustawienia użytkownika, Logowanie, Modale potwierdzeń.
+- Szczegóły architektury i utrzymania: [i18n.md](./i18n.md)
 
 ### Prefiksy kodów
 - Prefiks dla narzędzi (`toolsCodePrefix`).
@@ -347,10 +348,10 @@ Projekt jest licencjonowany na zasadach GPL-3.0. Szczegóły licencji znajdziesz
 
 ## Changelog
 
-Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [2.1.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.1.0).
+Zmiany wersji są opisane w pliku [CHANGELOG.md](CHANGELOG.md). Zobacz wydanie [2.2.0](https://github.com/RexEtImperator/system-zarzadzania-narzedziownia/releases/tag/2.2.0).
 
 ## Autor
 dbrzezinsky
 
 ## Wersja
-System Zarządzania Narzędziownią - wersja 2.1.0
+System Zarządzania Narzędziownią - wersja 2.2.0

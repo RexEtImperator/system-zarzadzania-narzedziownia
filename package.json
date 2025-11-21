@@ -1,6 +1,6 @@
 {
   "name": "system-zarzadzania-narzedziownia-frontend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Frontend dla systemu zarządzania narzędziownią",
   "proxy": "http://localhost:3000",
   "main": "app.js",
@@ -11,7 +11,9 @@
     "eject": "react-scripts eject",
     "server": "set PORT=3000 && node server.js",
     "dev": "concurrently \"npm run server\" \"npm start\"",
-    "generate:logins": "node scripts/generate_logins_for_employees.js"
+    "generate:logins": "node scripts/generate_logins_for_employees.js",
+    "i18n:diff": "node scripts/report_translation_diff.js",
+    "i18n:sync": "node scripts/sync_translations_from_files.js"
   },
   "keywords": [],
   "author": "",
@@ -31,11 +33,13 @@
     "jszip": "^3.10.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
+    "pm2": "^6.0.13",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-barcode-generator": "^1.0.0",
     "react-dom": "^18.2.0",
     "react-qr-barcode-scanner": "^2.1.15",
+    "react-router-dom": "^6.30.2",
     "react-scripts": "5.0.1",
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.4",
